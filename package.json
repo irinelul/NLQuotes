@@ -1,8 +1,7 @@
 {
-  "proxy": "http://localhost:3002",
   "name": "northernpedia",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.1",
   "scripts": {
     "dev2": "nodemon index.js",
     "dev": "vite",
