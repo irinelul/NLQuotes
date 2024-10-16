@@ -1,1 +1,1 @@
-![alt text]([http://url/to/img.png](https://imgur.com/a/J2VPLGV))
+![My Image](https://i.imgur.com/F6rrVzO.png)
