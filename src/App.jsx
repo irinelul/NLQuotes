@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import query from './services/quotes';
-import './index.css';
 
 
 
