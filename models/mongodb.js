@@ -1,7 +1,6 @@
-require('dotenv').config();
-
-const mongoose = require('mongoose')
-
+import dotenv from 'dotenv';
+import mongoose from 'mongoose';
+dotenv.config();
 mongoose.set('strictQuery', false)
 
 const url = process.env.MONGODB_URI
@@ -25,4 +24,4 @@ const quoteSchema = new mongoose.Schema({
 })
 
 
-module.exports = mongoose.model('quotes', quoteSchema)
+export default mongoose.model('quote', quoteSchema);
