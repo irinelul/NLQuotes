@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import express from 'express';
 import morgan from 'morgan';
 import cors from 'cors';
-import Quote from './models/mongodb.js';
+import quote from './models/mongodb.js';
 dotenv.config();
 
 const app = express();
@@ -22,11 +22,11 @@ app.get('/api', (req, res) => {
     const limit = 15;
     const skip = (page - 1) * limit;
 
-    Quote.find({ text: { $regex: searchTerm, $options: 'i' } })
+    quote.find({ text: { $regex: searchTerm, $options: 'i' } })
         .skip(skip)
         .limit(limit)
         .then(result => {
-            Person.countDocuments({ name: { $regex: searchTerm, $options: 'i' } })
+            quote.countDocuments({ name: { $regex: searchTerm, $options: 'i' } })
                 .then(count => {
                     res.json({
                         data: result,
