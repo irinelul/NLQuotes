@@ -2,7 +2,6 @@ import dotenv from 'dotenv';
 import express from 'express';
 import morgan from 'morgan';
 import cors from 'cors';
-import React from 'react';
 import Quote from './models/mongodb.js';
 dotenv.config();
 
