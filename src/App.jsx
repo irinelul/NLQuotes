@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import query from './services/quotes';
-import '../index.js'
+import React from 'react';
 
 const URL = 'https://www.youtube.com/watch?v=';
 

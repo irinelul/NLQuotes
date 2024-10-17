@@ -1,10 +1,12 @@
-require('dotenv').config();
-const express = require('express');
-const morgan = require('morgan');
-const cors = require('cors');
-const Person = require('./models/mongodb');
-const app = express();
+import dotenv from 'dotenv';
+import express from 'express';
+import morgan from 'morgan';
+import cors from 'cors';
+import React from 'react';
+import Quote from './models/mongodb.js';
+dotenv.config();
 
+const app = express();
 const PORT = process.env.PORT;
 
 app.use(cors());
@@ -21,7 +23,7 @@ app.get('/api', (req, res) => {
     const limit = 15;
     const skip = (page - 1) * limit;
 
-    Person.find({ text: { $regex: searchTerm, $options: 'i' } })
+    Quote.find({ text: { $regex: searchTerm, $options: 'i' } })
         .skip(skip)
         .limit(limit)
         .then(result => {

@@ -1,5 +1,6 @@
 {
   "name": "northernpedia",
+  "type": "module",
   "private": true,
   "version": "1.0.1",
   "scripts": {
