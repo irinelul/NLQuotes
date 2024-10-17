@@ -19,7 +19,7 @@ app.use(morgan(':method :url  status :status - :response-time ms content: :body 
 app.get('/api', (req, res) => {
     const searchTerm = req.query.searchTerm || '';
     const page = parseInt(req.query.page) || 1;
-    const limit = 15;
+    const limit = 10;
     const skip = (page - 1) * limit;
 
     quote.find({ text: { $regex: searchTerm, $options: 'i' } })
