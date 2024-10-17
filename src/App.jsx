@@ -87,10 +87,13 @@ const App = () => {
         <div style={{
             display: 'flex',
             flexDirection: 'column',
-            justifyContent: 'center',
+            // justifyContent: 'center',
             alignItems: 'center',
             height: '100vh'
         }}>
+            <div className="logo-container">
+                <img src={`/NLogo.png`} alt="Northernlion Logo" />
+            </div>
             <div className="input-container">
                 <input
                     className="search-input"
@@ -102,7 +105,7 @@ const App = () => {
                 />
                 <button onClick={handleSearch}>Search</button>
             </div>
-            {hasSearched && <Quotes quotes={quotes}/>}
+            {hasSearched && <Quotes quotes={quotes} />}
             <div className="pagination-buttons">
                 <button onClick={() => setPage(page - 1)} disabled={page === 1}>Previous</button>
                 <button onClick={() => setPage(page + 1)} disabled={page === totalPages}>Next</button>
@@ -111,5 +114,6 @@ const App = () => {
             {error && <div>{error}</div>}
         </div>
     );
+
 };
 export default App;
