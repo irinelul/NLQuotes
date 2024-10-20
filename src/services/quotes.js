@@ -1,12 +1,12 @@
 import axios from 'axios'
 const baseUrl = '/api'
 
-const getAll = (searchTerm, page, limit) => {
+const getAll = (searchTerm, page,strict) => {
     const request = axios.get(baseUrl, {
-        params: {  // Pass query parameters as part of the request
-            searchTerm: searchTerm || '',  // The search term
-            page: page || 1,   // The page number
-            limit: limit || 10 // The number of items per page
+        params: {  
+            searchTerm: searchTerm || '', 
+            page: page || 1,   
+            strict:strict
         }
     });
     return request.then(response => response.data);

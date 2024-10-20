@@ -17,16 +17,17 @@ morgan.token('bodyLength', (req) => (JSON.stringify(req.body)).length);
 app.use(morgan(':method :url  status :status - :response-time ms content: :body :bodyLength Length  :res[header]'));
 
 app.get('/api', (req, res) => {
-    const searchTerm = req.query.searchTerm || '';
     const page = parseInt(req.query.page) || 1;
     const limit = 10;
     const skip = (page - 1) * limit;
-
-    quote.find({ text: { $regex: searchTerm, $options: 'i' } })
+    const strict = req.query.strict === 'true';
+    const searchTerm = strict?`\\b${req.query.searchTerm}\\b`:req.query.searchTerm || ''; 
+    console.log(strict,searchTerm)
+    quote.find({ text: { $regex: searchTerm} })
         .skip(skip)
         .limit(limit)
         .then(result => {
-            quote.countDocuments({ name: { $regex: searchTerm, $options: 'i' } })
+            quote.countDocuments({ text: { $regex: searchTerm, $options: 'i' } })
                 .then(count => {
                     res.json({
                         data: result,
