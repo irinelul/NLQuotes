@@ -21,7 +21,7 @@ const Quotes = ({ quotes }) => {
                         <tr key={quote.id || `quote-${index}`}>
                             <td>{quote.text}</td>
                             <td>
-                                <a href={`${URL}${quote.video_id}&t=${Math.floor(quote.timestamp_start)}`}>
+                                <a href={`${URL}${quote.video_id}&t=${Math.floor(quote.timestamp_start-1)}`}>
                                     Video Link
                                 </a>
                             </td>
@@ -44,15 +44,17 @@ const App = () => {
     const [currentSearchTerm, setCurrentSearchTerm] = useState('');
     const [page, setPage] = useState(1);
     const [limit] = useState(10);
+    const [PreviousSearchTerm,setPreviousSearchTerm]= useState('');
     const [totalPages, setTotalPages] = useState(0);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [hasSearched, setHasSearched] = useState(false);
+    const [strict, setStrict] =useState(false)
     const fetchQuotes = () => {
         setLoading(true);
         setError(null);
         query
-            .getAll(currentSearchTerm, page, limit)
+            .getAll(currentSearchTerm, page,strict)
             .then(result => {
                 setQuotes(result.data || []);
                 setTotalPages(result.totalPages || 0);
@@ -73,6 +75,7 @@ const App = () => {
     }, [page, currentSearchTerm]);
 
     const handleSearch = () => {
+        setPreviousSearchTerm(currentSearchTerm);
         setCurrentSearchTerm(searchTerm);
         setPage(1);
     };
@@ -105,6 +108,7 @@ const App = () => {
                 />
                 <button onClick={handleSearch}>Search</button>
             </div>
+            <div> <label> <input type="checkbox" onClick={() => setStrict((prevStrict) => !prevStrict)} /> Strict mode: the search only matches the exact word (e.g., "flat" won't match "inflation"). </label> </div>
             {hasSearched && <Quotes quotes={quotes} />}
             <div className="pagination-buttons">
                 <button onClick={() => setPage(page - 1)} disabled={page === 1}>Previous</button>
