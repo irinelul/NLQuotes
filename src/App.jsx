@@ -50,6 +50,7 @@ const App = () => {
     const [error, setError] = useState(null);
     const [hasSearched, setHasSearched] = useState(false);
     const [strict, setStrict] =useState(false)
+    const [stats, setStats] =useState('');
     const fetchQuotes = () => {
         setLoading(true);
         setError(null);
@@ -67,12 +68,23 @@ const App = () => {
                 setHasSearched(true);
             });
     };
+    const fetchStats = () =>{
+        query.getStats()
+        .then(result=>{setStats(result.data)})
+    }
+    
 
     useEffect(() => {
         if (currentSearchTerm) {
             fetchQuotes();
         }
     }, [page, currentSearchTerm]);
+
+
+    useEffect(() => {
+            fetchStats();
+    }, []);
+
 
     const handleSearch = () => {
         setPreviousSearchTerm(currentSearchTerm);
@@ -94,6 +106,11 @@ const App = () => {
             alignItems: 'center',
             height: '100vh'
         }}>
+            <div classname="stats">
+                Stats Area: <br></br>
+                {stats} / 3183 Librarian videos <br></br>
+                0 / 20,374 NL Videos
+            </div>
             <div className="logo-container">
                 <img src={`/NLogo.png`} alt="Northernlion Logo" />
             </div>
