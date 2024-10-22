@@ -10,24 +10,32 @@ const Quotes = ({ quotes }) => {
             {quotes.length > 0 ? (
                 <table className="quotes-table">
                     <thead>
-                    <tr>
-                        <th>Quote</th>
-                        <th>Video Link</th>
-                        <th>Title</th>
-                    </tr>
+                        <tr>
+                            <th>Title</th>
+                            <th>Video URL</th>
+                            <th>Quotes with Timestamps</th>
+                        </tr>
                     </thead>
                     <tbody>
-                    {quotes.map((quote, index) => (
-                        <tr key={quote.id || `quote-${index}`}>
-                            <td>{quote.text}</td>
-                            <td>
-                                <a href={`${URL}${quote.video_id}&t=${Math.floor(quote.timestamp_start-1)}`}>
-                                    Video Link
-                                </a>
-                            </td>
-                            <td>{quote.title}</td>
-                        </tr>
-                    ))}
+                        {quotes.map((quoteGroup) => (
+                            <tr key={quoteGroup._id}>
+                                <td>{quoteGroup.quotes[0].title}</td> {/* Display the title */}
+                                <td>
+                                    <a href={`${URL}${quoteGroup.video_id}`}>
+                                        Video Link
+                                    </a>
+                                </td>
+                                <td>
+                                    {quoteGroup.quotes.map((quote, index) => (
+                                        <div key={index}>
+                                            <a href={`${URL}${quoteGroup.video_id}&t=${Math.floor(quote.timestamp_start)-1}`}>
+                                                {quote.text} (Timestamp: {Math.floor(quote.timestamp_start)-1})
+                                            </a>
+                                        </div>
+                                    ))}
+                                </td>
+                            </tr>
+                        ))}
                     </tbody>
                 </table>
             ) : (
@@ -36,6 +44,7 @@ const Quotes = ({ quotes }) => {
         </div>
     );
 };
+
 
 
 const App = () => {
