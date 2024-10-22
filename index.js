@@ -21,15 +21,32 @@ app.get('/api', (req, res) => {
     const limit = 10;
     const skip = (page - 1) * limit;
     const strict = req.query.strict === 'true';
-    const searchTerm = strict?`\\b${req.query.searchTerm}\\b`:req.query.searchTerm || ''; 
-    console.log(strict,searchTerm)
-    quote.find({ text: { $regex: searchTerm} })
-        .skip(skip)
-        .limit(limit)
-        .then(result => {
-            res.json({ data: result });
-        })
-        .catch(error => res.status(500).send({ error: 'Something went wrong' }));
+    const searchTerm = strict ? `\\b${req.query.searchTerm}\\b` : req.query.searchTerm || ''; 
+    console.log(strict, searchTerm);
+
+    quote.aggregate([
+        { $match: { text: { $regex: searchTerm } } },
+        { 
+            $group: { 
+                _id: "$video_id", 
+                video_id: { $first: "$video_id" }, 
+                quotes: { 
+                    $push: { 
+                        text: "$text", 
+                        line_number: "$line_number", 
+                        timestamp_start: "$timestamp_start", 
+                        title: "$title" 
+                    } 
+                } 
+            } 
+        },
+        { $skip: skip },
+        { $limit: limit }
+    ])
+    .then(result => {
+        res.json({ data: result });
+    })
+    .catch(error => res.status(500).send({ error: 'Something went wrong' }));
 });
 
 app.get('/stats', (req, res) => {
