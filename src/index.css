@@ -155,9 +155,6 @@ button:focus, button:focus-visible {
     color: #fff;
 }
 
-.quotes-table tr:hover {
-    background-color: #555;
-}
 
 .quotes-table th:nth-child(1), .quotes-table td:nth-child(1) {
     width: 50%; /* Adjust as needed */
