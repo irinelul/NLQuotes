@@ -27,26 +27,18 @@ app.get('/api', (req, res) => {
         .skip(skip)
         .limit(limit)
         .then(result => {
-            quote.countDocuments({ text: { $regex: searchTerm, $options: 'i' } })
-                .then(count => {
-                    res.json({
-                        data: result,
-                        currentPage: page,
-                        totalPages: Math.ceil(count / limit),
-                        totalItems: count
-                    });
-                });
+            res.json({ data: result });
         })
         .catch(error => res.status(500).send({ error: 'Something went wrong' }));
 });
 
-app.get('/stats', async (req, res) => {
+app.get('/stats', (req, res) => {
     try {
-        const totalVideosPromise = Person.distinct('video_id').then(ids => ids.length);
-        const totalQuotesPromise = Person.countDocuments({ text: { $ne: null } });
-        const [totalVideos, totalQuotes] = await Promise.all([totalVideosPromise, totalQuotesPromise]);
-
-        res.json({ totalVideos, totalQuotes });
+        quote.distinct("video_id")
+        .then(distinctVideoIds => {
+            const count = distinctVideoIds.length;
+            res.json({ data: count });
+        })
     } catch (error) {
         res.status(500).send({ error: 'Failed to fetch stats' });
     }
