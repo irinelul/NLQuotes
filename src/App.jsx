@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import query from './services/quotes';
 import React from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const URL = 'https://www.youtube.com/watch?v=';
 
@@ -52,55 +53,72 @@ const Quotes = ({ quotes }) => {
 const App = () => {
     const [quotes, setQuotes] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [currentSearchTerm, setCurrentSearchTerm] = useState('');
     const [page, setPage] = useState(1);
-    const [limit] = useState(10);
-    const [PreviousSearchTerm,setPreviousSearchTerm]= useState('');
-    const [totalPages, setTotalPages] = useState(0);
-    const [loading, setLoading] = useState(false);
+    const [strict, setStrict] = useState(false);
     const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
-    const [strict, setStrict] =useState(false)
-    const [stats, setStats] =useState('');
+    const [stats, setStats] = useState('');
+    const [totalPages, setTotalPages] = useState(0);
+
+    const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = useNavigate();
+
+    // Fetch quotes whenever searchTerm or page changes
     const fetchQuotes = () => {
         setLoading(true);
         setError(null);
         query
-            .getAll(currentSearchTerm, page,strict)
-            .then(result => {
+            .getAll(searchTerm, page, strict)
+            .then((result) => {
                 setQuotes(result.data || []);
                 setTotalPages(result.totalPages || 0);
                 setLoading(false);
                 setHasSearched(true);
             })
-            .catch(err => {
+            .catch((err) => {
                 setError('Failed to fetch quotes');
                 setLoading(false);
                 setHasSearched(true);
             });
     };
-    const fetchStats = () =>{
-        query.getStats()
-        .then(result=>{setStats(result.data)})
-    }
-    
 
+    const fetchStats = () => {
+        query.getStats().then((result) => setStats(result.data));
+    };
+
+    // Sync with the URL params on initial load
     useEffect(() => {
-        if (currentSearchTerm) {
-            fetchQuotes();
-        }
-    }, [page, currentSearchTerm]);
+        const urlSearchTerm = searchParams.get('search') || '';
+        const urlPage = parseInt(searchParams.get('page')) || 1;
+        const urlStrict = searchParams.get('strict') === 'true';
 
+        setSearchTerm(urlSearchTerm);
+        setPage(urlPage);
+        setStrict(urlStrict);
+        setHasSearched(!!urlSearchTerm);
+    }, [searchParams]);
 
+    // Fetch stats on component load
     useEffect(() => {
-            fetchStats();
+        fetchStats();
     }, []);
 
+    // Fetch quotes whenever searchTerm or page changes
+    useEffect(() => {
+        if (searchTerm) {
+            fetchQuotes();
+        }
+    }, [searchTerm, page, strict]);
 
     const handleSearch = () => {
-        setPreviousSearchTerm(currentSearchTerm);
-        setCurrentSearchTerm(searchTerm);
-        setPage(1);
+        setPage(1); // Reset to page 1 on new search
+        navigate(`?search=${searchTerm}&page=1&strict=${strict}`);
+    };
+
+    const handlePageChange = (newPage) => {
+        setPage(newPage);
+        navigate(`?search=${searchTerm}&page=${newPage}&strict=${strict}`);
     };
 
     const handleKeyPress = (event) => {
@@ -110,16 +128,10 @@ const App = () => {
     };
 
     return (
-        <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            // justifyContent: 'center',
-            alignItems: 'center',
-            height: '100vh'
-        }}>
-            <div classname="stats">
-                Stats Area: <br></br>
-                {stats} / 3183 Librarian videos <br></br>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100vh' }}>
+            <div className="stats">
+                Stats Area: <br />
+                {stats} / 3183 Librarian videos <br />
                 0 / 20,374 NL Videos
             </div>
             <div className="logo-container">
@@ -136,16 +148,27 @@ const App = () => {
                 />
                 <button onClick={handleSearch}>Search</button>
             </div>
-            <div> <label> <input type="checkbox" onClick={() => setStrict((prevStrict) => !prevStrict)} /> Strict mode: the search only matches the exact word (e.g., "flat" won't match "inflation"). </label> </div>
+            <div>
+                <label>
+                    <input
+                        type="checkbox"
+                        checked={strict}
+                        onChange={() => setStrict((prevStrict) => !prevStrict)}
+                    />
+                    Strict mode: the search only matches the exact word (e.g., "flat" won't match "inflation").
+                </label>
+            </div>
             {hasSearched && <Quotes quotes={quotes} />}
             <div className="pagination-buttons">
-                <button onClick={() => setPage(page - 1)} disabled={page === 1}>Previous</button>
-                <button onClick={() => setPage(page + 1)} disabled={page === totalPages}>Next</button>
+                <button onClick={() => handlePageChange(page - 1)} disabled={page === 1}>
+                    Previous
+                </button>
+                <button onClick={() => handlePageChange(page + 1)} disabled={page === totalPages}>
+                    Next
+                </button>
             </div>
             {loading && <div>Loading...</div>}
             {error && <div>{error}</div>}
         </div>
     );
-
-};
-export default App;
+};export default App;
