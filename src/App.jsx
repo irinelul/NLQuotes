@@ -22,14 +22,14 @@ const Quotes = ({ quotes }) => {
                             <tr key={quoteGroup._id}>
                                 <td>{quoteGroup.quotes[0].title}</td> {/* Display the title */}
                                 <td>
-                                    <a href={`${URL}${quoteGroup.video_id}`}>
+                                    <a target="_blank" href={`${URL}${quoteGroup.video_id}`}>
                                         Video Link
                                     </a>
                                 </td>
                                 <td>
                                     {quoteGroup.quotes.map((quote, index) => (
                                         <div key={index}>
-                                            <a href={`${URL}${quoteGroup.video_id}&t=${Math.floor(quote.timestamp_start)-1}`}>
+                                            <a target="_blank" href={`${URL}${quoteGroup.video_id}&t=${Math.floor(quote.timestamp_start)-1}`}>
                                                 {quote.text} (Timestamp: {Math.floor(quote.timestamp_start)-1})
                                             </a>
                                             {index < quoteGroup.quotes.length - 1 && <hr />} {/* Add <hr> after each quote except the last one */}
