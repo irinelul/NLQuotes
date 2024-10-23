@@ -49,7 +49,6 @@ const Quotes = ({ quotes }) => {
 
 
 
-
 const App = () => {
     const [quotes, setQuotes] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -64,7 +63,7 @@ const App = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
 
-    // Fetch quotes whenever searchTerm or page changes
+    // Fetch quotes when user clicks search
     const fetchQuotes = () => {
         setLoading(true);
         setError(null);
@@ -87,38 +86,21 @@ const App = () => {
         query.getStats().then((result) => setStats(result.data));
     };
 
-    // Sync with the URL params on initial load
-    useEffect(() => {
-        const urlSearchTerm = searchParams.get('search') || '';
-        const urlPage = parseInt(searchParams.get('page')) || 1;
-        const urlStrict = searchParams.get('strict') === 'true';
-
-        setSearchTerm(urlSearchTerm);
-        setPage(urlPage);
-        setStrict(urlStrict);
-        setHasSearched(!!urlSearchTerm);
-    }, [searchParams]);
-
     // Fetch stats on component load
     useEffect(() => {
         fetchStats();
     }, []);
 
-    // Fetch quotes whenever searchTerm or page changes
-    useEffect(() => {
-        if (searchTerm) {
-            fetchQuotes();
-        }
-    }, [searchTerm, page, strict]);
-
     const handleSearch = () => {
         setPage(1); // Reset to page 1 on new search
         navigate(`?search=${searchTerm}&page=1&strict=${strict}`);
+        fetchQuotes(); // Only fetch quotes when user clicks search
     };
 
     const handlePageChange = (newPage) => {
         setPage(newPage);
         navigate(`?search=${searchTerm}&page=${newPage}&strict=${strict}`);
+        fetchQuotes(); // Fetch new page quotes
     };
 
     const handleKeyPress = (event) => {
@@ -126,6 +108,17 @@ const App = () => {
             handleSearch();
         }
     };
+
+    useEffect(() => {
+        // Sync with the URL params on initial load but don't fetch quotes automatically
+        const urlSearchTerm = searchParams.get('search') || '';
+        const urlPage = parseInt(searchParams.get('page')) || 1;
+        const urlStrict = searchParams.get('strict') === 'true';
+
+        setSearchTerm(urlSearchTerm);
+        setPage(urlPage);
+        setStrict(urlStrict);
+    }, [searchParams]);
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100vh' }}>
@@ -171,4 +164,6 @@ const App = () => {
             {error && <div>{error}</div>}
         </div>
     );
-};export default App;
+};
+
+export default App;
