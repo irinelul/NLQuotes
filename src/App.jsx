@@ -31,6 +31,7 @@ const Quotes = ({ quotes }) => {
                                             <a href={`${URL}${quoteGroup.video_id}&t=${Math.floor(quote.timestamp_start)-1}`}>
                                                 {quote.text} (Timestamp: {Math.floor(quote.timestamp_start)-1})
                                             </a>
+                                            {index < quoteGroup.quotes.length - 1 && <hr />} {/* Add <hr> after each quote except the last one */}
                                         </div>
                                     ))}
                                 </td>
@@ -44,6 +45,7 @@ const Quotes = ({ quotes }) => {
         </div>
     );
 };
+
 
 
 
