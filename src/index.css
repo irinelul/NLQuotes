@@ -17,6 +17,7 @@ body {
     margin: 0 auto;
     padding: 2rem;
     text-align: start;
+    display: block; /* This ensures the block-level behavior */
 }
 
 .logo {
@@ -91,6 +92,7 @@ button {
     background-color: #1a1a1a;
     cursor: pointer;
     transition: border-color 0.25s;
+    color:rgb(204, 204, 204)
 }
 
 
@@ -186,4 +188,13 @@ button:focus, button:focus-visible {
 
 .logo-container img.react:hover {
     filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+.stats {
+    color: white;
+    text-align: left; /* Aligns text to the left */
+    position: relative; /* Allows positioning */
+    left: 0; /* Aligns the element to the left edge of the parent */
+    padding: 10px; /* Optional padding for better spacing */
+    
 }

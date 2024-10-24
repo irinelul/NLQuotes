@@ -20,19 +20,19 @@ const Quotes = ({ quotes }) => {
                     <tbody>
                         {quotes.map((quoteGroup) => (
                             <tr key={quoteGroup._id}>
-                                <td>{quoteGroup.quotes[0].title}</td> {/* Display the title */}
+                                <td>{quoteGroup.quotes[0].title}</td>
                                 <td>
-                                    <a target="_blank" href={`${URL}${quoteGroup.video_id}`}>
+                                    <a target="_blank" rel="noopener noreferrer" href={`${URL}${quoteGroup.video_id}`}>
                                         Video Link
                                     </a>
                                 </td>
                                 <td>
                                     {quoteGroup.quotes.map((quote, index) => (
                                         <div key={index}>
-                                            <a target="_blank" href={`${URL}${quoteGroup.video_id}&t=${Math.floor(quote.timestamp_start)-1}`}>
+                                            <a target="_blank" rel="noopener noreferrer" href={`${URL}${quoteGroup.video_id}&t=${Math.floor(quote.timestamp_start)-1}`}>
                                                 {quote.text} (Timestamp: {Math.floor(quote.timestamp_start)-1})
                                             </a>
-                                            {index < quoteGroup.quotes.length - 1 && <hr />} {/* Add <hr> after each quote except the last one */}
+                                            {index < quoteGroup.quotes.length - 1 && <hr />}
                                         </div>
                                     ))}
                                 </td>
@@ -46,8 +46,6 @@ const Quotes = ({ quotes }) => {
         </div>
     );
 };
-
-
 
 const App = () => {
     const [quotes, setQuotes] = useState([]);
@@ -63,7 +61,6 @@ const App = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
 
-    // Fetch quotes when user clicks search
     const fetchQuotes = () => {
         setLoading(true);
         setError(null);
@@ -86,21 +83,20 @@ const App = () => {
         query.getStats().then((result) => setStats(result.data));
     };
 
-    // Fetch stats on component load
     useEffect(() => {
         fetchStats();
     }, []);
 
     const handleSearch = () => {
-        setPage(1); // Reset to page 1 on new search
+        setPage(1);
         navigate(`?search=${searchTerm}&page=1&strict=${strict}`);
-        fetchQuotes(); // Only fetch quotes when user clicks search
+        fetchQuotes();
     };
 
     const handlePageChange = (newPage) => {
         setPage(newPage);
         navigate(`?search=${searchTerm}&page=${newPage}&strict=${strict}`);
-        fetchQuotes(); // Fetch new page quotes
+        fetchQuotes();
     };
 
     const handleKeyPress = (event) => {
@@ -110,7 +106,6 @@ const App = () => {
     };
 
     useEffect(() => {
-        // Sync with the URL params on initial load but don't fetch quotes automatically
         const urlSearchTerm = searchParams.get('search') || '';
         const urlPage = parseInt(searchParams.get('page')) || 1;
         const urlStrict = searchParams.get('strict') === 'true';
@@ -121,48 +116,43 @@ const App = () => {
     }, [searchParams]);
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100vh' }}>
-            <div className="stats">
+        <>
+            <div className="stats" style={{ position: 'absolute', top: 0, left: 0, padding: '10px' }}>
                 Stats Area: <br />
                 {stats} / 3183 Librarian videos <br />
                 0 / 20,374 NL Videos
             </div>
-            <div className="logo-container">
-                <img src={`/NLogo.png`} alt="Northernlion Logo" />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '50px' }}>
+                <div className="logo-container">
+                    <img src={`/NLogo.png`} alt="Northernlion Logo" />
+                </div>
+                <div className="input-container">
+                    <label htmlFor="quote-search">
+                        <input
+                            id="quote-search"
+                            className="search-input"
+                            onKeyDown={handleKeyPress}
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Search quotes..."
+                        />
+                    </label>
+                    <button onClick={handleSearch}>Search</button>
+                </div>
+                {hasSearched && <Quotes quotes={quotes} />}
+                <div className="pagination-buttons">
+                    <button onClick={() => handlePageChange(page - 1)} disabled={page === 1}>
+                        Previous
+                    </button>
+                    <button onClick={() => handlePageChange(page + 1)} disabled={page === totalPages}>
+                        Next
+                    </button>
+                </div>
+                {loading && <div>Loading...</div>}
+                {error && <div>{error}</div>}
             </div>
-            <div className="input-container">
-                <input
-                    className="search-input"
-                    onKeyDown={handleKeyPress}
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search quotes..."
-                />
-                <button onClick={handleSearch}>Search</button>
-            </div>
-            <div>
-                <label>
-                    <input
-                        type="checkbox"
-                        checked={strict}
-                        onChange={() => setStrict((prevStrict) => !prevStrict)}
-                    />
-                    Strict mode: the search only matches the exact word (e.g., "flat" won't match "inflation").
-                </label>
-            </div>
-            {hasSearched && <Quotes quotes={quotes} />}
-            <div className="pagination-buttons">
-                <button onClick={() => handlePageChange(page - 1)} disabled={page === 1}>
-                    Previous
-                </button>
-                <button onClick={() => handlePageChange(page + 1)} disabled={page === totalPages}>
-                    Next
-                </button>
-            </div>
-            {loading && <div>Loading...</div>}
-            {error && <div>{error}</div>}
-        </div>
+        </>
     );
 };
 
