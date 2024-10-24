@@ -25,7 +25,15 @@ app.get('/api', (req, res) => {
     console.log(strict, searchTerm);
 
     quote.aggregate([
-        { $match: { text: { $regex: searchTerm } } },
+        {
+            $search: {
+                index: "default", // Specify your search index
+                phrase: {
+                    query: searchTerm, // The search term (e.g., 'brain chip')
+                    path: "text" // The field you're searching in
+                }
+            }
+        },
         { 
             $group: { 
                 _id: "$video_id", 
@@ -43,6 +51,7 @@ app.get('/api', (req, res) => {
         { $skip: skip },
         { $limit: limit }
     ])
+    
     .then(result => {
         res.json({ data: result });
     })
