@@ -119,8 +119,8 @@ const App = () => {
         <>
             <div className="stats" style={{ position: 'absolute', top: 0, left: 0, padding: '10px' }}>
                 Stats Area: <br />
-                {stats} / 3183 Librarian videos <br />
-                0 / 20,374 NL Videos
+                {stats} / 3,342 Librarian videos <br />
+                0 / 20,613 NL Videos
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '50px' }}>
                 <div className="logo-container">
