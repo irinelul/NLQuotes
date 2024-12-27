@@ -22,5 +22,5 @@ const getStats = () => {
 
 export default {
     getAll: getAll,
-    getStats:getStats
+    getStats: getStats
 }
