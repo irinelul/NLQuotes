@@ -58,42 +58,42 @@ app.get('/api', (req, res) => {
     .catch(error => res.status(500).send({ error: 'Something went wrong' }));
 });
 
-// app.get('/stats', (req, res) => {
-//     try {
-//         quote.distinct("video_id")
-//         .then(distinctVideoIds => {
-//             const count = distinctVideoIds.length;
-//             res.json({ data: count });
-//         })
-//     } catch (error) {
-//         res.status(500).send({ error: 'Failed to fetch stats' });
-//     }
-// });
-
-
-app.get('/stats', async (req, res) => {
+app.get('/stats', (req, res) => {
     try {
-        // Fetch distinct video IDs and their channel_source counts
-        const channelSourceCounts = await quote.aggregate([
-            {
-                $group: {
-                    _id: "$channel_source", // Group by channel_source
-                    total: { $sum: 1 }     // Count occurrences
-                }
-            }
-        ]);
-
-        // Format the response for clarity
-        const result = channelSourceCounts.map(item => ({
-            channel_source: item._id,
-            count: item.total
-        }));
-
-        res.json({ data: result });
+        quote.distinct("video_id")
+        .then(distinctVideoIds => {
+            const count = distinctVideoIds.length;
+            res.json({ data: count });
+        })
     } catch (error) {
         res.status(500).send({ error: 'Failed to fetch stats' });
     }
 });
+
+
+// app.get('/stats', async (req, res) => {
+//     try {
+//         // Fetch distinct video IDs and their channel_source counts
+//         const channelSourceCounts = await quote.aggregate([
+//             {
+//                 $group: {
+//                     _id: "$channel_source", // Group by channel_source
+//                     total: { $sum: 1 }     // Count occurrences
+//                 }
+//             }
+//         ]);
+
+//         // Format the response for clarity
+//         const result = channelSourceCounts.map(item => ({
+//             channel_source: item._id,
+//             count: item.total
+//         }));
+
+//         res.json({ data: result });
+//     } catch (error) {
+//         res.status(500).send({ error: 'Failed to fetch stats' });
+//     }
+// });
 
 
 app.get('/info', (req, res) => {
