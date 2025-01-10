@@ -58,15 +58,31 @@ app.get('/api', (req, res) => {
     .catch(error => res.status(500).send({ error: 'Something went wrong' }));
 });
 
-app.get('/stats', (req, res) => {
+app.get('/stats', async (req, res) => {
     try {
-        quote.distinct("video_id")
-        .then(distinctVideoIds => {
-            const count = distinctVideoIds.length;
-            res.json({ data: count });
-        })
+        const stats = await quote.aggregate([
+            {
+                $group: {
+                    _id: "$channel_source",
+                    distinctVideos: { $addToSet: "$video_id" },
+                }
+            },
+            {
+                $project: {
+                    channel_source: "$_id",
+                    videoCount: { $size: "$distinctVideos" },
+                    videos: "$distinctVideos"
+                }
+            },
+            {
+                $sort: { videoCount: -1 }
+            }
+        ]);
+
+        res.json({ data: stats });
     } catch (error) {
-        res.status(500).send({ error: 'Failed to fetch stats' });
+        console.error('Error fetching stats:', error);
+        res.status(500).json({ error: 'Failed to fetch stats' });
     }
 });
 
