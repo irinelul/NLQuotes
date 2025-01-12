@@ -58,58 +58,58 @@ app.get('/api', (req, res) => {
     .catch(error => res.status(500).send({ error: 'Something went wrong' }));
 });
 
-app.get('/stats', async (req, res) => {
-    try {
-        const stats = await quote.aggregate([
-            {
-                $group: {
-                    _id: "$channel_source",
-                    distinctVideos: { $addToSet: "$video_id" },
-                }
-            },
-            {
-                $project: {
-                    channel_source: "$_id",
-                    videoCount: { $size: "$distinctVideos" },
-                    videos: "$distinctVideos"
-                }
-            },
-            {
-                $sort: { videoCount: -1 }
-            }
-        ]);
-
-        res.json({ data: stats });
-    } catch (error) {
-        console.error('Error fetching stats:', error);
-        res.status(500).json({ error: 'Failed to fetch stats' });
-    }
-});
-
-
 // app.get('/stats', async (req, res) => {
 //     try {
-//         // Fetch distinct video IDs and their channel_source counts
-//         const channelSourceCounts = await quote.aggregate([
+//         const stats = await quote.aggregate([
 //             {
 //                 $group: {
-//                     _id: "$channel_source", // Group by channel_source
-//                     total: { $sum: 1 }     // Count occurrences
+//                     _id: "$channel_source",
+//                     distinctVideos: { $addToSet: "$video_id" },
 //                 }
+//             },
+//             {
+//                 $project: {
+//                     channel_source: "$_id",
+//                     videoCount: { $size: "$distinctVideos" },
+//                     videos: "$distinctVideos"
+//                 }
+//             },
+//             {
+//                 $sort: { videoCount: -1 }
 //             }
 //         ]);
 
-//         // Format the response for clarity
-//         const result = channelSourceCounts.map(item => ({
-//             channel_source: item._id,
-//             count: item.total
-//         }));
-
-//         res.json({ data: result });
+//         res.json({ data: stats });
 //     } catch (error) {
-//         res.status(500).send({ error: 'Failed to fetch stats' });
+//         console.error('Error fetching stats:', error);
+//         res.status(500).json({ error: 'Failed to fetch stats' });
 //     }
 // });
+
+
+// // app.get('/stats', async (req, res) => {
+// //     try {
+// //         // Fetch distinct video IDs and their channel_source counts
+// //         const channelSourceCounts = await quote.aggregate([
+// //             {
+// //                 $group: {
+// //                     _id: "$channel_source", // Group by channel_source
+// //                     total: { $sum: 1 }     // Count occurrences
+// //                 }
+// //             }
+// //         ]);
+
+// //         // Format the response for clarity
+// //         const result = channelSourceCounts.map(item => ({
+// //             channel_source: item._id,
+// //             count: item.total
+// //         }));
+
+// //         res.json({ data: result });
+// //     } catch (error) {
+// //         res.status(500).send({ error: 'Failed to fetch stats' });
+// //     }
+// // });
 
 
 app.get('/info', (req, res) => {
