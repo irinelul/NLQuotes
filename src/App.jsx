@@ -55,7 +55,7 @@ const App = () => {
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
-    const [stats, setStats] = useState('');
+    const [stats, setStats] = useState([]);
     const [totalPages, setTotalPages] = useState(0);
 
     const [searchParams, setSearchParams] = useSearchParams();
@@ -80,11 +80,17 @@ const App = () => {
     };
 
     const fetchStats = () => {
-        query.getStats().then((result) => setStats(result.data));
+        query.getStats().then((result) => {
+            console.log('Fetched stats:', result.data);
+            setStats(result.data);
+        }).catch((error) => {
+            console.error('Error fetching stats:', error);
+            setStats([]); // Handle errors gracefully by setting stats to empty array
+        });
     };
 
     useEffect(() => {
-        fetchStats();
+        fetchStats(); // Fetch stats in the background
     }, []);
 
     const handleSearch = () => {
@@ -115,12 +121,25 @@ const App = () => {
         setStrict(urlStrict);
     }, [searchParams]);
 
+    const numberFormatter = new Intl.NumberFormat('en-US');
+
     return (
         <>
             <div className="stats" style={{ position: 'absolute', top: 0, left: 0, padding: '10px' }}>
-                Stats Area: <br />
-                {stats} / 3,342 Librarian videos <br />
-                0 / 20,613 NL Videos
+                <h2>Stats</h2>
+                {stats.length > 0 ? (
+                    <ul>
+                        {stats
+                            .filter(stat => stat.channel_source !== null)
+                            .map((stat) => (
+                                <li key={stat.channel_source}>
+                                    {stat.channel_source}: {numberFormatter.format(stat.videoCount)} videos, {numberFormatter.format(stat.totalQuotes)} quotes
+                                </li>
+                            ))}
+                    </ul>
+                ) : (
+                    <div>Loading stats...</div>
+                )}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '50px' }}>
                 <div className="logo-container">
