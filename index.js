@@ -54,7 +54,8 @@ app.get('/api', (req, res) => {
                         line_number: "$line_number",
                         timestamp_start: "$timestamp_start",
                         title: "$title",
-                        upload_date: "$upload_date"
+                        upload_date: "$upload_date",
+                        channel_source: "$channel_source"
                     }
                 }
             }

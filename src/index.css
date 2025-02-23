@@ -152,7 +152,7 @@ button:focus, button:focus-visible {
 
 
 .quotes-table th:nth-child(1), .quotes-table td:nth-child(1) {
-    width: 40%; /* Adjust as needed */
+    width: 35%; /* Adjust as needed */
 }
 
 .quotes-table th:nth-child(2), .quotes-table td:nth-child(2) {
@@ -161,8 +161,11 @@ button:focus, button:focus-visible {
 .quotes-table th:nth-child(3), .quotes-table td:nth-child(2) {
     width: 10%; /* Adjust as needed */
 }
+.quotes-table th:nth-child(4), .quotes-table td:nth-child(2) {
+    width: 10%; /* Adjust as needed */
+}
 
-.quotes-table th:nth-child(4), .quotes-table td:nth-child(3) {
+.quotes-table th:nth-child(5), .quotes-table td:nth-child(3) {
     width: 35%; /* Adjust as needed */
 }
 
