@@ -7,3 +7,7 @@ export default {
     assetsDir: 'assets',
   }
 };
+
+build: {
+  sourcemap: true
+}
