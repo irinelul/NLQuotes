@@ -27,6 +27,7 @@ const Quotes = ({ quotes }) => {
                     <thead>
                         <tr>
                             <th>Title</th>
+                            <th>Channel</th>
                             <th>Video URL</th>
                             <th>Upload Date</th>
                             <th>Quotes with Timestamps</th>
@@ -35,12 +36,17 @@ const Quotes = ({ quotes }) => {
                     <tbody>
                         {quotes.map((quoteGroup) => (
                             <tr key={quoteGroup._id}>
+
                                 <td>{quoteGroup.quotes[0].title}</td>
+                                <td>
+                                    {quoteGroup.quotes[0].channel_source}
+                                </td>
                                 <td>
                                     <a target="_blank" rel="noopener noreferrer" href={`${URL}${quoteGroup.video_id}`}>
                                         Video Link
                                     </a>
                                 </td>
+
                                 <td>
                                     {quoteGroup.quotes[0].upload_date ? formatDate(quoteGroup.quotes[0].upload_date) : 'N/A'}
                                 </td>
