@@ -15,13 +15,15 @@ app.use(express.static('dist'));
 morgan.token('body', (req) => JSON.stringify(req.body));
 morgan.token('bodyLength', (req) => (JSON.stringify(req.body)).length);
 app.use(morgan(':method :url  status :status - :response-time ms content: :body :bodyLength Length  :res[header]'));
+app.use(morgan(':method :url  status :status - :response-time ms content: :body :bodyLength Length  :res[header]'));
 
 app.get('/api', (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = 10;
     const skip = (page - 1) * limit;
     const strict = req.query.strict === 'true';
-    const searchTerm = strict ? `\\b${req.query.searchTerm}\\b` : req.query.searchTerm || ''; 
+    const searchTerm = strict ? `\\b${req.query.searchTerm}\\b` : req.query.searchTerm || '';
+    const selectedValue = req.query.selectedValue;
     console.log(strict, searchTerm);
 
     quote.aggregate([
@@ -29,29 +31,38 @@ app.get('/api', (req, res) => {
             $search: {
                 index: "default", // Specify your search index
                 phrase: {
-                    query: searchTerm, // The search term (e.g., 'brain chip')
+                    query: searchTerm, // The search term
                     path: "text" // The field you're searching in
                 }
             }
         },
-        { 
-            $group: { 
-                _id: "$video_id", 
-                video_id: { $first: "$video_id" }, 
-                quotes: { 
-                    $push: { 
-                        text: "$text", 
-                        line_number: "$line_number", 
-                        timestamp_start: "$timestamp_start", 
-                        title: "$title" 
-                    } 
-                } 
-            } 
+        ...(selectedValue && selectedValue !== "all" ? [
+            {
+                $match: {
+                    channel_source: selectedValue
+                }
+            }
+        ] : []),
+
+        {
+            $group: {
+                _id: "$video_id",
+                video_id: { $first: "$video_id" },
+                quotes: {
+                    $push: {
+                        text: "$text",
+                        line_number: "$line_number",
+                        timestamp_start: "$timestamp_start",
+                        title: "$title",
+                        upload_date: "$upload_date"
+                    }
+                }
+            }
         },
         { $skip: skip },
         { $limit: limit }
     ])
-    
+
     .then(result => {
         res.json({ data: result });
     })

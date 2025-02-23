@@ -2,8 +2,22 @@ import { useState, useEffect } from 'react';
 import query from './services/quotes';
 import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { format } from 'date-fns';
 
 const URL = 'https://www.youtube.com/watch?v=';
+
+
+
+const formatDate = (yyyymmdd) => {
+    const date = new Date(
+        yyyymmdd.slice(0, 4),  // Year
+        yyyymmdd.slice(4, 6) - 1, // Month (0-indexed)
+        yyyymmdd.slice(6, 8) // Day
+    );
+    return format(date, 'dd MMMM yyyy');  // Updated format
+};
+
+
 
 const Quotes = ({ quotes }) => {
     return (
@@ -14,6 +28,7 @@ const Quotes = ({ quotes }) => {
                         <tr>
                             <th>Title</th>
                             <th>Video URL</th>
+                            <th>Upload Date</th>
                             <th>Quotes with Timestamps</th>
                         </tr>
                     </thead>
@@ -25,6 +40,9 @@ const Quotes = ({ quotes }) => {
                                     <a target="_blank" rel="noopener noreferrer" href={`${URL}${quoteGroup.video_id}`}>
                                         Video Link
                                     </a>
+                                </td>
+                                <td>
+                                    {quoteGroup.quotes[0].upload_date ? formatDate(quoteGroup.quotes[0].upload_date) : 'N/A'}
                                 </td>
                                 <td>
                                     {quoteGroup.quotes.map((quote, index) => (
@@ -60,12 +78,19 @@ const App = () => {
 
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
+    const [selectedValue, setSelectedValue,] = useState("all");
+
+    const handleRadioChange = (
+        value
+    ) => {
+        setSelectedValue(value);
+    };
 
     const fetchQuotes = () => {
         setLoading(true);
         setError(null);
         query
-            .getAll(searchTerm, page, strict)
+            .getAll(searchTerm, page, strict, selectedValue)
             .then((result) => {
                 setQuotes(result.data || []);
                 setTotalPages(result.totalPages || 0);
@@ -83,6 +108,7 @@ const App = () => {
         query.getStats().then((result) => {
             console.log('Fetched stats:', result.data);
             setStats(result.data);
+            console.log(selectedValue)
         }).catch((error) => {
             console.error('Error fetching stats:', error);
             setStats([]); // Handle errors gracefully by setting stats to empty array
@@ -95,7 +121,7 @@ const App = () => {
 
     const handleSearch = () => {
         setPage(1);
-        navigate(`?search=${searchTerm}&page=1&strict=${strict}`);
+        navigate(`?search=${searchTerm}&page=1&strict=${strict}&channel=${selectedValue}`);
         fetchQuotes();
     };
 
@@ -122,6 +148,45 @@ const App = () => {
     }, [searchParams]);
 
     const numberFormatter = new Intl.NumberFormat('en-US');
+
+
+
+    const styles = {
+        container: {
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            minHeight: "10vh",
+        },
+        heading: {
+            color: "#fff",
+            textAlign: "center",
+            fontSize: "1.5rem", // Smaller font size
+            fontWeight: "bold",
+            marginBottom: "10px",
+        },
+        radioGroup: {
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            borderRadius: "10px",
+            backgroundColor: "#1a1a1a",
+            padding: "20px", // Reduced padding for a more compact card
+            boxShadow: "0 2px 6px rgba(0, 0, 0, 0.4)",
+            gap: "10px", // Small gap between radio buttons
+        },
+        radioButton: {
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
+        },
+        radioLabel: {
+            marginLeft: "6px",
+            fontSize: "15px", // Smaller font size
+            color: "#d1d1d6",
+        },
+    };
 
     return (
         <>
@@ -158,6 +223,104 @@ const App = () => {
                         />
                     </label>
                     <button onClick={handleSearch}>Search</button>
+                </div>
+                <div>
+                    <div
+                        style={styles.container}
+                    >
+                        <div
+                            style={
+                                styles.radioGroup
+                            }
+                        >
+                            <div
+                                style={
+                                    styles.radioButton
+                                }
+                            >
+                                <input
+                                    type="radio"
+                                    id="option1"
+                                    value="all"
+                                    checked={
+                                        selectedValue ===
+                                        "all"
+                                    }
+                                    onChange={() =>
+                                        handleRadioChange(
+                                            "all"
+                                        )
+                                    }
+                                />
+                                <label
+                                    htmlFor="option1"
+                                    style={
+                                        styles.radioLabel
+                                    }
+                                >
+                                    All
+                                </label>
+                            </div>
+
+                            <div
+                                style={
+                                    styles.radioButton
+                                }
+                            >
+                                <input
+                                    type="radio"
+                                    id="option2"
+                                    value="Librarian"
+                                    checked={
+                                        selectedValue ===
+                                        "Librarian"
+                                    }
+                                    onChange={() =>
+                                        handleRadioChange(
+                                            "Librarian"
+                                        )
+                                    }
+                                />
+                                <label
+                                    htmlFor="Librarian"
+                                    style={
+                                        styles.radioLabel
+                                    }
+                                >
+                                    Librarian
+                                </label>
+                            </div>
+
+                            <div
+                                style={
+                                    styles.radioButton
+                                }
+                            >
+                                <input
+                                    type="radio"
+                                    id="Northernlion"
+                                    value="Northernlion"
+                                    checked={
+                                        selectedValue ===
+                                        "Northernlion"
+                                    }
+                                    onChange={() =>
+                                        handleRadioChange(
+                                            "Northernlion"
+                                        )
+                                    }
+                                />
+                                <label
+                                    htmlFor="Northernlion"
+                                    style={
+                                        styles.radioLabel
+                                    }
+                                >
+                                    Northernlion
+                                </label>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 {hasSearched && <Quotes quotes={quotes} />}
                 <div className="pagination-buttons">
