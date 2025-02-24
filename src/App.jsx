@@ -159,40 +159,29 @@ const App = () => {
 
     const styles = {
         container: {
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            minHeight: "10vh",
-        },
-        heading: {
-            color: "#fff",
-            textAlign: "center",
-            fontSize: "1.5rem", // Smaller font size
-            fontWeight: "bold",
-            marginBottom: "10px",
         },
         radioGroup: {
             display: "flex",
-            flexDirection: "row",
-            alignItems: "center",
             justifyContent: "space-between",
-            borderRadius: "10px",
-            backgroundColor: "#1a1a1a",
-            padding: "20px", // Reduced padding for a more compact card
-            boxShadow: "0 2px 6px rgba(0, 0, 0, 0.4)",
-            gap: "10px", // Small gap between radio buttons
+            gap: "16px",
+            paddingBottom: "10px",
         },
         radioButton: {
             display: "flex",
-            flexDirection: "row",
             alignItems: "center",
+            cursor: "pointer",
+            padding: "10px 20px",
+            borderRadius: "4px",
+            transition: "background-color 0.3s, border 0.3s",
+            justifyContent: "center",
         },
         radioLabel: {
-            marginLeft: "6px",
-            fontSize: "15px", // Smaller font size
-            color: "#d1d1d6",
+            fontSize: "16px",
+            color: "white",
+            fontWeight: "bold",
         },
     };
+
 
     return (
         <>
@@ -212,6 +201,9 @@ const App = () => {
                     <div>Loading stats...</div>
                 )}
             </div>
+            <div>
+                The database got corrupted during migration, working on bringing it back up.
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '50px' }}>
                 <div className="logo-container">
                     <img src={`/NLogo.png`} alt="Northernlion Logo" />
@@ -230,104 +222,83 @@ const App = () => {
                     </label>
                     <button onClick={handleSearch}>Search</button>
                 </div>
-                <div>
-                    <div
-                        style={styles.container}
-                    >
+                <div style={styles.container}>
+                    <div style={styles.radioGroup}>
                         <div
-                            style={
-                                styles.radioGroup
-                            }
+                            style={{
+                                ...styles.radioButton,
+                                backgroundColor: selectedValue === "all" ? "#758b89" : "transparent", // Highlight when selected
+                                border: selectedValue === "all" ? "2px solid #00796b" : "2px solid transparent", // Border change on selection
+                            }}
+                            onClick={() => handleRadioChange("all")}
                         >
-                            <div
-                                style={
-                                    styles.radioButton
-                                }
+                            <input
+                                type="radio"
+                                id="option1"
+                                value="all"
+                                checked={selectedValue === "all"}
+                                onChange={() => handleRadioChange("all")}
+                                style={{ display: "none" }} // Hide the default radio button
+                            />
+                            <label
+                                htmlFor="option1"
+                                style={styles.radioLabel}
                             >
-                                <input
-                                    type="radio"
-                                    id="option1"
-                                    value="all"
-                                    checked={
-                                        selectedValue ===
-                                        "all"
-                                    }
-                                    onChange={() =>
-                                        handleRadioChange(
-                                            "all"
-                                        )
-                                    }
-                                />
-                                <label
-                                    htmlFor="option1"
-                                    style={
-                                        styles.radioLabel
-                                    }
-                                >
-                                    All
-                                </label>
-                            </div>
+                                All Sources
+                            </label>
+                        </div>
 
-                            <div
-                                style={
-                                    styles.radioButton
-                                }
+                        <div
+                            style={{
+                                ...styles.radioButton,
+                                backgroundColor: selectedValue === "Librarian" ? "#758b89" : "transparent", // Highlight when selected
+                                border: selectedValue === "Librarian" ? "2px solid #00796b" : "2px solid transparent", // Border change on selection
+                            }}
+                            onClick={() => handleRadioChange("Librarian")}
+                        >
+                            <input
+                                type="radio"
+                                id="option2"
+                                value="Librarian"
+                                checked={selectedValue === "Librarian"}
+                                onChange={() => handleRadioChange("Librarian")}
+                                style={{ display: "none" }} // Hide the default radio button
+                            />
+                            <label
+                                htmlFor="Librarian"
+                                style={styles.radioLabel}
                             >
-                                <input
-                                    type="radio"
-                                    id="option2"
-                                    value="Librarian"
-                                    checked={
-                                        selectedValue ===
-                                        "Librarian"
-                                    }
-                                    onChange={() =>
-                                        handleRadioChange(
-                                            "Librarian"
-                                        )
-                                    }
-                                />
-                                <label
-                                    htmlFor="Librarian"
-                                    style={
-                                        styles.radioLabel
-                                    }
-                                >
-                                    Librarian
-                                </label>
-                            </div>
+                                Librarian
+                            </label>
+                        </div>
 
-                            <div
-                                style={
-                                    styles.radioButton
-                                }
+                        <div
+                            style={{
+                                ...styles.radioButton,
+                                backgroundColor: selectedValue === "Northernlion" ? "#758b89" : "transparent", // Highlight when selected
+                                border: selectedValue === "Northernlion" ? "2px solid #00796b" : "2px solid transparent", // Border change on selection
+                            }}
+                            onClick={() => handleRadioChange("Northernlion")}
+                        >
+                            <input
+                                type="radio"
+                                id="Northernlion"
+                                value="Northernlion"
+                                checked={selectedValue === "Northernlion"}
+                                onChange={() => handleRadioChange("Northernlion")}
+                                style={{ display: "none" }} // Hide the default radio button
+                            />
+                            <label
+                                htmlFor="Northernlion"
+                                style={styles.radioLabel}
                             >
-                                <input
-                                    type="radio"
-                                    id="Northernlion"
-                                    value="Northernlion"
-                                    checked={
-                                        selectedValue ===
-                                        "Northernlion"
-                                    }
-                                    onChange={() =>
-                                        handleRadioChange(
-                                            "Northernlion"
-                                        )
-                                    }
-                                />
-                                <label
-                                    htmlFor="Northernlion"
-                                    style={
-                                        styles.radioLabel
-                                    }
-                                >
-                                    Northernlion
-                                </label>
-                            </div>
+                                Northernlion
+                            </label>
                         </div>
                     </div>
                 </div>
+
+
                 {hasSearched && <Quotes quotes={quotes} />}
                 <div className="pagination-buttons">
                     <button onClick={() => handlePageChange(page - 1)} disabled={page === 1}>
