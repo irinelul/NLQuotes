@@ -21,6 +21,9 @@ const quoteSchema = new mongoose.Schema({
     timestamp_start: {    type: String},
     timestamp_end: {    type: String},
     text: { type: String},
+    title: { type: String},
+    channel_source: { type: String},
+    upload_date: { type: String}
 })
 
 

@@ -15,7 +15,6 @@ app.use(express.static('dist'));
 morgan.token('body', (req) => JSON.stringify(req.body));
 morgan.token('bodyLength', (req) => (JSON.stringify(req.body)).length);
 app.use(morgan(':method :url  status :status - :response-time ms content: :body :bodyLength Length  :res[header]'));
-app.use(morgan(':method :url  status :status - :response-time ms content: :body :bodyLength Length  :res[header]'));
 
 app.get('/api', (req, res) => {
     const page = parseInt(req.query.page) || 1;
@@ -69,13 +68,44 @@ app.get('/api', (req, res) => {
     })
     .catch(error => res.status(500).send({ error: 'Something went wrong' }));
 });
+//
+// app.get('/stats', async (req, res) => {
+//     try {
+//         const stats = await quote.aggregate([
+//             {
+//                 $group: {
+//                     _id: "$channel_source",
+//                     distinctVideos: { $addToSet: "$video_id" },
+//                     total: { $sum: 1 }
+//                 }
+//             },
+//             {
+//                 $project: {
+//                     channel_source: "$_id",
+//                     videoCount: { $size: "$distinctVideos" },
+//                     totalQuotes: "$total"
+//                 }
+//             },
+//             {
+//                 $sort: { videoCount: -1 }
+//             }
+//         ]);
+//
+//         res.json({ data: stats });
+//     } catch (error) {
+//         console.error('Error fetching stats:', error);
+//         res.status(500).json({ error: 'Failed to fetch stats' });
+//     }
+// });
+
 
 app.get('/stats', async (req, res) => {
     try {
         const stats = await quote.aggregate([
+            { $match: { channel_source: { $exists: true } } }, // Filter for documents with channel_source
             {
                 $group: {
-                    _id: "$channel_source",
+                    _id: { $ifNull: ["$channel_source", "Unknown"] }, // Handle missing channel_source
                     distinctVideos: { $addToSet: "$video_id" },
                     total: { $sum: 1 }
                 }
@@ -84,10 +114,11 @@ app.get('/stats', async (req, res) => {
                 $project: {
                     channel_source: "$_id",
                     videoCount: { $size: "$distinctVideos" },
-                    totalQuotes: "$total"
+                    totalQuotes: "$total",
+                    _id: 0 // Remove the _id field from the final result
                 }
             },
-            {   
+            {
                 $sort: { videoCount: -1 }
             }
         ]);
@@ -98,6 +129,7 @@ app.get('/stats', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch stats' });
     }
 });
+
 
 
 const errorHandler = (error, req, res, next) => {
