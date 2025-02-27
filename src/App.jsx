@@ -201,9 +201,6 @@ const App = () => {
                     <div>Loading stats...</div>
                 )}
             </div>
-            <div>
-                The database got corrupted during migration, working on bringing it back up.
-            </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '50px' }}>
                 <div className="logo-container">
                     <img src={`/NLogo.png`} alt="Northernlion Logo" />
