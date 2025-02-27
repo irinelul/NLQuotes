@@ -16,6 +16,7 @@ morgan.token('body', (req) => JSON.stringify(req.body));
 morgan.token('bodyLength', (req) => (JSON.stringify(req.body)).length);
 app.use(morgan(':method :url  status :status - :response-time ms content: :body :bodyLength Length  :res[header]'));
 
+
 app.get('/api', (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = 10;
@@ -23,15 +24,20 @@ app.get('/api', (req, res) => {
     const strict = req.query.strict === 'true';
     const searchTerm = strict ? `\\b${req.query.searchTerm}\\b` : req.query.searchTerm || '';
     const selectedValue = req.query.selectedValue;
-    console.log(strict, searchTerm);
+    const selectedMode = req.query.selectedMode;
+    const searchPath = selectedMode === "searchTitle" ? "title" : "text";
 
-    quote.aggregate([
+    console.log('Selected Mode:', selectedMode);
+    console.log('Search Path:', searchPath);
+    
+    // Define the aggregation pipeline
+    const pipeline = [
         {
             $search: {
                 index: "default", // Specify your search index
                 phrase: {
                     query: searchTerm, // The search term
-                    path: "text" // The field you're searching in
+                    path: searchPath // The field you're searching in
                 }
             }
         },
@@ -41,62 +47,79 @@ app.get('/api', (req, res) => {
                     channel_source: selectedValue
                 }
             }
-        ] : []),
-
-        {
-            $group: {
-                _id: "$video_id",
-                video_id: { $first: "$video_id" },
-                quotes: {
-                    $push: {
-                        text: "$text",
-                        line_number: "$line_number",
-                        timestamp_start: "$timestamp_start",
-                        title: "$title",
-                        upload_date: "$upload_date",
-                        channel_source: "$channel_source"
+        ] : [])
+    ];
+    
+    // Add grouping logic based on search mode
+    if (selectedMode === "searchTitle") {
+        // When searching by title, include a placeholder quote with "-"
+        pipeline.push(
+            {
+                $group: {
+                    _id: "$video_id",
+                    video_id: { $first: "$video_id" },
+                    title: { $first: "$title" },
+                    upload_date: { $first: "$upload_date" },
+                    channel_source: { $first: "$channel_source" },
+                    quotes: {
+                        $push: {
+                            text: "-",
+                            line_number: { $ifNull: ["$line_number", 0] },
+                            timestamp_start: { $ifNull: ["$timestamp_start", "00:00:00"] },
+                            title: { $ifNull: ["$title", ""] },
+                            upload_date: { $ifNull: ["$upload_date", ""] },
+                            channel_source: { $ifNull: ["$channel_source", ""] }
+                        }
+                    }
+                }
+            },
+            // Limit to just one quote per video when searching by title
+            {
+                $addFields: {
+                    quotes: { $slice: ["$quotes", 1] }
+                }
+            }
+        );
+    } else {
+        // When searching by text, include the full quotes
+        pipeline.push(
+            {
+                $group: {
+                    _id: "$video_id",
+                    video_id: { $first: "$video_id" },
+                    title: { $first: "$title" },
+                    upload_date: { $first: "$upload_date" },
+                    channel_source: { $first: "$channel_source" },
+                    quotes: {
+                        $push: {
+                            text: "$text",
+                            line_number: "$line_number",
+                            timestamp_start: "$timestamp_start",
+                            title: "$title",
+                            upload_date: "$upload_date",
+                            channel_source: "$channel_source"
+                        }
                     }
                 }
             }
-        },
+        );
+    }
+    
+    // Add pagination
+    pipeline.push(
         { $skip: skip },
         { $limit: limit }
-    ])
+    );
 
-    .then(result => {
-        res.json({ data: result });
-    })
-    .catch(error => res.status(500).send({ error: 'Something went wrong' }));
+    quote.aggregate(pipeline)
+        .then(result => {
+            res.json({ data: result });
+        })
+        .catch(error => res.status(500).send({ error: 'Something went wrong' }));
 });
-//
-// app.get('/stats', async (req, res) => {
-//     try {
-//         const stats = await quote.aggregate([
-//             {
-//                 $group: {
-//                     _id: "$channel_source",
-//                     distinctVideos: { $addToSet: "$video_id" },
-//                     total: { $sum: 1 }
-//                 }
-//             },
-//             {
-//                 $project: {
-//                     channel_source: "$_id",
-//                     videoCount: { $size: "$distinctVideos" },
-//                     totalQuotes: "$total"
-//                 }
-//             },
-//             {
-//                 $sort: { videoCount: -1 }
-//             }
-//         ]);
-//
-//         res.json({ data: stats });
-//     } catch (error) {
-//         console.error('Error fetching stats:', error);
-//         res.status(500).json({ error: 'Failed to fetch stats' });
-//     }
-// });
+
+
+
 
 
 app.get('/stats', async (req, res) => {

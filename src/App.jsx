@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import query from './services/quotes';
 import React from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams,useLocation  } from 'react-router-dom';
 import { format } from 'date-fns';
 
 const URL = 'https://www.youtube.com/watch?v=';
 
-
+const useQuery = () => {
+    return new URLSearchParams(useLocation().search);
+};
 
 const formatDate = (yyyymmdd) => {
     const date = new Date(
@@ -18,8 +20,13 @@ const formatDate = (yyyymmdd) => {
 };
 
 
+const Quotes = ({ quotes = [], selectedMode }) => {
+    const isSearchTitle = selectedMode === "searchTitle"; // Check if the mode is searchTitle
 
-const Quotes = ({ quotes }) => {
+    // Log the received props to check if they're passed correctly
+    console.log('Selected Mode:', selectedMode);
+    console.log('Received Quotes:', quotes);
+    
     return (
         <div>
             {quotes.length > 0 ? (
@@ -34,34 +41,41 @@ const Quotes = ({ quotes }) => {
                         </tr>
                     </thead>
                     <tbody>
-                        {quotes.map((quoteGroup) => (
-                            <tr key={quoteGroup._id}>
+                        {quotes.map((quoteGroup) => {
+                            // Log the individual quoteGroup to check its structure
+                            console.log('Quote Group:', quoteGroup);
 
-                                <td>{quoteGroup.quotes[0].title}</td>
-                                <td>
-                                    {quoteGroup.quotes[0].channel_source}
-                                </td>
-                                <td>
-                                    <a target="_blank" rel="noopener noreferrer" href={`${URL}${quoteGroup.video_id}`}>
-                                        Video Link
-                                    </a>
-                                </td>
-
-                                <td>
-                                    {quoteGroup.quotes[0].upload_date ? formatDate(quoteGroup.quotes[0].upload_date) : 'N/A'}
-                                </td>
-                                <td>
-                                    {quoteGroup.quotes.map((quote, index) => (
-                                        <div key={index}>
-                                            <a target="_blank" rel="noopener noreferrer" href={`${URL}${quoteGroup.video_id}&t=${Math.floor(quote.timestamp_start)-1}`}>
-                                                {quote.text} (Timestamp: {Math.floor(quote.timestamp_start)-1})
-                                            </a>
-                                            {index < quoteGroup.quotes.length - 1 && <hr />}
-                                        </div>
-                                    ))}
-                                </td>
-                            </tr>
-                        ))}
+                            return (
+                                <tr key={quoteGroup._id}>
+                                    <td>{quoteGroup.quotes[0]?.title || 'N/A'}</td>
+                                    <td>{quoteGroup.quotes[0]?.channel_source || 'N/A'}</td>
+                                    <td>
+                                        <a target="_blank" rel="noopener noreferrer" href={`${URL}${quoteGroup.video_id}`}>
+                                            Video Link
+                                        </a>
+                                    </td>
+                                    <td>
+                                        {quoteGroup.quotes[0]?.upload_date
+                                            ? formatDate(quoteGroup.quotes[0].upload_date)
+                                            : 'N/A'}
+                                    </td>
+                                    <td>
+                                        {isSearchTitle ? '' : quoteGroup.quotes?.map((quote, index) => (
+                                            <div key={index}>
+                                                <a
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    href={`${URL}${quoteGroup.video_id}&t=${Math.floor(quote.timestamp_start) - 1}`}
+                                                >
+                                                    {quote.text} (Timestamp: {Math.floor(quote.timestamp_start) - 1})
+                                                </a>
+                                                {index < quoteGroup.quotes.length - 1 && <hr />}
+                                            </div>
+                                        ))}
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             ) : (
@@ -70,6 +84,7 @@ const Quotes = ({ quotes }) => {
         </div>
     );
 };
+
 
 const App = () => {
     const [quotes, setQuotes] = useState([]);
@@ -81,22 +96,28 @@ const App = () => {
     const [hasSearched, setHasSearched] = useState(false);
     const [stats, setStats] = useState([]);
     const [totalPages, setTotalPages] = useState(0);
-
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
-    const [selectedValue, setSelectedValue,] = useState("all");
+    const [selectedChannel, setselectedChannel] = useState("all");
+    const [selectedMode, setselectedMode] = useState("searchText");
 
-    const handleRadioChange = (
+    const handleChannelChange = (
         value
     ) => {
-        setSelectedValue(value);
+        setselectedChannel(value);
+    };
+
+    const handleModeChange = (
+        value
+    ) => {
+        setselectedMode(value);
     };
 
     const fetchQuotes = () => {
         setLoading(true);
         setError(null);
         query
-            .getAll(searchTerm, page, strict, selectedValue)
+            .getAll(searchTerm, page, strict, selectedChannel,selectedMode)
             .then((result) => {
                 setQuotes(result.data || []);
                 setTotalPages(result.totalPages || 0);
@@ -111,15 +132,18 @@ const App = () => {
     };
 
     const fetchStats = () => {
-        query.getStats().then((result) => {
-            console.log('Fetched stats:', result.data);
-            setStats(result.data);
-            console.log(selectedValue)
-        }).catch((error) => {
-            console.error('Error fetching stats:', error);
-            setStats([]); // Handle errors gracefully by setting stats to empty array
-        });
+        query.getStats()
+            .then((result) => {
+                const data = Array.isArray(result.data) ? result.data : [];
+                console.log('Fetched stats:', data);
+                setStats(data);
+            })
+            .catch((error) => {
+                console.error('Error fetching stats:', error);
+                setStats([]); 
+            });
     };
+    
 
     useEffect(() => {
         fetchStats(); // Fetch stats in the background
@@ -127,7 +151,7 @@ const App = () => {
 
     const handleSearch = () => {
         setPage(1);
-        navigate(`?search=${searchTerm}&page=1&strict=${strict}&channel=${selectedValue}`);
+        navigate(`?search=${searchTerm}&page=1&strict=${strict}&channel=${selectedChannel}&mode=${selectedMode}`);
         fetchQuotes();
     };
 
@@ -163,24 +187,25 @@ const App = () => {
         radioGroup: {
             display: "flex",
             justifyContent: "space-between",
-            gap: "16px",
-            paddingBottom: "10px",
+            gap: "12px", // Reduced from 16px
+            paddingBottom: "8px", // Reduced from 10px
         },
         radioButton: {
             display: "flex",
             alignItems: "center",
             cursor: "pointer",
-            padding: "10px 20px",
-            borderRadius: "4px",
+            padding: "8px 16px", // Reduced from 10px 20px
+            borderRadius: "3px", // Slightly smaller
             transition: "background-color 0.3s, border 0.3s",
             justifyContent: "center",
         },
         radioLabel: {
-            fontSize: "16px",
+            fontSize: "16px", // Reduced from 16px
             color: "white",
             fontWeight: "bold",
         },
     };
+    
 
 
     return (
@@ -224,17 +249,17 @@ const App = () => {
                         <div
                             style={{
                                 ...styles.radioButton,
-                                backgroundColor: selectedValue === "all" ? "#758b89" : "transparent", // Highlight when selected
-                                border: selectedValue === "all" ? "2px solid #00796b" : "2px solid transparent", // Border change on selection
+                                backgroundColor: selectedChannel === "all" ? "#758b89" : "transparent", // Highlight when selected
+                                border: selectedChannel === "all" ? "2px solid #00796b" : "2px solid transparent", // Border change on selection
                             }}
-                            onClick={() => handleRadioChange("all")}
+                            onClick={() => handleChannelChange("all")}
                         >
                             <input
                                 type="radio"
                                 id="option1"
                                 value="all"
-                                checked={selectedValue === "all"}
-                                onChange={() => handleRadioChange("all")}
+                                checked={selectedChannel === "all"}
+                                onChange={() => handleChannelChange("all")}
                                 style={{ display: "none" }} // Hide the default radio button
                             />
                             <label
@@ -248,17 +273,17 @@ const App = () => {
                         <div
                             style={{
                                 ...styles.radioButton,
-                                backgroundColor: selectedValue === "Librarian" ? "#758b89" : "transparent", // Highlight when selected
-                                border: selectedValue === "Librarian" ? "2px solid #00796b" : "2px solid transparent", // Border change on selection
+                                backgroundColor: selectedChannel === "Librarian" ? "#758b89" : "transparent", // Highlight when selected
+                                border: selectedChannel === "Librarian" ? "2px solid #00796b" : "2px solid transparent", // Border change on selection
                             }}
-                            onClick={() => handleRadioChange("Librarian")}
+                            onClick={() => handleChannelChange("Librarian")}
                         >
                             <input
                                 type="radio"
                                 id="option2"
                                 value="Librarian"
-                                checked={selectedValue === "Librarian"}
-                                onChange={() => handleRadioChange("Librarian")}
+                                checked={selectedChannel === "Librarian"}
+                                onChange={() => handleChannelChange("Librarian")}
                                 style={{ display: "none" }} // Hide the default radio button
                             />
                             <label
@@ -272,17 +297,17 @@ const App = () => {
                         <div
                             style={{
                                 ...styles.radioButton,
-                                backgroundColor: selectedValue === "Northernlion" ? "#758b89" : "transparent", // Highlight when selected
-                                border: selectedValue === "Northernlion" ? "2px solid #00796b" : "2px solid transparent", // Border change on selection
+                                backgroundColor: selectedChannel === "Northernlion" ? "#758b89" : "transparent", // Highlight when selected
+                                border: selectedChannel === "Northernlion" ? "2px solid #00796b" : "2px solid transparent", // Border change on selection
                             }}
-                            onClick={() => handleRadioChange("Northernlion")}
+                            onClick={() => handleChannelChange("Northernlion")}
                         >
                             <input
                                 type="radio"
                                 id="Northernlion"
                                 value="Northernlion"
-                                checked={selectedValue === "Northernlion"}
-                                onChange={() => handleRadioChange("Northernlion")}
+                                checked={selectedChannel === "Northernlion"}
+                                onChange={() => handleChannelChange("Northernlion")}
                                 style={{ display: "none" }} // Hide the default radio button
                             />
                             <label
@@ -294,9 +319,61 @@ const App = () => {
                         </div>
                     </div>
                 </div>
+                <div style={styles.container}>
+                    <div style={styles.radioGroup}>
+                        <div
+                            style={{
+                                ...styles.radioButton,
+                                backgroundColor: selectedMode === "searchText" ? "#758b89" : "transparent", // Highlight when selected
+                                border: selectedMode === "searchText" ? "2px solid #00796b" : "2px solid transparent", // Border change on selection
+                            }}
+                            onClick={() => handleModeChange("searchText")}
+                        >
+                            <input
+                                type="radio"
+                                id="option4"
+                                value="searchText"
+                                checked={selectedMode === "searchText"}
+                                onChange={() => handleModeChange("searchText")}
+                                style={{ display: "none" }} // Hide the default radio button
+                            />
+                            <label
+                                htmlFor="option4"
+                                style={styles.radioLabel}
+                            >
+                                Search Quote
+                            </label>
+                        </div>
+
+                        <div
+                            style={{
+                                ...styles.radioButton,
+                                backgroundColor: selectedMode === "searchTitle" ? "#758b89" : "transparent", // Highlight when selected
+                                border: selectedMode === "searchTitle" ? "2px solid #00796b" : "2px solid transparent", // Border change on selection
+                            }}
+                            onClick={() => handleModeChange("searchTitle")}
+                        >
+                            <input
+                                type="radio"
+                                id="option5"
+                                value="searchTitle"
+                                checked={selectedMode === "searchTitle"}
+                                onChange={() => handleModeChange("searchTitle")}
+                                style={{ display: "none" }} // Hide the default radio button
+                            />
+                            <label
+                                htmlFor="Librarian"
+                                style={styles.radioLabel}
+                            >
+                                Search Title
+                            </label>
+                        </div>
+
+                    </div>
+                </div>
 
 
-                {hasSearched && <Quotes quotes={quotes} />}
+                {hasSearched && <Quotes quotes={quotes} selectedMode={selectedMode} />}
                 <div className="pagination-buttons">
                     <button onClick={() => handlePageChange(page - 1)} disabled={page === 1}>
                         Previous

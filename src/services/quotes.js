@@ -3,13 +3,14 @@ const baseUrl = '/api'
 const statsURL = '/stats'
 
 
-const getAll = (searchTerm, page,strict,selectedValue) => {
+const getAll = (searchTerm, page,strict,selectedValue,selectedMode) => {
     const request = axios.get(baseUrl, {
         params: {  
             searchTerm: searchTerm || '', 
             page: page || 1,   
             strict:strict,
-            selectedValue:selectedValue
+            selectedValue:selectedValue,
+            selectedMode:selectedMode
         }
     });
     return request.then(response => response.data);
