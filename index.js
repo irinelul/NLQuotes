@@ -39,78 +39,49 @@ app.get('/api', (req, res) => {
     
     // Define the aggregation pipeline
     const pipeline = [
-        {
-            $search: {
-                index: "default", // Specify your search index
-                phrase: {
-                    query: searchTerm, // The search term
-                    path: searchPath // The field you're searching in
-                }
-            }
-        },
         ...(selectedValue && selectedValue !== "all" ? [
             {
                 $match: {
                     channel_source: selectedValue
                 }
             }
-        ] : [])
+        ] : []),
+        {
+            $search: {
+                index: "text_search",
+                text: {
+                    query: searchTerm,
+                    path: searchPath,
+                    fuzzy: {
+                        maxEdits: 1,
+                        prefixLength: 2
+                    }
+                }
+            }
+        },
+        {
+            $sort: { video_id: 1, line_number: 1 }
+        },
+        {
+            $group: {
+                _id: "$video_id",
+                video_id: { $first: "$video_id" },
+                title: { $first: "$title" },
+                upload_date: { $first: "$upload_date" },
+                channel_source: { $first: "$channel_source" },
+                quotes: {
+                    $push: {
+                        text: "$text",
+                        line_number: "$line_number",
+                        timestamp_start: "$timestamp_start",
+                        title: "$title",
+                        upload_date: "$upload_date",
+                        channel_source: "$channel_source"
+                    }
+                }
+            }
+        }
     ];
-    
-    // Add grouping logic based on search mode
-    if (selectedMode === "searchTitle") {
-        // When searching by title, include a placeholder quote with "-"
-        pipeline.push(
-            {
-                $group: {
-                    _id: "$video_id",
-                    video_id: { $first: "$video_id" },
-                    title: { $first: "$title" },
-                    upload_date: { $first: "$upload_date" },
-                    channel_source: { $first: "$channel_source" },
-                    quotes: {
-                        $push: {
-                            text: "-",
-                            line_number: { $ifNull: ["$line_number", 0] },
-                            timestamp_start: { $ifNull: ["$timestamp_start", "00:00:00"] },
-                            title: { $ifNull: ["$title", ""] },
-                            upload_date: { $ifNull: ["$upload_date", ""] },
-                            channel_source: { $ifNull: ["$channel_source", ""] }
-                        }
-                    }
-                }
-            },
-            // Limit to just one quote per video when searching by title
-            {
-                $addFields: {
-                    quotes: { $slice: ["$quotes", 1] }
-                }
-            }
-        );
-    } else {
-        // When searching by text, include the full quotes
-        pipeline.push(
-            {
-                $group: {
-                    _id: "$video_id",
-                    video_id: { $first: "$video_id" },
-                    title: { $first: "$title" },
-                    upload_date: { $first: "$upload_date" },
-                    channel_source: { $first: "$channel_source" },
-                    quotes: {
-                        $push: {
-                            text: "$text",
-                            line_number: "$line_number",
-                            timestamp_start: "$timestamp_start",
-                            title: "$title",
-                            upload_date: "$upload_date",
-                            channel_source: "$channel_source"
-                        }
-                    }
-                }
-            }
-        );
-    }
     
     // Add pagination
     pipeline.push(
@@ -118,11 +89,18 @@ app.get('/api', (req, res) => {
         { $limit: limit }
     );
 
-    quote.aggregate(pipeline)
+    quote.aggregate(pipeline).hint({ video_id: 1, line_number: 1 })
         .then(result => {
             res.json({ data: result });
         })
-        .catch(error => res.status(500).send({ error: 'Something went wrong' }));
+        .catch(error => {
+            console.error('MongoDB Aggregation Error:', error);
+            console.error('Pipeline:', JSON.stringify(pipeline, null, 2));
+            res.status(500).send({ 
+                error: 'Something went wrong',
+                details: error.message 
+            });
+        });
 });
 
 
