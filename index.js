@@ -11,7 +11,13 @@ const PORT = process.env.PORT;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static('dist'));
+app.use(express.static('dist', {
+    setHeaders: (res, path) => {
+        if (path.endsWith('.css')) {
+            res.setHeader('Content-Type', 'text/css');
+        }
+    }
+}));
 
 morgan.token('body', (req) => JSON.stringify(req.body));
 morgan.token('bodyLength', (req) => (JSON.stringify(req.body)).length);
