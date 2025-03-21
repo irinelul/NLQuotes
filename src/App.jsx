@@ -6,6 +6,115 @@ import { format } from 'date-fns';
 
 const URL = 'https://www.youtube.com/watch?v=';
 
+const FlagModal = ({ isOpen, onClose, onSubmit, quote }) => {
+    const [reason, setReason] = useState('');
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        onSubmit(reason);
+        setReason('');
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000
+        }}>
+            <div style={{
+                backgroundColor: '#2a2a2a',
+                padding: '24px',
+                borderRadius: '8px',
+                width: '90%',
+                maxWidth: '500px',
+                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                position: 'relative'
+            }}>
+                <h3 style={{ 
+                    color: '#fff', 
+                    marginBottom: '15px',
+                    fontSize: '18px',
+                    marginTop: 0
+                }}>
+                    Flag Quote
+                </h3>
+                <p style={{ 
+                    color: '#ccc', 
+                    marginBottom: '15px',
+                    fontSize: '14px'
+                }}>
+                    Please provide a reason for flagging this quote:
+                </p>
+                <form onSubmit={handleSubmit}>
+                    <textarea
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        placeholder="Enter your reason here..."
+                        style={{
+                            width: '100%',
+                            minHeight: '100px',
+                            padding: '12px',
+                            marginBottom: '20px',
+                            backgroundColor: '#3a3a3a',
+                            border: '1px solid #4a4a4a',
+                            borderRadius: '4px',
+                            color: '#fff',
+                            fontSize: '14px',
+                            resize: 'vertical',
+                            boxSizing: 'border-box'
+                        }}
+                        required
+                    />
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                        gap: '10px'
+                    }}>
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            style={{
+                                padding: '8px 16px',
+                                backgroundColor: '#4a4a4a',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '14px'
+                            }}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            style={{
+                                padding: '8px 16px',
+                                backgroundColor: '#ff4444',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '14px'
+                            }}
+                        >
+                            Submit
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
 const useQuery = () => {
     return new URLSearchParams(useLocation().search);
 };
@@ -19,9 +128,50 @@ const formatDate = (yyyymmdd) => {
     return format(date, 'dd MMMM yyyy');  // Updated format
 };
 
+const Quotes = ({ quotes = [], selectedMode, searchTerm }) => {
+    const isSearchTitle = selectedMode === "searchTitle";
+    const [flagging, setFlagging] = useState({});
+    const [modalState, setModalState] = useState({
+        isOpen: false,
+        quote: null,
+        videoId: null,
+        title: null,
+        channel: null,
+        timestamp: null
+    });
 
-const Quotes = ({ quotes = [], selectedMode }) => {
-    const isSearchTitle = selectedMode === "searchTitle"; // Check if the mode is searchTitle
+    const handleFlagClick = (quote, videoId, title, channel, timestamp) => {
+        setModalState({
+            isOpen: true,
+            quote,
+            videoId,
+            title,
+            channel,
+            timestamp
+        });
+    };
+
+    const handleFlagSubmit = async (reason) => {
+        try {
+            setFlagging(prev => ({ ...prev, [`${modalState.videoId}-${modalState.timestamp}`]: true }));
+            await query.flagQuote({
+                quote: modalState.quote,
+                searchTerm,
+                timestamp: modalState.timestamp,
+                videoId: modalState.videoId,
+                title: modalState.title,
+                channel: modalState.channel,
+                reason
+            });
+            alert('Quote flagged successfully!');
+            setModalState(prev => ({ ...prev, isOpen: false }));
+        } catch (error) {
+            console.error('Error flagging quote:', error);
+            alert('Failed to flag quote. Please try again.');
+        } finally {
+            setFlagging(prev => ({ ...prev, [`${modalState.videoId}-${modalState.timestamp}`]: false }));
+        }
+    };
 
     // Log the received props to check if they're passed correctly
     console.log('Selected Mode:', selectedMode);
@@ -41,46 +191,87 @@ const Quotes = ({ quotes = [], selectedMode }) => {
                         </tr>
                     </thead>
                     <tbody>
-                        {quotes.map((quoteGroup) => {
-                            // Log the individual quoteGroup to check its structure
-                            console.log('Quote Group:', quoteGroup);
-
-                            return (
-                                <tr key={quoteGroup._id}>
-                                    <td>{quoteGroup.quotes[0]?.title || 'N/A'}</td>
-                                    <td>{quoteGroup.quotes[0]?.channel_source || 'N/A'}</td>
-                                    <td>
-                                        <a target="_blank" rel="noopener noreferrer" href={`${URL}${quoteGroup.video_id}`}>
-                                            Video Link
-                                        </a>
-                                    </td>
-                                    <td>
-                                        {quoteGroup.quotes[0]?.upload_date
-                                            ? formatDate(quoteGroup.quotes[0].upload_date)
-                                            : 'N/A'}
-                                    </td>
-                                    <td>
-                                        {isSearchTitle ? '' : quoteGroup.quotes?.map((quote, index) => (
-                                            <div key={index}>
-                                                <a
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    href={`${URL}${quoteGroup.video_id}&t=${Math.floor(quote.timestamp_start) - 1}`}
-                                                >
-                                                    {quote.text} (Timestamp: {Math.floor(quote.timestamp_start) - 1})
-                                                </a>
-                                                {index < quoteGroup.quotes.length - 1 && <hr />}
-                                            </div>
-                                        ))}
-                                    </td>
-                                </tr>
-                            );
-                        })}
+                        {quotes.map((quoteGroup) => (
+                            <tr key={quoteGroup._id}>
+                                <td>{quoteGroup.quotes[0]?.title || 'N/A'}</td>
+                                <td>{quoteGroup.quotes[0]?.channel_source || 'N/A'}</td>
+                                <td>
+                                    <a target="_blank" rel="noopener noreferrer" href={`${URL}${quoteGroup.video_id}`}>
+                                        Video Link
+                                    </a>
+                                </td>
+                                <td>
+                                    {quoteGroup.quotes[0]?.upload_date
+                                        ? formatDate(quoteGroup.quotes[0].upload_date)
+                                        : 'N/A'}
+                                </td>
+                                <td>
+                                    {isSearchTitle ? '' : quoteGroup.quotes?.map((quote, index) => (
+                                        <div key={index} style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: '10px',
+                                            marginBottom: '8px',
+                                            padding: '8px 0',
+                                            borderBottom: index < quoteGroup.quotes.length - 1 ? '1px solid #4a4a4a' : 'none'
+                                        }}>
+                                            <a
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                href={`${URL}${quoteGroup.video_id}&t=${Math.floor(quote.timestamp_start) - 1}`}
+                                                style={{ flex: 1 }}
+                                            >
+                                                {quote.text} (Timestamp: {Math.floor(quote.timestamp_start) - 1})
+                                            </a>
+                                            <button
+                                                onClick={() => handleFlagClick(
+                                                    quote.text,
+                                                    quoteGroup.video_id,
+                                                    quoteGroup.quotes[0]?.title,
+                                                    quoteGroup.quotes[0]?.channel_source,
+                                                    quote.timestamp_start
+                                                )}
+                                                disabled={flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]}
+                                                style={{
+                                                    backgroundColor: 'transparent',
+                                                    color: '#ff4444',
+                                                    border: 'none',
+                                                    padding: '4px 8px',
+                                                    cursor: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 'not-allowed' : 'pointer',
+                                                    opacity: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 0.6 : 1,
+                                                    fontSize: '16px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    transition: 'transform 0.2s'
+                                                }}
+                                                onMouseOver={e => {
+                                                    if (!flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]) {
+                                                        e.currentTarget.style.transform = 'scale(1.1)';
+                                                    }
+                                                }}
+                                                onMouseOut={e => {
+                                                    e.currentTarget.style.transform = 'scale(1)';
+                                                }}
+                                            >
+                                                {flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? '⏳' : '🚩'}
+                                            </button>
+                                        </div>
+                                    ))}
+                                </td>
+                            </tr>
+                        ))}
                     </tbody>
                 </table>
             ) : (
                 <div>No quotes found</div>
             )}
+            <FlagModal
+                isOpen={modalState.isOpen}
+                onClose={() => setModalState(prev => ({ ...prev, isOpen: false }))}
+                onSubmit={handleFlagSubmit}
+                quote={modalState.quote}
+            />
         </div>
     );
 };
@@ -130,24 +321,6 @@ const App = () => {
                 setHasSearched(true);
             });
     };
-
-    const fetchStats = () => {
-        query.getStats()
-            .then((result) => {
-                const data = Array.isArray(result.data) ? result.data : [];
-                console.log('Fetched stats:', data);
-                setStats(data);
-            })
-            .catch((error) => {
-                console.error('Error fetching stats:', error);
-                setStats([]); 
-            });
-    };
-    
-
-    useEffect(() => {
-        fetchStats(); // Fetch stats in the background
-    }, []);
 
     const handleSearch = () => {
         setPage(1);
@@ -210,22 +383,6 @@ const App = () => {
 
     return (
         <>
-            <div className="stats" style={{ position: 'absolute', top: 0, left: 0, padding: '10px' }}>
-                <h2>Stats</h2>
-                {stats.length > 0 ? (
-                    <ul>
-                        {stats
-                            .filter(stat => stat.channel_source !== null)
-                            .map((stat) => (
-                                <li key={stat.channel_source}>
-                                    {stat.channel_source}: {numberFormatter.format(stat.videoCount)} videos, {numberFormatter.format(stat.totalQuotes)} quotes
-                                </li>
-                            ))}
-                    </ul>
-                ) : (
-                    <div>Loading stats...</div>
-                )}
-            </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '50px' }}>
                 <div className="logo-container">
                     <img src={`/NLogo.png`} alt="Northernlion Logo" />
@@ -373,7 +530,7 @@ const App = () => {
                 </div>
 
 
-                {hasSearched && <Quotes quotes={quotes} selectedMode={selectedMode} />}
+                {hasSearched && <Quotes quotes={quotes} selectedMode={selectedMode} searchTerm={searchTerm} />}
                 <div className="pagination-buttons">
                     <button onClick={() => handlePageChange(page - 1)} disabled={page === 1}>
                         Previous

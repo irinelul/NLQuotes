@@ -22,7 +22,13 @@ const getStats = () => {
     return request.then(response => response.data);
 };
 
+const flagQuote = (quoteData) => {
+    const request = axios.post(`${baseUrl}/flag`, quoteData);
+    return request.then(response => response.data);
+};
+
 export default {
     getAll: getAll,
-    getStats: getStats
+    getStats: getStats,
+    flagQuote: flagQuote
 }

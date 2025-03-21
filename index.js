@@ -3,6 +3,7 @@ import express from 'express';
 import morgan from 'morgan';
 import cors from 'cors';
 import quote from './models/mongodb.js';
+import axios from 'axios';
 dotenv.config();
 
 const app = express();
@@ -153,7 +154,68 @@ app.get('/stats', async (req, res) => {
     }
 });
 
+// Add new endpoint for flagging quotes
+app.post('/api/flag', async (req, res) => {
+    try {
+        const { quote, searchTerm, timestamp, videoId, title, channel, reason } = req.body;
+        
+        // Create Discord webhook message
+        const webhookMessage = {
+            embeds: [{
+                title: "🚩 Quote Flagged",
+                color: 15158332, // Red color
+                fields: [
+                    {
+                        name: "Search Term",
+                        value: searchTerm || "N/A",
+                        inline: true
+                    },
+                    {
+                        name: "Channel",
+                        value: channel || "N/A",
+                        inline: true
+                    },
+                    {
+                        name: "Video Title",
+                        value: title || "N/A",
+                        inline: true
+                    },
+                    {
+                        name: "Quote",
+                        value: quote || "N/A",
+                        inline: false
+                    },
+                    {
+                        name: "Timestamp",
+                        value: timestamp ? `[${timestamp}](https://www.youtube.com/watch?v=${videoId}&t=${Math.floor(timestamp) - 1})` : "N/A",
+                        inline: true
+                    },
+                    {
+                        name: "Feedback",
+                        value: reason ? `\`\`\`${reason}\`\`\`` : "No feedback provided",
+                        inline: false
+                    }
+                ],
+                timestamp: new Date().toISOString(),
+                footer: {
+                    text: "Quote Flagging System"
+                }
+            }]
+        };
 
+        // Send to Discord webhook
+        const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+        if (!webhookUrl) {
+            throw new Error('Discord webhook URL not configured');
+        }
+
+        await axios.post(webhookUrl, webhookMessage);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error flagging quote:', error);
+        res.status(500).json({ error: 'Failed to flag quote' });
+    }
+});
 
 const errorHandler = (error, req, res, next) => {
     console.error(error.message);
