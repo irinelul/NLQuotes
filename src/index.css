@@ -265,11 +265,27 @@ button:disabled {
 
 .stats {
     color: white;
-    text-align: left; /* Aligns text to the left */
-    position: relative; /* Allows positioning */
-    left: 0; /* Aligns the element to the left edge of the parent */
-    padding: 10px; /* Optional padding for better spacing */
-    
+    text-align: left;
+    position: relative;
+    left: 0;
+    padding: 10px;
+}
+
+.footer-message {
+    color: #9f9f9f;
+    text-align: center;
+    padding: 2rem 0;
+    font-size: 0.95rem;
+    font-style: italic;
+    margin-top: 2rem;
+    letter-spacing: 0.3px;
+}
+
+.footer-message span {
+    display: inline-block;
+    transform: translateY(1px);
+    margin: 0 0.3rem;
+    filter: brightness(1.1);
 }
 
 /* Radio button styles */
