@@ -330,7 +330,7 @@ const App = () => {
 
     const handlePageChange = (newPage) => {
         setPage(newPage);
-        navigate(`?search=${searchTerm}&page=${newPage}&strict=${strict}`);
+        navigate(`?search=${searchTerm}&page=${newPage}&strict=${strict}&channel=${selectedChannel}&mode=${selectedMode}`);
         fetchQuotes();
     };
 
@@ -531,14 +531,76 @@ const App = () => {
 
 
                 {hasSearched && <Quotes quotes={quotes} selectedMode={selectedMode} searchTerm={searchTerm} />}
-                <div className="pagination-buttons">
-                    <button onClick={() => handlePageChange(page - 1)} disabled={page === 1}>
-                        Previous
-                    </button>
-                    <button onClick={() => handlePageChange(page + 1)} disabled={page === totalPages}>
-                        Next
-                    </button>
-                </div>
+                {quotes.length > 0 && (
+                    <div className="pagination-buttons" style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                        <button 
+                            onClick={() => handlePageChange(page - 1)} 
+                            disabled={page === 1 || quotes.length < 10}
+                            style={{
+                                padding: '8px 16px',
+                                backgroundColor: (page === 1 || quotes.length < 10) ? '#4a4a4a' : '#758b89',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: (page === 1 || quotes.length < 10) ? 'not-allowed' : 'pointer',
+                                opacity: (page === 1 || quotes.length < 10) ? 0.5 : 1,
+                                transition: 'all 0.2s ease',
+                                fontWeight: 'bold',
+                                fontSize: '14px',
+                                boxShadow: (page === 1 || quotes.length < 10) ? 'none' : '0 2px 4px rgba(0,0,0,0.2)',
+                                ':hover': {
+                                    transform: (page === 1 || quotes.length < 10) ? 'none' : 'translateY(-2px)',
+                                    boxShadow: (page === 1 || quotes.length < 10) ? 'none' : '0 4px 8px rgba(0,0,0,0.3)'
+                                }
+                            }}
+                            onMouseOver={e => {
+                                if (!(page === 1 || quotes.length < 10)) {
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)';
+                                }
+                            }}
+                            onMouseOut={e => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = (page === 1 || quotes.length < 10) ? 'none' : '0 2px 4px rgba(0,0,0,0.2)';
+                            }}
+                        >
+                            Previous
+                        </button>
+                        <button 
+                            onClick={() => handlePageChange(page + 1)} 
+                            disabled={page === totalPages || quotes.length < 10}
+                            style={{
+                                padding: '8px 16px',
+                                backgroundColor: (page === totalPages || quotes.length < 10) ? '#4a4a4a' : '#758b89',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: (page === totalPages || quotes.length < 10) ? 'not-allowed' : 'pointer',
+                                opacity: (page === totalPages || quotes.length < 10) ? 0.5 : 1,
+                                transition: 'all 0.2s ease',
+                                fontWeight: 'bold',
+                                fontSize: '14px',
+                                boxShadow: (page === totalPages || quotes.length < 10) ? 'none' : '0 2px 4px rgba(0,0,0,0.2)',
+                                ':hover': {
+                                    transform: (page === totalPages || quotes.length < 10) ? 'none' : 'translateY(-2px)',
+                                    boxShadow: (page === totalPages || quotes.length < 10) ? 'none' : '0 4px 8px rgba(0,0,0,0.3)'
+                                }
+                            }}
+                            onMouseOver={e => {
+                                if (!(page === totalPages || quotes.length < 10)) {
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)';
+                                }
+                            }}
+                            onMouseOut={e => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = (page === totalPages || quotes.length < 10) ? 'none' : '0 2px 4px rgba(0,0,0,0.2)';
+                            }}
+                        >
+                            Next
+                        </button>
+                    </div>
+                )}
                 {loading && <div>Loading...</div>}
                 {error && <div>{error}</div>}
             </div>
