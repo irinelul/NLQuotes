@@ -217,6 +217,37 @@ app.post('/api/flag', async (req, res) => {
     }
 });
 
+app.get('/api/random', async (req, res) => {
+    try {
+        const result = await quote.aggregate([
+            { $sample: { size: 10 } },
+            {
+                $group: {
+                    _id: "$video_id",
+                    video_id: { $first: "$video_id" },
+                    title: { $first: "$title" },
+                    upload_date: { $first: "$upload_date" },
+                    channel_source: { $first: "$channel_source" },
+                    quotes: {
+                        $push: {
+                            text: "$text",
+                            line_number: "$line_number",
+                            timestamp_start: "$timestamp_start",
+                            title: "$title",
+                            upload_date: "$upload_date",
+                            channel_source: "$channel_source"
+                        }
+                    }
+                }
+            }
+        ]);
+        res.json({ quotes: result });
+    } catch (error) {
+        console.error('Error fetching random quotes:', error);
+        res.status(500).json({ error: 'Failed to fetch random quotes' });
+    }
+});
+
 const errorHandler = (error, req, res, next) => {
     console.error(error.message);
     if (error.name === 'CastError') {
