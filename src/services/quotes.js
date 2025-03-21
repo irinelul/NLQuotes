@@ -27,8 +27,14 @@ const flagQuote = (quoteData) => {
     return request.then(response => response.data);
 };
 
+const getRandomQuotes = () => {
+    const request = axios.get(`${baseUrl}/random`);
+    return request.then(response => response.data);
+};
+
 export default {
     getAll: getAll,
     getStats: getStats,
-    flagQuote: flagQuote
+    flagQuote: flagQuote,
+    getRandomQuotes: getRandomQuotes
 }

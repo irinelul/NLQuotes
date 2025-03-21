@@ -268,9 +268,30 @@ const App = () => {
     };
 
     const handleSearch = () => {
-        setPage(1);
-        navigate(`?search=${searchTerm}&page=1&strict=${strict}&channel=${selectedChannel}&mode=${selectedMode}`);
-        fetchQuotes();
+        if (searchTerm.trim()) {
+            setLoading(true);
+            setError(null);
+            setHasSearched(true);
+            fetchQuotes();
+        }
+    };
+
+    const handleRandomQuotes = async () => {
+        setLoading(true);
+        setError(null);
+        setHasSearched(true);
+        try {
+            const response = await query.getRandomQuotes();
+            setQuotes(response.quotes);
+            setTotalPages(1);
+            setPage(1);
+            await new Promise(resolve => setTimeout(resolve, 300));
+        } catch (error) {
+            setError('Error fetching random quotes');
+            console.error('Error:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handlePageChange = (newPage) => {
@@ -280,7 +301,7 @@ const App = () => {
     };
 
     const handleKeyPress = (event) => {
-        if (event.key === 'Enter') {
+        if (event.key === 'Enter' && !loading && searchTerm.trim()) {
             handleSearch();
         }
     };
@@ -309,13 +330,24 @@ const App = () => {
                 <img src="/NLogo.png" alt="Northernlion Logo" />
             </div>
             <div className="input-container">
+                <button 
+                    onClick={handleRandomQuotes}
+                    disabled={loading}
+                    style={{
+                        opacity: loading ? 0.7 : 1,
+                        transform: loading ? 'scale(0.98)' : 'scale(1)',
+                        transition: 'all 0.2s ease'
+                    }}
+                >
+                    {loading ? 'Loading...' : 'Random Quotes'}
+                </button>
                 <input
-                    className="search-input"
-                    onKeyDown={handleKeyPress}
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyDown={handleKeyPress}
                     placeholder="Search quotes..."
+                    className="search-input"
                 />
                 <button onClick={handleSearch}>Search</button>
             </div>
