@@ -439,9 +439,7 @@ const App = () => {
             {loading && <div>Loading...</div>}
             {error && <div style={{ color: 'red' }}>{error}</div>}
             {hasSearched && <Quotes quotes={quotes} selectedMode={selectedMode} searchTerm={searchTerm} />}
-            <div className="footer-message">
-                Made with passion by a fan • Generously supported by The Librarian
-            </div>
+
             
             {quotes.length > 0 && (
                 <div className="pagination-buttons">
@@ -459,6 +457,10 @@ const App = () => {
                     </button>
                 </div>
             )}
+            <div className="footer-message">
+                Made with passion by a fan • Generously supported by The Librarian
+            </div>
+
         </div>
     );
 };
