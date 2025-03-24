@@ -3,6 +3,7 @@ import query from './services/quotes';
 import React from 'react';
 import { useNavigate, useSearchParams,useLocation  } from 'react-router-dom';
 import { format } from 'date-fns';
+import Disclaimer from './components/Disclaimer';
 
 const URL = 'https://www.youtube.com/watch?v=';
 
@@ -435,6 +436,8 @@ const App = () => {
                     </label>
                 </div>
             </div>
+
+            {!hasSearched && <Disclaimer />}
 
             {loading && <div>Loading...</div>}
             {error && <div style={{ color: 'red' }}>{error}</div>}
