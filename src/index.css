@@ -593,9 +593,9 @@ button:disabled {
     position: fixed;
     top: 1rem;
     right: 1rem;
-    background-color: rgba(192, 192, 192, 0.1);
-    color: var(--text-secondary);
-    border: 1px solid var(--border-color);
+    background-color: var(--surface-color);
+    color: var(--text-primary);
+    border: 2px solid var(--border-color);
     padding: 0.5rem 1rem;
     border-radius: 8px;
     cursor: pointer;
@@ -608,8 +608,21 @@ button:disabled {
 }
 
 .feedback-button:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+    background-color: rgba(192, 192, 192, 0.1);
+}
+
+.feedback-button:hover:not(:disabled) {
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+    background-color: rgba(192, 192, 192, 0.1);
+}
+
+.feedback-button.selected {
     background-color: rgba(192, 192, 192, 0.2);
     border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(192, 192, 192, 0.3);
     transform: translateY(-1px);
 }
 
