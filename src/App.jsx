@@ -46,6 +46,45 @@ const FlagModal = ({ isOpen, onClose, onSubmit, quote }) => {
     );
 };
 
+const FeedbackModal = ({ isOpen, onClose, onSubmit }) => {
+    const [feedback, setFeedback] = useState('');
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        onSubmit(feedback);
+        setFeedback('');
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="modal-overlay">
+            <div className="modal-content">
+                <h3>Send Feedback</h3>
+                <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                    Share your thoughts about the website or suggest improvements:
+                </p>
+                <form onSubmit={handleSubmit}>
+                    <textarea
+                        value={feedback}
+                        onChange={(e) => setFeedback(e.target.value)}
+                        placeholder="Enter your feedback here..."
+                        required
+                    />
+                    <div className="modal-buttons">
+                        <button type="button" onClick={onClose}>
+                            Cancel
+                        </button>
+                        <button type="submit">
+                            Submit
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
 const useQuery = () => {
     return new URLSearchParams(useLocation().search);
 };
@@ -237,6 +276,8 @@ const App = () => {
     const [selectedChannel, setselectedChannel] = useState("all");
     const [selectedYear, setSelectedYear] = useState("");
     const [sortOrder, setSortOrder] = useState("default");
+    const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
+    const [submittingFeedback, setSubmittingFeedback] = useState(false);
 
     const handleChannelChange = (e) => {
         const value = e.target.value;
@@ -349,6 +390,28 @@ const App = () => {
 
     const numberFormatter = new Intl.NumberFormat('en-US');
 
+    const handleFeedbackSubmit = async (feedback) => {
+        try {
+            setSubmittingFeedback(true);
+            await query.flagQuote({
+                quote: "Website Feedback",
+                searchTerm: "Feedback",
+                timestamp: "0",
+                videoId: "feedback",
+                title: "Website Feedback",
+                channel: "User Feedback",
+                reason: feedback
+            });
+            alert('Thank you for your feedback!');
+            setFeedbackModalOpen(false);
+        } catch (error) {
+            console.error('Error submitting feedback:', error);
+            alert('Failed to submit feedback. Please try again.');
+        } finally {
+            setSubmittingFeedback(false);
+        }
+    };
+
     return (
         <div style={{ 
             display: 'flex', 
@@ -404,7 +467,7 @@ const App = () => {
                 </button>
             </div>
 
-            <div className="radio-group">
+            <div className="radio-group channel-tooltip">
                 <div
                     className={`radio-button ${selectedChannel === "all" ? 'selected' : ''}`}
                     onClick={() => handleChannelChange({ target: { value: "all" } })}
@@ -455,23 +518,27 @@ const App = () => {
             </div>
 
             <div className="filter-container">
-                <input
-                    type="text"
-                    value={selectedYear}
-                    onChange={handleYearChange}
-                    placeholder="Year (YYYY)"
-                    maxLength="4"
-                    className="year-input"
-                />
-                <select
-                    value={sortOrder}
-                    onChange={handleSortChange}
-                    className="sort-select"
-                >
-                    <option value="default">Default Order</option>
-                    <option value="newest">Newest First</option>
-                    <option value="oldest">Oldest First</option>
-                </select>
+                <div className="year-tooltip">
+                    <input
+                        type="text"
+                        value={selectedYear}
+                        onChange={handleYearChange}
+                        placeholder="Year (YYYY)"
+                        maxLength="4"
+                        className="year-input"
+                    />
+                </div>
+                <div className="sort-tooltip">
+                    <select
+                        value={sortOrder}
+                        onChange={handleSortChange}
+                        className="sort-select"
+                    >
+                        <option value="default">Default Order</option>
+                        <option value="newest">Newest First</option>
+                        <option value="oldest">Oldest First</option>
+                    </select>
+                </div>
             </div>
 
             {!hasSearched && <Disclaimer />}
@@ -499,6 +566,20 @@ const App = () => {
                     </button>
                 </div>
             )}
+
+            <button 
+                className="feedback-button"
+                onClick={() => setFeedbackModalOpen(true)}
+                disabled={submittingFeedback}
+            >
+                💡 Send Feedback
+            </button>
+
+            <FeedbackModal
+                isOpen={feedbackModalOpen}
+                onClose={() => setFeedbackModalOpen(false)}
+                onSubmit={handleFeedbackSubmit}
+            />
         </div>
     );
 };
