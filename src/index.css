@@ -249,6 +249,14 @@ button:disabled {
 .logo-container {
     margin-bottom: 2rem;
     text-align: center;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.logo-container:hover {
+    background-color: rgba(192, 192, 192, 0.1);
 }
 
 .logo-container img {
@@ -316,18 +324,21 @@ button:disabled {
     background-color: rgba(192, 192, 192, 0.1);
 }
 
-.radio-button input[type="radio"] {
-    display: none;
+.radio-button.selected {
+    background-color: rgba(192, 192, 192, 0.2);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(192, 192, 192, 0.3);
+    transform: translateY(-1px);
 }
 
-.radio-button input[type="radio"]:checked + label {
+.radio-button.selected .radio-label {
     color: var(--primary-color);
     font-weight: 600;
+    text-shadow: 0 0 8px rgba(192, 192, 192, 0.3);
 }
 
-.radio-button input[type="radio"]:checked ~ .radio-button {
-    border-color: var(--primary-color);
-    background-color: rgba(192, 192, 192, 0.15);
+.radio-button input[type="radio"] {
+    display: none;
 }
 
 .radio-label {
@@ -335,6 +346,7 @@ button:disabled {
     color: var(--text-primary);
     font-weight: 500;
     letter-spacing: 0.3px;
+    transition: all 0.2s ease;
 }
 
 /* Modal styles */

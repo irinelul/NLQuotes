@@ -72,8 +72,7 @@ const formatTimestamp = (seconds) => {
     return `${pad(minutes)}:${pad(remainingSeconds)}`;
 };
 
-const Quotes = ({ quotes = [], selectedMode, searchTerm }) => {
-    const isSearchTitle = selectedMode === "searchTitle";
+const Quotes = ({ quotes = [], searchTerm }) => {
     const [flagging, setFlagging] = useState({});
     const [modalState, setModalState] = useState({
         isOpen: false,
@@ -146,7 +145,7 @@ const Quotes = ({ quotes = [], selectedMode, searchTerm }) => {
                                         : 'N/A'}
                                 </td>
                                 <td>
-                                    {isSearchTitle ? '' : quoteGroup.quotes?.map((quote, index) => (
+                                    {quoteGroup.quotes?.map((quote, index) => (
                                         <div key={index} style={{ 
                                             display: 'flex', 
                                             alignItems: 'center', 
@@ -236,7 +235,6 @@ const App = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
     const [selectedChannel, setselectedChannel] = useState("all");
-    const [selectedMode, setselectedMode] = useState("searchText");
 
     const handleChannelChange = (
         value
@@ -244,17 +242,11 @@ const App = () => {
         setselectedChannel(value);
     };
 
-    const handleModeChange = (
-        value
-    ) => {
-        setselectedMode(value);
-    };
-
     const fetchQuotes = () => {
         setLoading(true);
         setError(null);
         query
-            .getAll(searchTerm, page, strict, selectedChannel,selectedMode)
+            .getAll(searchTerm, page, strict, selectedChannel)
             .then((result) => {
                 setQuotes(result.data || []);
                 setTotalPages(result.totalPages || 0);
@@ -297,7 +289,7 @@ const App = () => {
 
     const handlePageChange = (newPage) => {
         setPage(newPage);
-        navigate(`?search=${searchTerm}&page=${newPage}&strict=${strict}&channel=${selectedChannel}&mode=${selectedMode}`);
+        navigate(`?search=${searchTerm}&page=${newPage}&strict=${strict}&channel=${selectedChannel}`);
         fetchQuotes();
     };
 
@@ -327,7 +319,13 @@ const App = () => {
             marginTop: '2rem',
             width: '100%'
         }}>
-            <div className="logo-container">
+            <div className="logo-container" onClick={() => {
+                setSearchTerm('');
+                setQuotes([]);
+                setHasSearched(false);
+                setPage(1);
+                navigate('/');
+            }}>
                 <img src="/NLogo.png" alt="Northernlion Logo" />
             </div>
             <div className="input-container">
@@ -351,6 +349,18 @@ const App = () => {
                     className="search-input"
                 />
                 <button onClick={handleSearch}>Search</button>
+                <button 
+                    onClick={() => {
+                        setSearchTerm('');
+                        setQuotes([]);
+                        setHasSearched(false);
+                        setPage(1);
+                        navigate('/');
+                    }}
+                    style={{ marginLeft: '0.5rem' }}
+                >
+                    Reset Search
+                </button>
             </div>
 
             <div className="radio-group">
@@ -403,45 +413,11 @@ const App = () => {
                 </div>
             </div>
 
-            <div className="radio-group">
-                <div
-                    className={`radio-button ${selectedMode === "searchText" ? 'selected' : ''}`}
-                    onClick={() => handleModeChange("searchText")}
-                >
-                    <input
-                        type="radio"
-                        id="searchText"
-                        value="searchText"
-                        checked={selectedMode === "searchText"}
-                        onChange={() => handleModeChange("searchText")}
-                    />
-                    <label htmlFor="searchText" className="radio-label">
-                        Search Quote
-                    </label>
-                </div>
-
-                <div
-                    className={`radio-button ${selectedMode === "searchTitle" ? 'selected' : ''}`}
-                    onClick={() => handleModeChange("searchTitle")}
-                >
-                    <input
-                        type="radio"
-                        id="searchTitle"
-                        value="searchTitle"
-                        checked={selectedMode === "searchTitle"}
-                        onChange={() => handleModeChange("searchTitle")}
-                    />
-                    <label htmlFor="searchTitle" className="radio-label">
-                        Search Title
-                    </label>
-                </div>
-            </div>
-
             {!hasSearched && <Disclaimer />}
 
             {loading && <div>Loading...</div>}
             {error && <div style={{ color: 'red' }}>{error}</div>}
-            {hasSearched && <Quotes quotes={quotes} selectedMode={selectedMode} searchTerm={searchTerm} />}
+            {hasSearched && <Quotes quotes={quotes} searchTerm={searchTerm} />}
             <div className="footer-message">
                 Made with passion by a fan • Generously supported by The Librarian
             </div>
