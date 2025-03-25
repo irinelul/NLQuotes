@@ -112,7 +112,7 @@ const Quotes = ({ quotes = [], searchTerm }) => {
             console.error('Error flagging quote:', error);
             alert('Failed to flag quote. Please try again.');
         } finally {
-            setFlagging(prev => ({ ...prev, [`${modalState.videoId}-${modalState.timestamp}`]: false }));
+            setFlagging(prev => ({ ...prev, [`${modalState.video_id}-${modalState.timestamp}`]: false }));
         }
     };
 
@@ -235,37 +235,59 @@ const App = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
     const [selectedChannel, setselectedChannel] = useState("all");
+    const [selectedYear, setSelectedYear] = useState("");
+    const [sortOrder, setSortOrder] = useState("default");
 
-    const handleChannelChange = (
-        value
-    ) => {
+    const handleChannelChange = (e) => {
+        const value = e.target.value;
         setselectedChannel(value);
-    };
-
-    const fetchQuotes = () => {
-        setLoading(true);
-        setError(null);
-        query
-            .getAll(searchTerm, page, strict, selectedChannel)
-            .then((result) => {
-                setQuotes(result.data || []);
-                setTotalPages(result.totalPages || 0);
-                setLoading(false);
-                setHasSearched(true);
-            })
-            .catch((err) => {
-                setError('Failed to fetch quotes');
-                setLoading(false);
-                setHasSearched(true);
-            });
-    };
-
-    const handleSearch = () => {
+        setPage(1);
         if (searchTerm.trim()) {
-            setLoading(true);
-            setError(null);
-            setHasSearched(true);
-            fetchQuotes();
+            fetchQuotes(1, value, selectedYear, sortOrder, strict);
+        }
+    };
+
+    const handleYearChange = (e) => {
+        const value = e.target.value;
+        setSelectedYear(value);
+        if (value.length === 4) {
+            setPage(1);
+            if (searchTerm.trim()) {
+                fetchQuotes(1, selectedChannel, value, sortOrder, strict);
+            }
+        }
+    };
+
+    const handleSortChange = (e) => {
+        const value = e.target.value;
+        setSortOrder(value);
+        setPage(1);
+        if (searchTerm.trim()) {
+            fetchQuotes(1, selectedChannel, selectedYear, value, strict);
+        }
+    };
+
+    const handleSearchModeChange = (e) => {
+        const value = e.target.checked;
+        setStrict(value);
+        setPage(1);
+    };
+
+    const handleSearch = (e) => {
+        e.preventDefault();
+        setPage(1);
+        fetchQuotes(1, selectedChannel, selectedYear, sortOrder, strict);
+    };
+
+    const handlePageChange = (newPage) => {
+        setPage(newPage);
+        fetchQuotes(newPage, selectedChannel, selectedYear, sortOrder, strict);
+    };
+
+    const handleKeyPress = (event) => {
+        if (event.key === 'Enter' && !loading && searchTerm.trim()) {
+            setPage(1);
+            fetchQuotes(1, selectedChannel, selectedYear, sortOrder, strict);
         }
     };
 
@@ -287,15 +309,31 @@ const App = () => {
         }
     };
 
-    const handlePageChange = (newPage) => {
-        setPage(newPage);
-        navigate(`?search=${searchTerm}&page=${newPage}&strict=${strict}&channel=${selectedChannel}`);
-        fetchQuotes();
-    };
-
-    const handleKeyPress = (event) => {
-        if (event.key === 'Enter' && !loading && searchTerm.trim()) {
-            handleSearch();
+    const fetchQuotes = async (pageNum = page, channel = selectedChannel, year = selectedYear, sort = sortOrder, strictMode = strict) => {
+        if (searchTerm.trim()) {
+            setLoading(true);
+            setError(null);
+            setHasSearched(true);
+            setQuotes([]);
+            try {
+                const response = await query.getAll(
+                    searchTerm,
+                    pageNum,
+                    strictMode,
+                    channel,
+                    "searchText",
+                    year,
+                    sort
+                );
+                setQuotes(response.data);
+                setTotalPages(Math.ceil(response.total / 10));
+                await new Promise(resolve => setTimeout(resolve, 300));
+            } catch (error) {
+                setError('Error fetching quotes');
+                console.error('Error:', error);
+            } finally {
+                setLoading(false);
+            }
         }
     };
 
@@ -355,6 +393,9 @@ const App = () => {
                         setQuotes([]);
                         setHasSearched(false);
                         setPage(1);
+                        setSelectedYear('');
+                        setSortOrder('default');
+                        setselectedChannel('all');
                         navigate('/');
                     }}
                     style={{ marginLeft: '0.5rem' }}
@@ -366,14 +407,14 @@ const App = () => {
             <div className="radio-group">
                 <div
                     className={`radio-button ${selectedChannel === "all" ? 'selected' : ''}`}
-                    onClick={() => handleChannelChange("all")}
+                    onClick={() => handleChannelChange({ target: { value: "all" } })}
                 >
                     <input
                         type="radio"
                         id="all"
                         value="all"
                         checked={selectedChannel === "all"}
-                        onChange={() => handleChannelChange("all")}
+                        onChange={handleChannelChange}
                     />
                     <label htmlFor="all" className="radio-label">
                         All Sources
@@ -382,14 +423,14 @@ const App = () => {
 
                 <div
                     className={`radio-button ${selectedChannel === "Librarian" ? 'selected' : ''}`}
-                    onClick={() => handleChannelChange("Librarian")}
+                    onClick={() => handleChannelChange({ target: { value: "Librarian" } })}
                 >
                     <input
                         type="radio"
                         id="librarian"
                         value="Librarian"
                         checked={selectedChannel === "Librarian"}
-                        onChange={() => handleChannelChange("Librarian")}
+                        onChange={handleChannelChange}
                     />
                     <label htmlFor="librarian" className="radio-label">
                         Librarian
@@ -398,19 +439,39 @@ const App = () => {
 
                 <div
                     className={`radio-button ${selectedChannel === "Northernlion" ? 'selected' : ''}`}
-                    onClick={() => handleChannelChange("Northernlion")}
+                    onClick={() => handleChannelChange({ target: { value: "Northernlion" } })}
                 >
                     <input
                         type="radio"
                         id="northernlion"
                         value="Northernlion"
                         checked={selectedChannel === "Northernlion"}
-                        onChange={() => handleChannelChange("Northernlion")}
+                        onChange={handleChannelChange}
                     />
                     <label htmlFor="northernlion" className="radio-label">
                         Northernlion
                     </label>
                 </div>
+            </div>
+
+            <div className="filter-container">
+                <input
+                    type="text"
+                    value={selectedYear}
+                    onChange={handleYearChange}
+                    placeholder="Year (YYYY)"
+                    maxLength="4"
+                    className="year-input"
+                />
+                <select
+                    value={sortOrder}
+                    onChange={handleSortChange}
+                    className="sort-select"
+                >
+                    <option value="default">Default Order</option>
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                </select>
             </div>
 
             {!hasSearched && <Disclaimer />}

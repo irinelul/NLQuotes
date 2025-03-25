@@ -34,22 +34,38 @@ app.get('/api', (req, res) => {
     const searchTerm = strict ? `\\b${req.query.searchTerm}\\b` : req.query.searchTerm || '';
     const selectedValue = req.query.selectedValue;
     const selectedMode = req.query.selectedMode;
+    const year = req.query.year;
+    const sortOrder = req.query.sortOrder;
     const searchPath = selectedMode === "searchTitle" ? "title" : "text";
 
     console.log('Selected Mode:', selectedMode);
     console.log('Search Path:', searchPath);
+    console.log('Year Filter:', year);
+    console.log('Sort Order:', sortOrder);
     
     // Define the aggregation pipeline
     const pipeline = [
         {
             $search: {
-                index: "default", // Specify your search index
+                index: "default",
                 phrase: {
-                    query: searchTerm, // The search term
-                    path: searchPath // The field you're searching in
+                    query: searchTerm,
+                    path: searchPath
                 }
             }
         },
+        ...(year && year.trim() !== '' ? [
+            {
+                $match: {
+                    $expr: {
+                        $eq: [
+                            { $substr: ["$upload_date", 0, 4] },
+                            year
+                        ]
+                    }
+                }
+            }
+        ] : []),
         ...(selectedValue && selectedValue !== "all" ? [
             {
                 $match: {
@@ -112,6 +128,33 @@ app.get('/api', (req, res) => {
                 }
             }
         );
+    }
+
+    // Add sorting before pagination
+    if (sortOrder === "newest" || sortOrder === "oldest") {
+        pipeline.push({
+            $addFields: {
+                parsedDate: {
+                    $dateFromString: {
+                        dateString: {
+                            $concat: [
+                                { $substr: ["$upload_date", 0, 4] },  // Year
+                                "-",
+                                { $substr: ["$upload_date", 4, 2] },  // Month
+                                "-",
+                                { $substr: ["$upload_date", 6, 2] }   // Day
+                            ]
+                        }
+                    }
+                }
+            }
+        });
+        
+        pipeline.push({
+            $sort: {
+                parsedDate: sortOrder === "newest" ? -1 : 1
+            }
+        });
     }
     
     // Add pagination
