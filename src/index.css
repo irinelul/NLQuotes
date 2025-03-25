@@ -518,3 +518,65 @@ button:disabled {
     color: var(--primary-color);
     font-weight: 500;
 }
+
+.year-input {
+    padding: 0.5rem 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--surface-color);
+    color: var(--text-primary);
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    letter-spacing: 0.3px;
+    height: 40px;
+    width: 120px;
+    text-align: center;
+}
+
+.year-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(192, 192, 192, 0.2);
+}
+
+.year-input::placeholder {
+    color: var(--text-secondary);
+}
+
+.filter-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin: 1rem 0;
+    width: 100%;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.sort-select {
+    padding: 0.5rem 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--surface-color);
+    color: var(--text-primary);
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    letter-spacing: 0.3px;
+    height: 40px;
+    width: 150px;
+    cursor: pointer;
+}
+
+.sort-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(192, 192, 192, 0.2);
+}
+
+.sort-select option {
+    background-color: var(--surface-color);
+    color: var(--text-primary);
+    padding: 0.5rem;
+}
