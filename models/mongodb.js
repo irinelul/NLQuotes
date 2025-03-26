@@ -23,8 +23,17 @@ const quoteSchema = new mongoose.Schema({
     text: { type: String},
     title: { type: String},
     channel_source: { type: String},
-    upload_date: { type: String}
+    upload_date: { type: String},
+    game_name: { type: String}
 })
 
+// Add index for game_name
+quoteSchema.index({ game_name: 1 });
+
+// Add compound indexes for common filter combinations
+quoteSchema.index({ channel_source: 1, game_name: 1 });
+quoteSchema.index({ channel_source: 1, upload_date: 1 });
+quoteSchema.index({ game_name: 1, upload_date: 1 });
+quoteSchema.index({ channel_source: 1, game_name: 1, upload_date: 1 });
 
 export default mongoose.model('quote', quoteSchema);

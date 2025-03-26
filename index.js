@@ -4,6 +4,7 @@ import morgan from 'morgan';
 import cors from 'cors';
 import quote from './models/mongodb.js';
 import axios from 'axios';
+import fs from 'fs';
 dotenv.config();
 
 const app = express();
@@ -25,8 +26,7 @@ morgan.token('body', (req) => JSON.stringify(req.body));
 morgan.token('bodyLength', (req) => (JSON.stringify(req.body)).length);
 app.use(morgan(':method :url  status :status - :response-time ms content: :body :bodyLength Length  :res[header]'));
 
-
-app.get('/api', (req, res) => {
+app.get('/api', async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = 10;
     const skip = (page - 1) * limit;
@@ -36,143 +36,211 @@ app.get('/api', (req, res) => {
     const selectedMode = req.query.selectedMode;
     const year = req.query.year;
     const sortOrder = req.query.sortOrder;
+    const gameName = req.query.gameName ? decodeURIComponent(req.query.gameName).replace(/\+/g, ' ').trim() : "all";
     const searchPath = selectedMode === "searchTitle" ? "title" : "text";
 
-    console.log('Selected Mode:', selectedMode);
-    console.log('Search Path:', searchPath);
-    console.log('Year Filter:', year);
-    console.log('Sort Order:', sortOrder);
-    
-    // Define the aggregation pipeline
-    const pipeline = [
-        {
-            $search: {
-                index: "default",
-                phrase: {
-                    query: searchTerm,
-                    path: searchPath
-                }
-            }
-        },
-        ...(year && year.trim() !== '' ? [
+    try {
+        // Define the aggregation pipeline
+        const pipeline = [
             {
-                $match: {
-                    $expr: {
-                        $eq: [
-                            { $substr: ["$upload_date", 0, 4] },
-                            year
+                $search: {
+                    index: "default",
+                    compound: {
+                        must: [
+                            {
+                                phrase: {
+                                    query: searchTerm,
+                                    path: searchPath
+                                }
+                            }
+                        ],
+                        filter: [
+                            ...(gameName && gameName !== "all" ? [
+                                {
+                                    term: {
+                                        query: gameName,
+                                        path: "game_name"
+                                    }
+                                }
+                            ] : []),
+                            ...(selectedValue && selectedValue !== "all" ? [
+                                {
+                                    term: {
+                                        query: selectedValue,
+                                        path: "channel_source"
+                                    }
+                                }
+                            ] : [])
                         ]
                     }
                 }
-            }
-        ] : []),
-        ...(selectedValue && selectedValue !== "all" ? [
-            {
-                $match: {
-                    channel_source: selectedValue
-                }
-            }
-        ] : [])
-    ];
-    
-    // Add grouping logic based on search mode
-    if (selectedMode === "searchTitle") {
-        // When searching by title, include a placeholder quote with "-"
-        pipeline.push(
-            {
-                $group: {
-                    _id: "$video_id",
-                    video_id: { $first: "$video_id" },
-                    title: { $first: "$title" },
-                    upload_date: { $first: "$upload_date" },
-                    channel_source: { $first: "$channel_source" },
-                    quotes: {
-                        $push: {
-                            text: "-",
-                            line_number: { $ifNull: ["$line_number", 0] },
-                            timestamp_start: { $ifNull: ["$timestamp_start", "00:00:00"] },
-                            title: { $ifNull: ["$title", ""] },
-                            upload_date: { $ifNull: ["$upload_date", ""] },
-                            channel_source: { $ifNull: ["$channel_source", ""] }
-                        }
-                    }
-                }
             },
-            // Limit to just one quote per video when searching by title
-            {
-                $addFields: {
-                    quotes: { $slice: ["$quotes", 1] }
-                }
-            }
-        );
-    } else {
-        // When searching by text, include the full quotes
-        pipeline.push(
-            {
-                $group: {
-                    _id: "$video_id",
-                    video_id: { $first: "$video_id" },
-                    title: { $first: "$title" },
-                    upload_date: { $first: "$upload_date" },
-                    channel_source: { $first: "$channel_source" },
-                    quotes: {
-                        $push: {
-                            text: "$text",
-                            line_number: "$line_number",
-                            timestamp_start: "$timestamp_start",
-                            title: "$title",
-                            upload_date: "$upload_date",
-                            channel_source: "$channel_source"
-                        }
-                    }
-                }
-            }
-        );
-    }
-
-    // Add sorting before pagination
-    if (sortOrder === "newest" || sortOrder === "oldest") {
-        pipeline.push({
-            $addFields: {
-                parsedDate: {
-                    $dateFromString: {
-                        dateString: {
-                            $concat: [
-                                { $substr: ["$upload_date", 0, 4] },  // Year
-                                "-",
-                                { $substr: ["$upload_date", 4, 2] },  // Month
-                                "-",
-                                { $substr: ["$upload_date", 6, 2] }   // Day
+            ...(year && year.trim() !== '' ? [
+                {
+                    $match: {
+                        $expr: {
+                            $eq: [
+                                { $substr: ["$upload_date", 0, 4] },
+                                year
                             ]
                         }
                     }
                 }
-            }
-        });
+            ] : [])
+        ];
+
+        // Add grouping logic based on search mode
+        if (selectedMode === "searchTitle") {
+            pipeline.push(
+                {
+                    $group: {
+                        _id: "$video_id",
+                        video_id: { $first: "$video_id" },
+                        title: { $first: "$title" },
+                        upload_date: { $first: "$upload_date" },
+                        channel_source: { $first: "$channel_source" },
+                        quotes: {
+                            $push: {
+                                text: "-",
+                                line_number: { $ifNull: ["$line_number", 0] },
+                                timestamp_start: { $ifNull: ["$timestamp_start", "00:00:00"] },
+                                title: { $ifNull: ["$title", ""] },
+                                upload_date: { $ifNull: ["$upload_date", ""] },
+                                channel_source: { $ifNull: ["$channel_source", ""] }
+                            }
+                        }
+                    }
+                },
+                {
+                    $addFields: {
+                        quotes: { $slice: ["$quotes", 1] }
+                    }
+                }
+            );
+        } else {
+            pipeline.push(
+                {
+                    $group: {
+                        _id: "$video_id",
+                        video_id: { $first: "$video_id" },
+                        title: { $first: "$title" },
+                        upload_date: { $first: "$upload_date" },
+                        channel_source: { $first: "$channel_source" },
+                        quotes: {
+                            $push: {
+                                text: "$text",
+                                line_number: "$line_number",
+                                timestamp_start: "$timestamp_start",
+                                title: "$title",
+                                upload_date: "$upload_date",
+                                channel_source: "$channel_source"
+                            }
+                        }
+                    }
+                }
+            );
+        }
+
+        // Add sorting before pagination
+        if (sortOrder === "newest" || sortOrder === "oldest") {
+            pipeline.push({
+                $addFields: {
+                    parsedDate: {
+                        $dateFromString: {
+                            dateString: {
+                                $concat: [
+                                    { $substr: ["$upload_date", 0, 4] },
+                                    "-",
+                                    { $substr: ["$upload_date", 4, 2] },
+                                    "-",
+                                    { $substr: ["$upload_date", 6, 2] }
+                                ]
+                            }
+                        }
+                    }
+                }
+            });
+            
+            pipeline.push({
+                $sort: {
+                    parsedDate: sortOrder === "newest" ? -1 : 1
+                }
+            });
+        }
         
-        pipeline.push({
-            $sort: {
-                parsedDate: sortOrder === "newest" ? -1 : 1
+        // Add pagination
+        pipeline.push(
+            { $skip: skip },
+            { $limit: limit }
+        );
+
+        // Perform the search
+        const results = await quote.aggregate(pipeline);
+        
+        // Get total count for pagination
+        const countPipeline = [
+            {
+                $search: {
+                    index: "default",
+                    compound: {
+                        must: [
+                            {
+                                phrase: {
+                                    query: searchTerm,
+                                    path: searchPath
+                                }
+                            }
+                        ],
+                        filter: [
+                            ...(gameName && gameName !== "all" ? [
+                                {
+                                    term: {
+                                        query: gameName,
+                                        path: "game_name"
+                                    }
+                                }
+                            ] : []),
+                            ...(selectedValue && selectedValue !== "all" ? [
+                                {
+                                    term: {
+                                        query: selectedValue,
+                                        path: "channel_source"
+                                    }
+                                }
+                            ] : [])
+                        ]
+                    }
+                }
+            },
+            ...(year && year.trim() !== '' ? [
+                {
+                    $match: {
+                        $expr: {
+                            $eq: [
+                                { $substr: ["$upload_date", 0, 4] },
+                                year
+                            ]
+                        }
+                    }
+                }
+            ] : []),
+            {
+                $count: "total"
             }
+        ];
+
+        const countResult = await quote.aggregate(countPipeline);
+        const total = countResult[0]?.total || 0;
+
+        res.json({ 
+            data: results,
+            total: total
         });
+    } catch (error) {
+        console.error('Search error:', error);
+        res.status(500).json({ error: 'Search failed' });
     }
-    
-    // Add pagination
-    pipeline.push(
-        { $skip: skip },
-        { $limit: limit }
-    );
-
-    quote.aggregate(pipeline)
-        .then(result => {
-            res.json({ data: result });
-        })
-        .catch(error => res.status(500).send({ error: 'Something went wrong' }));
 });
-
-
-
-
 
 app.get('/stats', async (req, res) => {
     try {
@@ -296,6 +364,19 @@ app.get('/api/random', async (req, res) => {
     } catch (error) {
         console.error('Error fetching random quotes:', error);
         res.status(500).json({ error: 'Failed to fetch random quotes' });
+    }
+});
+
+app.get('/api/games', async (req, res) => {
+    try {
+        const games = await fs.promises.readFile('game_titles.txt', 'utf8');
+        const gameList = games.split('\n')
+            .map(game => game.trim())
+            .filter(game => game !== '');
+        res.json({ games: gameList });
+    } catch (error) {
+        console.error('Error reading game titles:', error);
+        res.status(500).json({ error: 'Failed to fetch game titles' });
     }
 });
 
