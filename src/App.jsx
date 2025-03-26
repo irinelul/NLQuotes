@@ -4,6 +4,7 @@ import React from 'react';
 import { useNavigate, useSearchParams,useLocation  } from 'react-router-dom';
 import { format } from 'date-fns';
 import Disclaimer from './components/Disclaimer';
+import SearchableDropdown from './components/SearchableDropdown';
 
 const URL = 'https://www.youtube.com/watch?v=';
 
@@ -278,13 +279,28 @@ const App = () => {
     const [sortOrder, setSortOrder] = useState("default");
     const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
     const [submittingFeedback, setSubmittingFeedback] = useState(false);
+    const [games, setGames] = useState([]);
+    const [selectedGame, setSelectedGame] = useState("all");
+
+    useEffect(() => {
+        const fetchGames = async () => {
+            try {
+                const response = await fetch('/api/games');
+                const data = await response.json();
+                setGames(data.games);
+            } catch (error) {
+                console.error('Error fetching games:', error);
+            }
+        };
+        fetchGames();
+    }, []);
 
     const handleChannelChange = (e) => {
         const value = e.target.value;
         setselectedChannel(value);
         setPage(1);
         if (searchTerm.trim()) {
-            fetchQuotes(1, value, selectedYear, sortOrder, strict);
+            fetchQuotes(1, value, selectedYear, sortOrder, strict, selectedGame);
         }
     };
 
@@ -294,7 +310,7 @@ const App = () => {
         if (value.length === 4) {
             setPage(1);
             if (searchTerm.trim()) {
-                fetchQuotes(1, selectedChannel, value, sortOrder, strict);
+                fetchQuotes(1, selectedChannel, value, sortOrder, strict, selectedGame);
             }
         }
     };
@@ -304,7 +320,7 @@ const App = () => {
         setSortOrder(value);
         setPage(1);
         if (searchTerm.trim()) {
-            fetchQuotes(1, selectedChannel, selectedYear, value, strict);
+            fetchQuotes(1, selectedChannel, selectedYear, value, strict, selectedGame);
         }
     };
 
@@ -317,18 +333,18 @@ const App = () => {
     const handleSearch = (e) => {
         e.preventDefault();
         setPage(1);
-        fetchQuotes(1, selectedChannel, selectedYear, sortOrder, strict);
+        fetchQuotes(1, selectedChannel, selectedYear, sortOrder, strict, selectedGame);
     };
 
     const handlePageChange = (newPage) => {
         setPage(newPage);
-        fetchQuotes(newPage, selectedChannel, selectedYear, sortOrder, strict);
+        fetchQuotes(newPage, selectedChannel, selectedYear, sortOrder, strict, selectedGame);
     };
 
     const handleKeyPress = (event) => {
         if (event.key === 'Enter' && !loading && searchTerm.trim()) {
             setPage(1);
-            fetchQuotes(1, selectedChannel, selectedYear, sortOrder, strict);
+            fetchQuotes(1, selectedChannel, selectedYear, sortOrder, strict, selectedGame);
         }
     };
 
@@ -350,7 +366,16 @@ const App = () => {
         }
     };
 
-    const fetchQuotes = async (pageNum = page, channel = selectedChannel, year = selectedYear, sort = sortOrder, strictMode = strict) => {
+    const handleGameChange = (e) => {
+        const value = e.target.value;
+        setSelectedGame(value);
+        setPage(1);
+        if (searchTerm.trim()) {
+            fetchQuotes(1, selectedChannel, selectedYear, sortOrder, strict, value);
+        }
+    };
+
+    const fetchQuotes = async (pageNum = page, channel = selectedChannel, year = selectedYear, sort = sortOrder, strictMode = strict, game = selectedGame) => {
         if (searchTerm.trim()) {
             setLoading(true);
             setError(null);
@@ -364,7 +389,8 @@ const App = () => {
                     channel,
                     "searchText",
                     year,
-                    sort
+                    sort,
+                    game
                 );
                 setQuotes(response.data);
                 setTotalPages(Math.ceil(response.total / 10));
@@ -459,6 +485,7 @@ const App = () => {
                         setSelectedYear('');
                         setSortOrder('default');
                         setselectedChannel('all');
+                        setSelectedGame('all');
                         navigate('/');
                     }}
                     style={{ marginLeft: '0.5rem' }}
@@ -538,6 +565,25 @@ const App = () => {
                         <option value="newest">Newest First</option>
                         <option value="oldest">Oldest First</option>
                     </select>
+                </div>
+                <div className="game-filter-container">
+                    <div className="game-tooltip">
+                        <SearchableDropdown
+                            options={games}
+                            value={selectedGame}
+                            onChange={handleGameChange}
+                            placeholder="Select a game"
+                        />
+                    </div>
+                    <button 
+                        className="reset-game-button"
+                        onClick={() => {
+                            setSelectedGame("all");
+                            if (searchTerm) handleSearch();
+                        }}
+                    >
+                        ↺
+                    </button>
                 </div>
             </div>
 

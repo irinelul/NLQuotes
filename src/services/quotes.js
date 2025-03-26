@@ -3,7 +3,7 @@ const baseUrl = '/api'
 const statsURL = '/stats'
 
 
-const getAll = (searchTerm, page, strict, selectedValue, selectedMode, year, sortOrder) => {
+const getAll = (searchTerm, page, strict, selectedValue, selectedMode, year, sortOrder, gameName) => {
     const request = axios.get(baseUrl, {
         params: {  
             searchTerm: searchTerm || '', 
@@ -12,10 +12,14 @@ const getAll = (searchTerm, page, strict, selectedValue, selectedMode, year, sor
             selectedValue: selectedValue || 'all',
             selectedMode: selectedMode || 'searchText',
             year: year || '',
-            sortOrder: sortOrder || 'default'
+            sortOrder: sortOrder || 'default',
+            gameName: gameName || 'all'
         }
     });
-    return request.then(response => response.data);
+    return request.then(response => ({
+        data: response.data.data,
+        total: response.data.total
+    }));
 };
 
 
