@@ -726,8 +726,7 @@ button:disabled {
 }
 
 .game-tooltip::before {
-    content: "In testing - it does not work yet.";
-    /* Filter by game (type to search)"; */
+    content: "Filter by game (type to search).";
     position: absolute;
     bottom: 100%;
     left: 50%;
