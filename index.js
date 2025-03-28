@@ -89,15 +89,6 @@ app.get('/api', async (req, res) => {
             ] : [])
         ];
 
-        // Add sorting after the search stage
-        if (sortOrder) {
-            pipeline.push({
-                $sort: {
-                    upload_date: sortOrder === "newest" ? -1 : 1
-                }
-            });
-        }
-
         // Add grouping logic based on search mode
         if (selectedMode === "searchTitle") {
             pipeline.push(
@@ -150,7 +141,15 @@ app.get('/api', async (req, res) => {
             );
         }
 
-        // Remove the old sorting stage since we're using Atlas Search sorting
+        // Add sorting after grouping
+        if (sortOrder) {
+            pipeline.push({
+                $sort: {
+                    upload_date: sortOrder === "newest" ? -1 : 1
+                }
+            });
+        }
+        
         // Add pagination
         pipeline.push(
             { $skip: skip },
