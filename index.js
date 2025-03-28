@@ -80,25 +80,23 @@ app.get('/api', async (req, res) => {
                     $match: {
                         $expr: {
                             $eq: [
-                                { 
-                                    $substr: [
-                                        { 
-                                            $ifNull: [
-                                                { $toString: "$upload_date" },
-                                                { $dateToString: { format: "%Y%m%d", date: "$upload_date" } }
-                                            ]
-                                        },
-                                        0,
-                                        4
-                                    ]
-                                },
-                                year
+                                { $year: "$upload_date" },
+                                parseInt(year)
                             ]
                         }
                     }
                 }
             ] : [])
         ];
+
+        // Add sorting after the search stage
+        if (sortOrder) {
+            pipeline.push({
+                $sort: {
+                    upload_date: sortOrder === "newest" ? -1 : 1
+                }
+            });
+        }
 
         // Add grouping logic based on search mode
         if (selectedMode === "searchTitle") {
@@ -152,39 +150,7 @@ app.get('/api', async (req, res) => {
             );
         }
 
-        // Add sorting before pagination
-        if (sortOrder === "newest" || sortOrder === "oldest") {
-            pipeline.push({
-                $addFields: {
-                    parsedDate: {
-                        $cond: {
-                            if: { $eq: [{ $type: "$upload_date" }, "date"] },
-                            then: "$upload_date",
-                            else: {
-                                $dateFromString: {
-                                    dateString: {
-                                        $concat: [
-                                            { $substr: ["$upload_date", 0, 4] },
-                                            "-",
-                                            { $substr: ["$upload_date", 4, 2] },
-                                            "-",
-                                            { $substr: ["$upload_date", 6, 2] }
-                                        ]
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-            
-            pipeline.push({
-                $sort: {
-                    parsedDate: sortOrder === "newest" ? -1 : 1
-                }
-            });
-        }
-        
+        // Remove the old sorting stage since we're using Atlas Search sorting
         // Add pagination
         pipeline.push(
             { $skip: skip },
@@ -234,19 +200,8 @@ app.get('/api', async (req, res) => {
                     $match: {
                         $expr: {
                             $eq: [
-                                { 
-                                    $substr: [
-                                        { 
-                                            $ifNull: [
-                                                { $toString: "$upload_date" },
-                                                { $dateToString: { format: "%Y%m%d", date: "$upload_date" } }
-                                            ]
-                                        },
-                                        0,
-                                        4
-                                    ]
-                                },
-                                year
+                                { $year: "$upload_date" },
+                                parseInt(year)
                             ]
                         }
                     }
@@ -266,7 +221,19 @@ app.get('/api', async (req, res) => {
         });
     } catch (error) {
         console.error('Search error:', error);
-        res.status(500).json({ error: 'Search failed' });
+        console.error('Search parameters:', {
+            searchTerm,
+            selectedValue,
+            selectedMode,
+            year,
+            sortOrder,
+            gameName,
+            searchPath
+        });
+        res.status(500).json({ 
+            error: 'Search failed',
+            details: error.message
+        });
     }
 });
 
