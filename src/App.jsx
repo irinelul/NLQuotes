@@ -290,6 +290,7 @@ const App = () => {
     const [hasSearched, setHasSearched] = useState(false);
     const [stats, setStats] = useState([]);
     const [totalPages, setTotalPages] = useState(0);
+    const [totalQuotes, setTotalQuotes] = useState(0);
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
     const [selectedChannel, setselectedChannel] = useState("all");
@@ -385,6 +386,7 @@ const App = () => {
             setQuotes(response.quotes);
             setTotalPages(1);
             setPage(1);
+            setTotalQuotes(response.quotes.length);
             await new Promise(resolve => setTimeout(resolve, 300));
         } catch (error) {
             setError('Error fetching random quotes');
