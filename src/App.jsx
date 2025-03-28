@@ -424,6 +424,7 @@ const App = () => {
                 );
                 setQuotes(response.data);
                 setTotalPages(Math.ceil(response.total / 10));
+                setTotalQuotes(response.total);
                 await new Promise(resolve => setTimeout(resolve, 300));
             } catch (error) {
                 setError('Error fetching quotes');
@@ -630,7 +631,7 @@ const App = () => {
                         marginBottom: '1rem',
                         fontSize: '1.1rem'
                     }}>
-                        Total quotes found: {numberFormatter.format(totalPages * 10)}
+                        Total quotes found: {numberFormatter.format(totalQuotes)}
                     </div>
                     <Quotes quotes={quotes} searchTerm={searchTerm} />
                 </>
