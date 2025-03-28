@@ -23,7 +23,7 @@ const quoteSchema = new mongoose.Schema({
     text: { type: String},
     title: { type: String},
     channel_source: { type: String},
-    upload_date: { type: String},
+    upload_date: { type: Date},
     game_name: { type: String}
 })
 

@@ -90,13 +90,31 @@ const useQuery = () => {
     return new URLSearchParams(useLocation().search);
 };
 
-const formatDate = (yyyymmdd) => {
-    const date = new Date(
-        yyyymmdd.slice(0, 4),  // Year
-        yyyymmdd.slice(4, 6) - 1, // Month (0-indexed)
-        yyyymmdd.slice(6, 8) // Day
-    );
-    return format(date, 'dd MMMM yyyy');  // Updated format
+const formatDate = (date) => {
+    if (!date) return 'N/A';
+    
+    // If it's already a Date object
+    if (date instanceof Date) {
+        return format(date, 'dd MMMM yyyy');
+    }
+    
+    // If it's a string in YYYYMMDD format
+    if (typeof date === 'string' && date.length === 8) {
+        const dateObj = new Date(
+            date.slice(0, 4),  // Year
+            date.slice(4, 6) - 1, // Month (0-indexed)
+            date.slice(6, 8) // Day
+        );
+        return format(dateObj, 'dd MMMM yyyy');
+    }
+    
+    // If it's an ISO string or other date string
+    try {
+        const dateObj = new Date(date);
+        return format(dateObj, 'dd MMMM yyyy');
+    } catch (e) {
+        return 'Invalid Date';
+    }
 };
 
 const formatTimestamp = (seconds) => {
