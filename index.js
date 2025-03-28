@@ -80,7 +80,18 @@ app.get('/api', async (req, res) => {
                     $match: {
                         $expr: {
                             $eq: [
-                                { $substr: ["$upload_date", 0, 4] },
+                                { 
+                                    $substr: [
+                                        { 
+                                            $ifNull: [
+                                                { $toString: "$upload_date" },
+                                                { $dateToString: { format: "%Y%m%d", date: "$upload_date" } }
+                                            ]
+                                        },
+                                        0,
+                                        4
+                                    ]
+                                },
                                 year
                             ]
                         }
@@ -146,15 +157,21 @@ app.get('/api', async (req, res) => {
             pipeline.push({
                 $addFields: {
                     parsedDate: {
-                        $dateFromString: {
-                            dateString: {
-                                $concat: [
-                                    { $substr: ["$upload_date", 0, 4] },
-                                    "-",
-                                    { $substr: ["$upload_date", 4, 2] },
-                                    "-",
-                                    { $substr: ["$upload_date", 6, 2] }
-                                ]
+                        $cond: {
+                            if: { $eq: [{ $type: "$upload_date" }, "date"] },
+                            then: "$upload_date",
+                            else: {
+                                $dateFromString: {
+                                    dateString: {
+                                        $concat: [
+                                            { $substr: ["$upload_date", 0, 4] },
+                                            "-",
+                                            { $substr: ["$upload_date", 4, 2] },
+                                            "-",
+                                            { $substr: ["$upload_date", 6, 2] }
+                                        ]
+                                    }
+                                }
                             }
                         }
                     }
@@ -217,7 +234,18 @@ app.get('/api', async (req, res) => {
                     $match: {
                         $expr: {
                             $eq: [
-                                { $substr: ["$upload_date", 0, 4] },
+                                { 
+                                    $substr: [
+                                        { 
+                                            $ifNull: [
+                                                { $toString: "$upload_date" },
+                                                { $dateToString: { format: "%Y%m%d", date: "$upload_date" } }
+                                            ]
+                                        },
+                                        0,
+                                        4
+                                    ]
+                                },
                                 year
                             ]
                         }
