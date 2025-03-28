@@ -350,8 +350,13 @@ const App = () => {
 
     const handleSearch = (e) => {
         e.preventDefault();
-        setPage(1);
-        fetchQuotes(1, selectedChannel, selectedYear, sortOrder, strict, selectedGame);
+        if (searchTerm.trim().length > 2) {
+            setPage(1);
+            fetchQuotes(1, selectedChannel, selectedYear, sortOrder, strict, selectedGame);
+        } else {
+            setError('Please enter at least 3 characters to search');
+            setTimeout(() => setError(null), 3000);
+        }
     };
 
     const handlePageChange = (newPage) => {
@@ -360,9 +365,14 @@ const App = () => {
     };
 
     const handleKeyPress = (event) => {
-        if (event.key === 'Enter' && !loading && searchTerm.trim()) {
-            setPage(1);
-            fetchQuotes(1, selectedChannel, selectedYear, sortOrder, strict, selectedGame);
+        if (event.key === 'Enter' && !loading) {
+            if (searchTerm.trim().length > 2) {
+                setPage(1);
+                fetchQuotes(1, selectedChannel, selectedYear, sortOrder, strict, selectedGame);
+            } else {
+                setError('Please enter at least 3 characters to search');
+                setTimeout(() => setError(null), 3000);
+            }
         }
     };
 
@@ -512,6 +522,8 @@ const App = () => {
                 </button>
             </div>
 
+            {error && <div className="error-message">{error}</div>}
+
             <div className="radio-group channel-tooltip">
                 <div
                     className={`radio-button ${selectedChannel === "all" ? 'selected' : ''}`}
@@ -608,8 +620,19 @@ const App = () => {
             {!hasSearched && <Disclaimer />}
 
             {loading && <div>Loading...</div>}
-            {error && <div style={{ color: 'red' }}>{error}</div>}
-            {hasSearched && <Quotes quotes={quotes} searchTerm={searchTerm} />}
+            {hasSearched && (
+                <>
+                    <div style={{ 
+                        textAlign: 'center', 
+                        color: 'var(--text-secondary)',
+                        marginBottom: '1rem',
+                        fontSize: '1.1rem'
+                    }}>
+                        Total quotes found: {numberFormatter.format(totalPages * 10)}
+                    </div>
+                    <Quotes quotes={quotes} searchTerm={searchTerm} />
+                </>
+            )}
             <div className="footer-message">
                 Made with passion by a fan • Generously supported by The Librarian
             </div>
