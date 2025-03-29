@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import express from 'express';
 import morgan from 'morgan';
 import cors from 'cors';
-import quote from './models/mongodb.js';
+import quoteModel from './models/postgres.js';
 import axios from 'axios';
 import fs from 'fs';
 dotenv.config();
@@ -28,8 +28,6 @@ app.use(morgan(':method :url  status :status - :response-time ms content: :body 
 
 app.get('/api', async (req, res) => {
     const page = parseInt(req.query.page) || 1;
-    const limit = 10;
-    const skip = (page - 1) * limit;
     const strict = req.query.strict === 'true';
     const searchTerm = strict ? `\\b${req.query.searchTerm}\\b` : req.query.searchTerm || '';
     const selectedValue = req.query.selectedValue;
@@ -40,184 +38,17 @@ app.get('/api', async (req, res) => {
     const searchPath = selectedMode === "searchTitle" ? "title" : "text";
 
     try {
-        // Define the aggregation pipeline
-        const pipeline = [
-            {
-                $search: {
-                    index: "default",
-                    compound: {
-                        must: [
-                            {
-                                phrase: {
-                                    query: searchTerm,
-                                    path: searchPath
-                                }
-                            }
-                        ],
-                        filter: [
-                            ...(gameName && gameName !== "all" ? [
-                                {
-                                    term: {
-                                        query: gameName,
-                                        path: "game_name"
-                                    }
-                                }
-                            ] : []),
-                            ...(selectedValue && selectedValue !== "all" ? [
-                                {
-                                    term: {
-                                        query: selectedValue,
-                                        path: "channel_source"
-                                    }
-                                }
-                            ] : [])
-                        ]
-                    }
-                }
-            },
-            ...(year && year.trim() !== '' ? [
-                {
-                    $match: {
-                        $expr: {
-                            $eq: [
-                                { $year: "$upload_date" },
-                                parseInt(year)
-                            ]
-                        }
-                    }
-                }
-            ] : [])
-        ];
-
-        // Add grouping logic based on search mode
-        if (selectedMode === "searchTitle") {
-            pipeline.push(
-                {
-                    $group: {
-                        _id: "$video_id",
-                        video_id: { $first: "$video_id" },
-                        title: { $first: "$title" },
-                        upload_date: { $first: "$upload_date" },
-                        channel_source: { $first: "$channel_source" },
-                        quotes: {
-                            $push: {
-                                text: "-",
-                                line_number: { $ifNull: ["$line_number", 0] },
-                                timestamp_start: { $ifNull: ["$timestamp_start", "00:00:00"] },
-                                title: { $ifNull: ["$title", ""] },
-                                upload_date: { $ifNull: ["$upload_date", ""] },
-                                channel_source: { $ifNull: ["$channel_source", ""] }
-                            }
-                        }
-                    }
-                },
-                {
-                    $addFields: {
-                        quotes: { $slice: ["$quotes", 1] }
-                    }
-                }
-            );
-        } else {
-            pipeline.push(
-                {
-                    $group: {
-                        _id: "$video_id",
-                        video_id: { $first: "$video_id" },
-                        title: { $first: "$title" },
-                        upload_date: { $first: "$upload_date" },
-                        channel_source: { $first: "$channel_source" },
-                        quotes: {
-                            $push: {
-                                text: "$text",
-                                line_number: "$line_number",
-                                timestamp_start: "$timestamp_start",
-                                title: "$title",
-                                upload_date: "$upload_date",
-                                channel_source: "$channel_source"
-                            }
-                        }
-                    }
-                }
-            );
-        }
-
-        // Add sorting after grouping
-        if (sortOrder) {
-            pipeline.push({
-                $sort: {
-                    upload_date: sortOrder === "newest" ? -1 : 1
-                }
-            });
-        }
-        
-        // Add pagination
-        pipeline.push(
-            { $skip: skip },
-            { $limit: limit }
-        );
-
-        // Perform the search
-        const results = await quote.aggregate(pipeline);
-        
-        // Get total count for pagination
-        const countPipeline = [
-            {
-                $search: {
-                    index: "default",
-                    compound: {
-                        must: [
-                            {
-                                phrase: {
-                                    query: searchTerm,
-                                    path: searchPath
-                                }
-                            }
-                        ],
-                        filter: [
-                            ...(gameName && gameName !== "all" ? [
-                                {
-                                    term: {
-                                        query: gameName,
-                                        path: "game_name"
-                                    }
-                                }
-                            ] : []),
-                            ...(selectedValue && selectedValue !== "all" ? [
-                                {
-                                    term: {
-                                        query: selectedValue,
-                                        path: "channel_source"
-                                    }
-                                }
-                            ] : [])
-                        ]
-                    }
-                }
-            },
-            ...(year && year.trim() !== '' ? [
-                {
-                    $match: {
-                        $expr: {
-                            $eq: [
-                                { $year: "$upload_date" },
-                                parseInt(year)
-                            ]
-                        }
-                    }
-                }
-            ] : []),
-            {
-                $count: "total"
-            }
-        ];
-
-        const countResult = await quote.aggregate(countPipeline);
-        const total = countResult[0]?.total || 0;
-
-        res.json({ 
-            data: results,
-            total: total
+        const result = await quoteModel.search({
+            searchTerm,
+            searchPath,
+            gameName,
+            selectedValue,
+            year,
+            sortOrder,
+            page
         });
+
+        res.json(result);
     } catch (error) {
         console.error('Search error:', error);
         console.error('Search parameters:', {
@@ -238,28 +69,7 @@ app.get('/api', async (req, res) => {
 
 app.get('/stats', async (req, res) => {
     try {
-        const stats = await quote.aggregate([
-            { $match: { channel_source: { $exists: true } } }, // Filter for documents with channel_source
-            {
-                $group: {
-                    _id: { $ifNull: ["$channel_source", "Unknown"] }, // Handle missing channel_source
-                    distinctVideos: { $addToSet: "$video_id" },
-                    total: { $sum: 1 }
-                }
-            },
-            {
-                $project: {
-                    channel_source: "$_id",
-                    videoCount: { $size: "$distinctVideos" },
-                    totalQuotes: "$total",
-                    _id: 0 // Remove the _id field from the final result
-                }
-            },
-            {
-                $sort: { videoCount: -1 }
-            }
-        ]);
-
+        const stats = await quoteModel.getStats();
         res.json({ data: stats });
     } catch (error) {
         console.error('Error fetching stats:', error);
@@ -332,28 +142,7 @@ app.post('/api/flag', async (req, res) => {
 
 app.get('/api/random', async (req, res) => {
     try {
-        const result = await quote.aggregate([
-            { $sample: { size: 10 } },
-            {
-                $group: {
-                    _id: "$video_id",
-                    video_id: { $first: "$video_id" },
-                    title: { $first: "$title" },
-                    upload_date: { $first: "$upload_date" },
-                    channel_source: { $first: "$channel_source" },
-                    quotes: {
-                        $push: {
-                            text: "$text",
-                            line_number: "$line_number",
-                            timestamp_start: "$timestamp_start",
-                            title: "$title",
-                            upload_date: "$upload_date",
-                            channel_source: "$channel_source"
-                        }
-                    }
-                }
-            }
-        ]);
+        const result = await quoteModel.getRandom();
         res.json({ quotes: result });
     } catch (error) {
         console.error('Error fetching random quotes:', error);
@@ -389,3 +178,6 @@ app.use(errorHandler);
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
+
+
+
