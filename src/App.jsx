@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams,useLocation  } from 'react-router-dom';
 import { format } from 'date-fns';
 import Disclaimer from './components/Disclaimer';
 import SearchableDropdown from './components/SearchableDropdown';
+import BetaDisclaimer from './components/BetaDisclaimer';
 
 const URL = 'https://www.youtube.com/watch?v=';
 
@@ -168,7 +169,7 @@ const Quotes = ({ quotes = [], searchTerm }) => {
             setModalState(prev => ({ ...prev, isOpen: false }));
         } catch (error) {
             console.error('Error flagging quote:', error);
-            alert('Failed to flag quote. Please try again.');
+            alert('Unable to flag quote due to database connection issues. If you\'re on the deployed site, please try the main site at nlquotes.com.');
         } finally {
             setFlagging(prev => ({ ...prev, [`${modalState.video_id}-${modalState.timestamp}`]: false }));
         }
@@ -189,7 +190,7 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                     </thead>
                     <tbody>
                         {quotes.map((quoteGroup) => (
-                            <tr key={quoteGroup._id}>
+                            <tr key={quoteGroup.video_id || `quote-group-${Math.random()}`}>
                                 <td>{quoteGroup.quotes[0]?.title || 'N/A'}</td>
                                 <td>{quoteGroup.quotes[0]?.channel_source || 'N/A'}</td>
                                 <td>
@@ -280,6 +281,15 @@ const Quotes = ({ quotes = [], searchTerm }) => {
     );
 };
 
+// Add a fallback function for when API calls fail during migration
+const useEmptyQuotesFallback = () => {
+    return {
+        data: [],
+        total: 0,
+        totalQuotes: 0
+    };
+};
+
 const App = () => {
     const [quotes, setQuotes] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -304,11 +314,58 @@ const App = () => {
     useEffect(() => {
         const fetchGames = async () => {
             try {
-                const response = await fetch('/api/games');
-                const data = await response.json();
-                setGames(data.games);
+                // Try multiple path configurations to handle potential Render.com path issues
+                const pathsToTry = [
+                    '/api/games',
+                    '/games',
+                    '/app/api/games'
+                ];
+                
+                let gamesData = null;
+                let failureMessages = [];
+                
+                // Try each path until one works
+                for (const path of pathsToTry) {
+                    try {
+                        console.log(`Trying to fetch games from: ${path}`);
+                        const response = await fetch(path);
+                        
+                        // Check if we got a valid response
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data && data.games && Array.isArray(data.games)) {
+                                gamesData = data;
+                                console.log(`Successfully fetched games from ${path}`);
+                                break;
+                            } else {
+                                console.log(`Response from ${path} didn't contain valid games data`);
+                                failureMessages.push(`Invalid data from ${path}`);
+                            }
+                        } else {
+                            const errorMsg = `Failed to fetch games from ${path}: ${response.status}`;
+                            console.log(errorMsg);
+                            failureMessages.push(errorMsg);
+                        }
+                    } catch (pathError) {
+                        const errorMsg = `Error fetching games from ${path}: ${pathError.message}`;
+                        console.log(errorMsg);
+                        failureMessages.push(errorMsg);
+                    }
+                }
+                
+                // If we got data from any of the paths, use it
+                if (gamesData && gamesData.games) {
+                    setGames(gamesData.games);
+                } else {
+                    // When no paths worked, set empty array but log detailed error info
+                    console.error('All paths failed. Details:', failureMessages.join('; '));
+                    console.log('Database connection issue detected - using empty games array');
+                    setGames([]);
+                }
             } catch (error) {
                 console.error('Error fetching games:', error);
+                // Set empty array as fallback
+                setGames([]);
             }
         };
         fetchGames();
@@ -389,8 +446,11 @@ const App = () => {
             setTotalQuotes(response.quotes.length);
             await new Promise(resolve => setTimeout(resolve, 300));
         } catch (error) {
-            setError('Error fetching random quotes');
-            console.error('Error:', error);
+            console.error('Error fetching random quotes:', error);
+            setError('Unable to connect to database. If you\'re seeing this on the deployed site, try the main site at nlquotes.com. Database connection works fine on local development.');
+            setQuotes([]);
+            setTotalPages(0);
+            setTotalQuotes(0);
         } finally {
             setLoading(false);
         }
@@ -424,11 +484,14 @@ const App = () => {
                 );
                 setQuotes(response.data);
                 setTotalPages(Math.ceil(response.total / 10));
-                setTotalQuotes(response.total);
+                setTotalQuotes(response.totalQuotes || 0);
                 await new Promise(resolve => setTimeout(resolve, 300));
             } catch (error) {
-                setError('Error fetching quotes');
-                console.error('Error:', error);
+                console.error('Error fetching quotes:', error);
+                setError('Unable to connect to database. If you\'re seeing this on the deployed site, try the main site at nlquotes.com. Database connection works fine on local development.');
+                setQuotes([]);
+                setTotalPages(0);
+                setTotalQuotes(0);
             } finally {
                 setLoading(false);
             }
@@ -463,7 +526,7 @@ const App = () => {
             setFeedbackModalOpen(false);
         } catch (error) {
             console.error('Error submitting feedback:', error);
-            alert('Failed to submit feedback. Please try again.');
+            alert('Unable to submit feedback due to database connection issues. If you\'re on the deployed site, please try the main site at nlquotes.com.');
         } finally {
             setSubmittingFeedback(false);
         }
@@ -641,18 +704,25 @@ const App = () => {
                 <div className="pagination-buttons">
                     <button 
                         onClick={() => handlePageChange(page - 1)} 
-                        disabled={page === 1 || quotes.length < 10}
+                        disabled={page === 1}
                     >
                         Previous
                     </button>
+                    <span className="pagination-info">
+                        Page {page} of {totalPages || 1}
+                    </span>
                     <button 
                         onClick={() => handlePageChange(page + 1)} 
-                        disabled={page === totalPages || quotes.length < 10}
+                        disabled={page >= totalPages || totalPages === 0}
                     >
                         Next
                     </button>
                 </div>
             )}
+            
+            <div className="footer-message">
+                Made with passion by a fan • Generously supported by The Librarian
+            </div>
 
             <div className="footer-message">
                 Made with passion by a fan • Generously supported by The Librarian
