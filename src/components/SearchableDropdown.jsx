@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-const SearchableDropdown = ({ options, value, onChange, placeholder }) => {
+const SearchableDropdown = ({ options = [], value, onChange, placeholder }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const dropdownRef = useRef(null);
@@ -16,8 +16,11 @@ const SearchableDropdown = ({ options, value, onChange, placeholder }) => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const filteredOptions = options.filter(option =>
-        option.toLowerCase().includes(searchTerm.toLowerCase())
+    // Ensure options is always an array
+    const safeOptions = Array.isArray(options) ? options : [];
+    
+    const filteredOptions = safeOptions.filter(option =>
+        option && typeof option === 'string' && option.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
