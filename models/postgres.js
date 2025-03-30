@@ -4,6 +4,8 @@ const { Pool } = pg;
 
 dotenv.config();
 
+console.log('Initializing PostgreSQL connection module...');
+
 // Create connection pool with optimized settings
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -21,46 +23,99 @@ const pool = new Pool({
 
 // Better connection error handling
 pool.on('error', (err, client) => {
-  console.error('Unexpected database error:', err);
+  console.error('❌ PostgreSQL ERROR:', err.message);
+  console.error('Error details:', err);
+  console.error('This connection error occurred but was handled gracefully');
   // Don't crash the server on connection errors
 });
 
-// Pool connection counter for monitoring
+// Track connection events
 let totalConnections = 0;
 pool.on('connect', () => {
   totalConnections++;
-  if (totalConnections % 10 === 0) {
-    console.log(`Database connection milestone: ${totalConnections} total connections made`);
-  }
+  console.log(`🔌 PostgreSQL connection #${totalConnections} established`);
+});
+
+pool.on('acquire', (client) => {
+  console.log(`🔄 PostgreSQL client acquired from pool (${pool.totalCount} total, ${pool.idleCount} idle)`);
+});
+
+pool.on('remove', (client) => {
+  console.log(`👋 PostgreSQL client removed from pool (${pool.totalCount} total, ${pool.idleCount} idle)`);
 });
 
 // Warm up the connection pool with one verified connection
 (async () => {
-  console.time('DB Connect');
+  console.time('⏱️ DB Connect');
   try {
-    console.log('Attempting to connect to PostgreSQL...');
-    console.log(`Connection string: ${process.env.DATABASE_URL.replace(/:[^:]*@/, ':****@')}`); // Hide password
-    console.log('SSL settings:', JSON.stringify({
+    console.log('🔍 Attempting to connect to PostgreSQL...');
+    console.log(`📝 Connection string: ${process.env.DATABASE_URL.replace(/:[^:]*@/, ':****@')}`); // Hide password
+    
+    // Extract host and database name for logging (without exposing full credentials)
+    const urlParts = process.env.DATABASE_URL.match(/postgres(?:ql)?:\/\/[^:]+:[^@]+@([^:]+):(\d+)\/(.+)/i);
+    if (urlParts && urlParts.length >= 4) {
+      console.log(`🌐 Target: Host=${urlParts[1]}, Port=${urlParts[2]}, Database=${urlParts[3]}`);
+    }
+    
+    console.log('🔒 SSL settings:', JSON.stringify({
       ssl: { rejectUnauthorized: false }
     }));
     
     const client = await pool.connect();
     try {
-      const res = await client.query('SELECT NOW() as connection_time');
-      console.timeEnd('DB Connect');
-      console.log(`PostgreSQL connected at ${res.rows[0].connection_time}`);
-      console.log('Database connection successful!');
+      console.log('✅ Initial connection successful, running diagnostic queries...');
+      
+      // Get server version and time
+      const versionRes = await client.query('SELECT version() as version');
+      console.log(`📊 PostgreSQL version: ${versionRes.rows[0].version}`);
+      
+      // Get current time to verify connectivity
+      const timeRes = await client.query('SELECT NOW() as connection_time');
+      console.log(`🕒 PostgreSQL server time: ${timeRes.rows[0].connection_time}`);
+      
+      // Check for the quotes table
+      const tableRes = await client.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'quotes'
+        ) as table_exists
+      `);
+      
+      if (tableRes.rows[0].table_exists) {
+        console.log('✅ The "quotes" table exists in the database');
+        
+        // Count the number of quotes
+        const countRes = await client.query('SELECT COUNT(*) as quote_count FROM quotes');
+        console.log(`📈 Total quotes in database: ${countRes.rows[0].quote_count}`);
+        
+        // Get sample quote to verify data access
+        const sampleRes = await client.query('SELECT video_id, text FROM quotes LIMIT 1');
+        if (sampleRes.rows.length > 0) {
+          console.log('✅ Successfully retrieved sample quote data');
+          console.log(`🔹 Sample video_id: ${sampleRes.rows[0].video_id}`);
+          console.log(`🔹 Sample text: ${sampleRes.rows[0].text.substring(0, 50)}...`);
+        } else {
+          console.log('⚠️ The quotes table exists but appears to be empty');
+        }
+      } else {
+        console.error('❌ ERROR: The "quotes" table does not exist in the database!');
+      }
+      
+      console.timeEnd('⏱️ DB Connect');
+      console.log('🎉 PostgreSQL connection and diagnostic tests completed successfully!');
     } finally {
       client.release();
+      console.log('🔄 Released connection back to pool');
     }
   } catch (err) {
-    console.error('Error during initial PostgreSQL connection:', err.message);
+    console.error('❌ ERROR during initial PostgreSQL connection:', err.message);
     console.error('Connection error details:', err);
-    console.timeEnd('DB Connect');
+    console.timeEnd('⏱️ DB Connect');
     
     // Attempt a second connection with different SSL settings for troubleshooting
     try {
-      console.log('Attempting alternate connection configuration...');
+      console.log('🔄 Attempting alternate connection configuration...');
       const { Client } = pg;
       const testClient = new Client({
         connectionString: process.env.DATABASE_URL,
@@ -68,12 +123,18 @@ pool.on('connect', () => {
       });
       
       await testClient.connect();
-      console.log('Alternate connection successful!');
+      console.log('✅ Alternate connection successful!');
       const result = await testClient.query('SELECT version()');
-      console.log('PostgreSQL version:', result.rows[0].version);
+      console.log('📊 PostgreSQL version:', result.rows[0].version);
       await testClient.end();
     } catch (fallbackErr) {
-      console.error('Fallback connection also failed:', fallbackErr.message);
+      console.error('❌ Fallback connection also failed:', fallbackErr.message);
+      console.error('❌ CRITICAL: Unable to establish any PostgreSQL connection');
+      console.error('Please check:');
+      console.error('1. DATABASE_URL environment variable is correct');
+      console.error('2. PostgreSQL server is running and accessible');
+      console.error('3. Network allows connections to the database port');
+      console.error('4. Database user has proper permissions');
     }
   }
 })();
@@ -81,15 +142,39 @@ pool.on('connect', () => {
 // Health check function to verify database connectivity
 const checkDatabaseHealth = async () => {
   let client;
+  console.log('🔍 Running database health check...');
   try {
     client = await pool.connect();
-    await client.query('SELECT 1');
-    return true;
+    const startTime = Date.now();
+    const result = await client.query('SELECT 1 as healthcheck, NOW() as server_time');
+    const endTime = Date.now();
+    const responseTime = endTime - startTime;
+    
+    console.log(`✅ Database health check passed (response time: ${responseTime}ms)`);
+    console.log(`🕒 Server time: ${result.rows[0].server_time}`);
+    return {
+      healthy: true,
+      responseTime: `${responseTime}ms`,
+      serverTime: result.rows[0].server_time,
+      poolInfo: {
+        totalConnections: pool.totalCount,
+        idleConnections: pool.idleCount,
+        waitingCount: pool.waitingCount || 0
+      }
+    };
   } catch (err) {
-    console.error('Database health check failed:', err.message);
-    return false;
+    console.error('❌ Database health check failed:', err.message);
+    return {
+      healthy: false,
+      error: err.message,
+      errorCode: err.code,
+      errorStack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    };
   } finally {
-    if (client) client.release();
+    if (client) {
+      client.release();
+      console.log('🔄 Health check connection released');
+    }
   }
 };
 
@@ -114,6 +199,9 @@ const quoteModel = {
     if (searchPath !== 'text' && searchPath !== 'title') {
       searchPath = 'text'; // Default to text if invalid
     }
+
+    // log search parameters
+    console.log(`🔍 PostgreSQL search with params: term="${searchTerm}", path=${searchPath}, game="${gameName}", channel=${selectedValue}, year=${year}, sort=${sortOrder}, page=${page}`);
 
     // Base query structure remains similar
     let query = `
