@@ -163,14 +163,13 @@ console.log('- /stats (stats endpoint)');
 app.get('/api', async (req, res) => {
     // Input validation and sanitization
     const page = Math.max(1, parseInt(req.query.page) || 1); // Ensure page is at least 1
-    const strict = req.query.strict === 'true';
+    const exactPhrase = req.query.exactPhrase === 'true';
     
     // Sanitize searchTerm - remove dangerous SQL characters
     let searchTerm = '';
     if (req.query.searchTerm) {
         // Basic sanitization - Remove SQL injection characters
         searchTerm = req.query.searchTerm.replace(/['";=\-\(\)\{\}\[\]\\\/]/g, ' ').trim();
-        searchTerm = strict ? `\\b${searchTerm}\\b` : searchTerm;
     }
     
     // Validate and sanitize selectedValue
@@ -178,10 +177,7 @@ app.get('/api', async (req, res) => {
     const selectedValue = allowedValues.includes(req.query.selectedValue) ? 
                           req.query.selectedValue : 'all';
     
-    // Validate and sanitize selectedMode
-    const allowedModes = ['searchTitle', 'searchText'];
-    const selectedMode = allowedModes.includes(req.query.selectedMode) ? 
-                         req.query.selectedMode : 'searchText';
+    // Remove selectedMode - we're no longer using title search
     
     // Validate year is a 4-digit number
     let year = null;
@@ -217,10 +213,11 @@ app.get('/api', async (req, res) => {
         }
     }
     
-    const searchPath = selectedMode === "searchTitle" ? "title" : "text";
+    // Always search in text, not title
+    const searchPath = "text";
 
-    // Generate an ETag based on the sanitized query parameters
-    const requestETag = `W/"quotes-${searchTerm}-${selectedValue}-${selectedMode}-${year}-${sortOrder}-${gameName}-${page}"`;
+    // Generate an ETag based on the sanitized query parameters - remove selectedMode
+    const requestETag = `W/"quotes-${searchTerm}-${selectedValue}-${year}-${sortOrder}-${gameName}-${page}-${exactPhrase}"`;
     
     // Check if client has a matching ETag
     const ifNoneMatch = req.headers['if-none-match'];
@@ -242,7 +239,8 @@ app.get('/api', async (req, res) => {
             selectedValue,
             year,
             sortOrder,
-            page
+            page,
+            exactPhrase
         });
         const totalTime = Date.now() - startTime;
 
@@ -269,7 +267,6 @@ app.get('/api', async (req, res) => {
         console.error('Search parameters:', {
             searchTerm,
             selectedValue,
-            selectedMode,
             year,
             sortOrder,
             gameName,

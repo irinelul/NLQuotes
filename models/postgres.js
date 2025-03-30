@@ -193,7 +193,7 @@ const quoteModel = {
   checkHealth: checkDatabaseHealth,
   
   // Search quotes with pagination using PostgreSQL FTS
-  async search({ searchTerm, searchPath, gameName, selectedValue, year, sortOrder, page = 1, limit = 10 }) {
+  async search({ searchTerm, searchPath, gameName, selectedValue, year, sortOrder, page = 1, limit = 10, exactPhrase = false }) {
     // Validate and sanitize inputs
     // Ensure page and limit are positive integers
     page = Math.max(1, parseInt(page) || 1);
@@ -202,15 +202,11 @@ const quoteModel = {
     const offset = (page - 1) * limit;
     const params = [];
     let paramIndex = 1;
-    const ftsLanguage = 'english'; // Define your FTS language configuration
+    const ftsLanguage = 'simple'; // Use 'simple' instead of 'english' to preserve stop words
 
-    // Validate searchPath - only allow specific column names
-    if (searchPath !== 'text' && searchPath !== 'title') {
-      searchPath = 'text'; // Default to text if invalid
-    }
-
+    // We only search in text now, so no need to validate searchPath
     // log search parameters
-    console.log(`🔍 PostgreSQL search with params: term="${searchTerm}", path=${searchPath}, game="${gameName}", channel=${selectedValue}, year=${year}, sort=${sortOrder}, page=${page}`);
+    console.log(`🔍 PostgreSQL search with params: term="${searchTerm}", game="${gameName}", channel=${selectedValue}, year=${year}, sort=${sortOrder}, page=${page}, exactPhrase=${exactPhrase}`);
 
     // Base query structure remains similar
     let query = `
@@ -229,27 +225,26 @@ const quoteModel = {
     let whereClauses = []; // Start with an empty array for WHERE conditions
 
     // --- Search Term Conditions ---
+    // Define cleanSearchTerm at the function scope level so it's available for the count query
+    let cleanSearchTerm = '';
+    
     if (searchTerm && searchTerm.trim() !== '') {
-      // Extra sanitization - remove any SQL injection patterns
-      const cleanSearchTerm = searchTerm
-        .replace(/['";=\\]/g, ' ') // Remove SQL injection characters
-        .trim();
-        
-      if (cleanSearchTerm.length > 0) {
-        if (searchPath === 'text') {
-          // Use the pre-computed fts_text_simple column instead of generating tsvector on the fly
-          whereClauses.push(`q.fts_text_simple @@ plainto_tsquery('simple', $${paramIndex})`);
-          params.push(cleanSearchTerm);
-          paramIndex += 1;
-        }
+      // Extra sanitization - remove any SQL injection patterns - REMOVED unnecessary replace()
+      cleanSearchTerm = searchTerm.trim(); // <-- Apply trim to cleanSearchTerm
+    
+      if (cleanSearchTerm.length >2 ) {
+        whereClauses.push(`q.fts_doc @@ phraseto_tsquery('simple', $${paramIndex})`);
+        query = query.replace('SELECT q.*', `SELECT ts_rank(q.fts_doc, phraseto_tsquery('simple', $${paramIndex})) as rank, q.*`);
+        params.push(cleanSearchTerm); // Use the trimmed term
+        paramIndex += 1;
       }
     }
-
+    
     // --- Filter Conditions (Leverage B-tree indexes) ---
     if (gameName && gameName !== 'all') {
       // Validate game name - basic protection
       const cleanGameName = gameName.replace(/['";]/g, '').trim();
-      if (cleanGameName.length > 0) {
+      if (cleanGameName.length > 2) {
         whereClauses.push(`q.game_name = $${paramIndex}`);
         params.push(cleanGameName);
         paramIndex++;
@@ -297,17 +292,29 @@ const quoteModel = {
     // --- Grouping ---
     // Group by video fields AFTER filtering. This aggregates all quotes
     // for videos where AT LEAST ONE quote matched the WHERE criteria.
-    query += ` GROUP BY q.video_id, q.title, q.upload_date, q.channel_source`;
+    if (exactPhrase && searchTerm && searchTerm.trim() !== '') {
+      query += ` GROUP BY q.video_id, q.title, q.upload_date, q.channel_source, rank`;
+    } else {
+      query += ` GROUP BY q.video_id, q.title, q.upload_date, q.channel_source`;
+    }
 
     // --- Sorting (Applied after grouping) ---
-    // Uses idx_quotes_upload_date potentially for sorting
-    // Add ranking here if needed based on FTS score (would require adding ts_rank to SELECT and ORDER BY)
+    // If we did an exact phrase search and added a rank field, sort by rank first
     if (sortOrder) {
       // Ensure the column exists unambiguously after grouping
-      query += ` ORDER BY q.upload_date ${sortOrder === 'newest' ? 'DESC' : 'ASC'}`;
+      if (exactPhrase && searchTerm && searchTerm.trim() !== '') {
+        // Sort by rank first, then by date
+        query += ` ORDER BY rank DESC, q.upload_date ${sortOrder === 'newest' ? 'DESC' : 'ASC'}`;
+      } else {
+        query += ` ORDER BY q.upload_date ${sortOrder === 'newest' ? 'DESC' : 'ASC'}`;
+      }
     } else {
-      // Default sort order
-      query += ` ORDER BY q.upload_date DESC`; // Default sort by newest
+      // Default sort order - also include rank if available
+      if (exactPhrase && searchTerm && searchTerm.trim() !== '') {
+        query += ` ORDER BY rank DESC, q.upload_date DESC`; 
+      } else {
+        query += ` ORDER BY q.upload_date DESC`; // Default sort by newest
+      }
     }
 
     // --- Pagination ---
@@ -316,19 +323,55 @@ const quoteModel = {
 
     // --- Count Query ---
     // Counts distinct videos matching the filters (before pagination)
-        let countQuery = `
+    let countQuery;
+    let countParams;
+    
+    if (exactPhrase && searchTerm && searchTerm.trim() !== '' && cleanSearchTerm.length > 0) {
+      // Include the same rank calculation in the count query
+      countQuery = `
+        SELECT COUNT(*) AS total_videos, SUM(quote_count) AS total_quotes
+        FROM (
+          SELECT q.video_id, COUNT(*) AS quote_count
+          FROM quotes q
+          CROSS JOIN phraseto_tsquery('simple', $1) AS query
+          WHERE q.fts_text_simple @@ query
+      `;
+      
+      // Skip the first parameter as we already included it in the CROSS JOIN
+      let countWhereClauses = whereClauses.slice(1);
+      if (countWhereClauses.length > 0) {
+        // Adjust parameter indices since we used $1 in the CROSS JOIN
+        countWhereClauses = countWhereClauses.map(clause => {
+          return clause.replace(/\$(\d+)/g, (match, index) => `$${parseInt(index) - 1}`);
+        });
+        countQuery += ` AND ${countWhereClauses.join(' AND ')}`;
+      }
+      countQuery += ` GROUP BY q.video_id) AS video_counts`;
+      
+      // Adjust countParams to remove the first parameter and reuse it in the CROSS JOIN
+      countParams = [cleanSearchTerm];
+      if (params.length > 2) {
+        countParams = countParams.concat(params.slice(2, paramIndex - 1));
+      }
+    } else {
+      countQuery = `
         SELECT COUNT(*) AS total_videos, SUM(quote_count) AS total_quotes
         FROM (
           SELECT q.video_id, COUNT(*) AS quote_count
           FROM quotes q
       `;
       if (whereClauses.length > 0) {
-          countQuery += ` WHERE ${whereClauses.join(' AND ')}`;
+        countQuery += ` WHERE ${whereClauses.join(' AND ')}`;
       }
       countQuery += ` GROUP BY q.video_id) AS video_counts`;
-  
-  // Use the same countParams as before    // Parameters for count query are the same as the main query's WHERE clause parameters
-    const countParams = params.slice(0, paramIndex - 1); // Exclude LIMIT and OFFSET params
+      
+      // Use the same countParams as before, but make sure they exist
+      if (params.length >= paramIndex - 1) {
+        countParams = params.slice(0, paramIndex - 1); // Exclude LIMIT and OFFSET params
+      } else {
+        countParams = [];
+      }
+    }
 
     try {
       // Get a client with timeout to prevent hanging connections
