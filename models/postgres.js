@@ -9,11 +9,7 @@ console.log('Initializing PostgreSQL connection module...');
 // Create connection pool with optimized settings
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' 
-    ? true  // Use default SSL in production (Render requires SSL)
-    : {
-        rejectUnauthorized: false // Accept self-signed certificates in development
-      },
+  ssl: false, // Disable SSL requirements completely
   max: 10, // Reduced from 20 to prevent connection overload
   min: 2, // Keep at least 2 connections ready
   idleTimeoutMillis: 30000, // Reduced from 60000 to recycle connections faster
@@ -241,8 +237,8 @@ const quoteModel = {
         
       if (cleanSearchTerm.length > 0) {
         if (searchPath === 'text') {
-          // Use parameterized query to avoid injection
-          whereClauses.push(`to_tsvector('simple', q.text) @@ phraseto_tsquery('simple', $${paramIndex})`);
+          // Use the pre-computed fts_text_simple column instead of generating tsvector on the fly
+          whereClauses.push(`q.fts_text_simple @@ plainto_tsquery('simple', $${paramIndex})`);
           params.push(cleanSearchTerm);
           paramIndex += 1;
         }
