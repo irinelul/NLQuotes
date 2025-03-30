@@ -4,6 +4,9 @@ import axios from 'axios'
 const isOnRender = window.location.hostname.includes('render.com') || 
                    window.location.hostname.includes('onrender.com');
 
+// Check if current protocol is HTTPS
+const isHttps = window.location.protocol === 'https:';
+
 // Define possible API path prefixes to try
 const pathPrefixes = [
     '/api', // Standard setup
@@ -11,35 +14,102 @@ const pathPrefixes = [
     '/app/api', // Potential subfolder configuration
 ];
 
-// Helper to try API calls with different path prefixes
+// Define possible base URLs for direct access if proxy fails
+// This helps bypass potential SSL/Proxy issues
+const possibleBaseUrls = isOnRender ? [
+    '', // Current domain (default)
+    window.location.origin, // Explicit origin
+    window.location.origin.replace('https:', 'http:'), // Try HTTP if HTTPS fails
+] : [''];
+
+// Configure Axios with settings to handle SSL issues
+const axiosConfig = {
+    timeout: 15000,  // Longer timeout for SSL handshakes
+    headers: {
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache'
+    }
+};
+
+// For Render.com, we may need to adjust SSL verification
+if (isOnRender) {
+    console.log('Running on Render.com, adjusting for potential SSL issues');
+    // Axios in browser doesn't have a direct way to disable SSL verification
+    // But we can try alternative approaches to work around SSL issues
+}
+
+// Add a delay helper for migration mode
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Flag to indicate if we're in migration mode (will be set to true after failed attempts)
+let isMigrationMode = true; // Set to true by default during database migration
+
+// Helper to try API calls with different path prefixes and base URLs
 const makeApiRequest = async (endpoint, method = 'get', params = null, data = null) => {
-    for (const prefix of pathPrefixes) {
-        try {
-            const fullPath = `${prefix}${endpoint}`;
-            console.log(`Trying API request: ${method.toUpperCase()} ${fullPath}`);
-            
-            if (method === 'get') {
-                const response = await axios.get(fullPath, { params });
-                console.log(`API call succeeded with prefix: ${prefix}`);
-                return response;
-            } else if (method === 'post') {
-                const response = await axios.post(fullPath, data);
-                console.log(`API call succeeded with prefix: ${prefix}`);
-                return response;
-            }
-        } catch (error) {
-            console.log(`API call failed with prefix: ${prefix}`, error.message);
-            // Continue to next prefix if this one failed
-            if (prefix === pathPrefixes[pathPrefixes.length - 1]) {
-                // If this is the last prefix to try, propagate the error
-                throw error;
+    // If we already know we're in migration mode, fail faster
+    if (isMigrationMode) {
+        await delay(300); // Add a small delay to simulate a request
+        throw new Error('API unavailable during database migration');
+    }
+    
+    // Errors to collect
+    const errors = [];
+    
+    // Try each base URL
+    for (const baseUrl of possibleBaseUrls) {
+        // Try each path prefix
+        for (const prefix of pathPrefixes) {
+            try {
+                const fullPath = `${baseUrl}${prefix}${endpoint}`;
+                console.log(`Trying API request: ${method.toUpperCase()} ${fullPath}`);
+                
+                if (method === 'get') {
+                    const response = await axios.get(fullPath, { 
+                        ...axiosConfig,
+                        params 
+                    });
+                    console.log(`API call succeeded with: ${fullPath}`);
+                    return response;
+                } else if (method === 'post') {
+                    const response = await axios.post(fullPath, data, axiosConfig);
+                    console.log(`API call succeeded with: ${fullPath}`);
+                    return response;
+                }
+            } catch (error) {
+                const errorInfo = {
+                    path: `${baseUrl}${prefix}${endpoint}`,
+                    status: error.response?.status,
+                    message: error.message,
+                    isSSL: error.message.includes('SSL')
+                };
+                errors.push(errorInfo);
+                
+                console.log(`API call failed with: ${baseUrl}${prefix}${endpoint}`, errorInfo);
+                
+                // If we get SSL error, log more details
+                if (error.message.includes('SSL')) {
+                    console.error('SSL Error detected:', error);
+                }
             }
         }
     }
+    
+    // If we reach here, all attempts failed
+    console.log('All API paths failed - entering migration mode');
+    console.log('Collected errors:', errors);
+    isMigrationMode = true;
+    
+    throw new Error('Database migration in progress. API temporarily unavailable.');
 };
 
 const getAll = async (searchTerm, page, strict, selectedValue, selectedMode, year, sortOrder, gameName) => {
     try {
+        // If we're in migration mode, fail quickly with appropriate message
+        if (isMigrationMode) {
+            await delay(500);
+            throw new Error('Search unavailable during database migration');
+        }
+        
         const response = await makeApiRequest('', 'get', {  
             searchTerm: searchTerm || '', 
             page: page || 1,   
@@ -65,6 +135,11 @@ const getAll = async (searchTerm, page, strict, selectedValue, selectedMode, yea
 
 const getStats = async () => {
     try {
+        if (isMigrationMode) {
+            await delay(300);
+            throw new Error('Stats unavailable during database migration');
+        }
+        
         const response = await makeApiRequest('/stats', 'get');
         return response.data;
     } catch (error) {
@@ -75,6 +150,11 @@ const getStats = async () => {
 
 const flagQuote = async (quoteData) => {
     try {
+        if (isMigrationMode) {
+            await delay(300);
+            throw new Error('Flagging unavailable during database migration');
+        }
+        
         const response = await makeApiRequest('/flag', 'post', null, quoteData);
         return response.data;
     } catch (error) {
@@ -85,6 +165,11 @@ const flagQuote = async (quoteData) => {
 
 const getRandomQuotes = async () => {
     try {
+        if (isMigrationMode) {
+            await delay(500);
+            throw new Error('Random quotes unavailable during database migration');
+        }
+        
         const response = await makeApiRequest('/random', 'get');
         return response.data;
     } catch (error) {
@@ -95,6 +180,11 @@ const getRandomQuotes = async () => {
 
 const checkDatabaseStatus = async () => {
     try {
+        if (isMigrationMode) {
+            await delay(300);
+            throw new Error('Database status check unavailable during migration');
+        }
+        
         const response = await makeApiRequest('/db-status', 'get');
         return response.data;
     } catch (error) {
