@@ -169,7 +169,7 @@ const Quotes = ({ quotes = [], searchTerm }) => {
             setModalState(prev => ({ ...prev, isOpen: false }));
         } catch (error) {
             console.error('Error flagging quote:', error);
-            alert('Failed to flag quote. Please try again.');
+            alert('Unable to flag quote due to database connection issues. If you\'re on the deployed site, please try the main site at nlquotes.com.');
         } finally {
             setFlagging(prev => ({ ...prev, [`${modalState.video_id}-${modalState.timestamp}`]: false }));
         }
@@ -322,6 +322,7 @@ const App = () => {
                 ];
                 
                 let gamesData = null;
+                let failureMessages = [];
                 
                 // Try each path until one works
                 for (const path of pathsToTry) {
@@ -336,10 +337,14 @@ const App = () => {
                             console.log(`Successfully fetched games from ${path}`);
                             break;
                         } else {
-                            console.log(`Failed to fetch games from ${path}: ${response.status}`);
+                            const errorMsg = `Failed to fetch games from ${path}: ${response.status}`;
+                            console.log(errorMsg);
+                            failureMessages.push(errorMsg);
                         }
                     } catch (pathError) {
-                        console.log(`Error fetching games from ${path}:`, pathError);
+                        const errorMsg = `Error fetching games from ${path}: ${pathError.message}`;
+                        console.log(errorMsg);
+                        failureMessages.push(errorMsg);
                     }
                 }
                 
@@ -347,8 +352,9 @@ const App = () => {
                 if (gamesData && gamesData.games) {
                     setGames(gamesData.games);
                 } else {
-                    // During migration, use empty array as fallback without showing error
-                    console.log('Could not fetch games - using empty fallback during migration');
+                    // When no paths worked, set empty array but log detailed error info
+                    console.error('All paths failed. Details:', failureMessages.join('; '));
+                    console.log('Database connection issue detected - using empty games array');
                     setGames([]);
                 }
             } catch (error) {
@@ -436,8 +442,7 @@ const App = () => {
             await new Promise(resolve => setTimeout(resolve, 300));
         } catch (error) {
             console.error('Error fetching random quotes:', error);
-            // During migration, show a specific message about the database
-            setError('Database migration in progress. Random quotes feature is currently unavailable.');
+            setError('Unable to connect to database. If you\'re seeing this on the deployed site, try the main site at nlquotes.com. Database connection works fine on local development.');
             setQuotes([]);
             setTotalPages(0);
             setTotalQuotes(0);
@@ -478,8 +483,7 @@ const App = () => {
                 await new Promise(resolve => setTimeout(resolve, 300));
             } catch (error) {
                 console.error('Error fetching quotes:', error);
-                // During migration, show a specific message about the database
-                setError('Database migration in progress. Some features may be unavailable.');
+                setError('Unable to connect to database. If you\'re seeing this on the deployed site, try the main site at nlquotes.com. Database connection works fine on local development.');
                 setQuotes([]);
                 setTotalPages(0);
                 setTotalQuotes(0);
@@ -517,7 +521,7 @@ const App = () => {
             setFeedbackModalOpen(false);
         } catch (error) {
             console.error('Error submitting feedback:', error);
-            alert('Failed to submit feedback. Please try again.');
+            alert('Unable to submit feedback due to database connection issues. If you\'re on the deployed site, please try the main site at nlquotes.com.');
         } finally {
             setSubmittingFeedback(false);
         }
