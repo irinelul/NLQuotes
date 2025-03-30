@@ -8,30 +8,57 @@ dotenv.config();
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  max: 10, // Limit max connections to prevent overload
-  idleTimeoutMillis: 30000, // Close idle connections after 30s
-  connectionTimeoutMillis: 2000 // Fail fast if connection takes >2s
+  max: 20, // Increase max connections to handle more concurrent users
+  idleTimeoutMillis: 60000, // Increase idle timeout to 60s to keep connections alive longer
+  connectionTimeoutMillis: 1000, // Reduce timeout to 1s for faster feedback
+  keepAlive: true, // Enable TCP keepalive
+  keepAliveInitialDelayMillis: 10000 // 10 seconds before first keepalive packet
 });
 
 // Test the connection and log timing
 console.time('DB Connect');
-pool.query('SELECT 1') // Simple query to test connection
-  .then(() => {
+
+// Initialize connection using an IIFE
+(async () => {
+  // Create a warmed-up client from the pool
+  let client;
+  try {
+    client = await pool.connect();
     console.timeEnd('DB Connect'); // Logs connection time
-    console.log('Connected to PostgreSQL');
-  })
-  .catch(error => {
+    console.log('Connected to PostgreSQL successfully');
+    
+    // Test query to verify full connection functionality
+    const testResult = await client.query('SELECT NOW() as current_time');
+    console.log(`PostgreSQL time: ${testResult.rows[0].current_time}`);
+  } catch (error) {
     console.error('Error connecting to PostgreSQL:', error.message);
-  });
+    // Don't exit - allow retries on subsequent requests
+  } finally {
+    if (client) {
+      // Return client to pool for reuse
+      client.release();
+    }
+  }
+})().catch(err => console.error('Connection initialization error:', err));
 
 // Quote model functions
 const quoteModel = {
   // Search quotes with pagination using PostgreSQL FTS
   async search({ searchTerm, searchPath, gameName, selectedValue, year, sortOrder, page = 1, limit = 10 }) {
+    // Validate and sanitize inputs
+    // Ensure page and limit are positive integers
+    page = Math.max(1, parseInt(page) || 1);
+    limit = Math.min(50, Math.max(1, parseInt(limit) || 10)); // Cap at 50 items
+    
     const offset = (page - 1) * limit;
     const params = [];
     let paramIndex = 1;
     const ftsLanguage = 'english'; // Define your FTS language configuration
+
+    // Validate searchPath - only allow specific column names
+    if (searchPath !== 'text' && searchPath !== 'title') {
+      searchPath = 'text'; // Default to text if invalid
+    }
 
     // Base query structure remains similar
     let query = `
@@ -50,48 +77,58 @@ const quoteModel = {
     let whereClauses = []; // Start with an empty array for WHERE conditions
 
     // --- Search Term Conditions ---
-    if (searchTerm) {
-      if (searchPath === 'text') {
-        // *** USE PostgreSQL Full-Text Search for 'text' ***
-        // This uses the GIN index idx_quotes_text_fts
-        // plainto_tsquery parses the search term, handling spaces as AND operators
-        // NEW: Uses FOLLOWED BY (phrase) logic
-        whereClauses.push(`to_tsvector('simple', q.text) @@ phraseto_tsquery('simple', $${paramIndex})`);
-        params.push(searchTerm);
-        paramIndex += 1;
-              }
+    if (searchTerm && searchTerm.trim() !== '') {
+      // Extra sanitization - remove any SQL injection patterns
+      const cleanSearchTerm = searchTerm
+        .replace(/['";=\\]/g, ' ') // Remove SQL injection characters
+        .trim();
+        
+      if (cleanSearchTerm.length > 0) {
+        if (searchPath === 'text') {
+          // Use parameterized query to avoid injection
+          whereClauses.push(`to_tsvector('simple', q.text) @@ phraseto_tsquery('simple', $${paramIndex})`);
+          params.push(cleanSearchTerm);
+          paramIndex += 1;
+        }
+      }
     }
 
     // --- Filter Conditions (Leverage B-tree indexes) ---
     if (gameName && gameName !== 'all') {
-      // Uses idx_quotes_game_name
-      whereClauses.push(`q.game_name = $${paramIndex}`);
-      params.push(gameName);
-      paramIndex++;
+      // Validate game name - basic protection
+      const cleanGameName = gameName.replace(/['";]/g, '').trim();
+      if (cleanGameName.length > 0) {
+        whereClauses.push(`q.game_name = $${paramIndex}`);
+        params.push(cleanGameName);
+        paramIndex++;
+      }
     }
 
     if (selectedValue && selectedValue !== 'all') { // Assuming selectedValue is channel_source
-      // Uses idx_quotes_channel_source
-      whereClauses.push(`q.channel_source = $${paramIndex}`);
-      params.push(selectedValue);
-      paramIndex++;
+      // Whitelist approach for channel_source
+      const validChannels = ['Librarian', 'Northernlion']; // Add all your valid channels
+      if (validChannels.includes(selectedValue)) {
+        whereClauses.push(`q.channel_source = $${paramIndex}`);
+        params.push(selectedValue);
+        paramIndex++;
+      }
     }
 
     if (year && year.toString().trim() !== '') {
-       // Uses idx_quotes_upload_date (efficiently if filtering on the indexed column)
-       // EXTRACT is generally well-optimized on indexed date/timestamp columns
-      whereClauses.push(`EXTRACT(YEAR FROM q.upload_date) = $${paramIndex}`);
+      // Validate year is a 4-digit number between reasonable bounds
       try {
         const yearInt = parseInt(year);
-        if (isNaN(yearInt)) {
-          throw new Error('Invalid year provided');
+        if (!isNaN(yearInt) && yearInt >= 1990 && yearInt <= new Date().getFullYear()) {
+          whereClauses.push(`EXTRACT(YEAR FROM q.upload_date) = $${paramIndex}`);
+          params.push(yearInt);
+          paramIndex++;
+        } else {
+          console.error("Invalid year parameter:", year);
         }
-        params.push(yearInt);
-        paramIndex++;
       } catch (e) {
         console.error("Invalid year parameter:", year);
         // Handle invalid year input appropriately, e.g., return error or empty result
-        return { data: [], total: 0 };
+        return { data: [], total: 0, totalQuotes: 0 };
       }
     }
 
@@ -128,34 +165,57 @@ const quoteModel = {
     // --- Count Query ---
     // Counts distinct videos matching the filters (before pagination)
         let countQuery = `
-        SELECT COUNT(*) AS total
-        FROM quotes q
+        SELECT COUNT(*) AS total_videos, SUM(quote_count) AS total_quotes
+        FROM (
+          SELECT q.video_id, COUNT(*) AS quote_count
+          FROM quotes q
       `;
       if (whereClauses.length > 0) {
           countQuery += ` WHERE ${whereClauses.join(' AND ')}`;
       }
+      countQuery += ` GROUP BY q.video_id) AS video_counts`;
+  
   // Use the same countParams as before    // Parameters for count query are the same as the main query's WHERE clause parameters
     const countParams = params.slice(0, paramIndex - 1); // Exclude LIMIT and OFFSET params
 
     try {
-      // Execute queries
-      console.log("Executing Query:", query);
-      console.log("Parameters:", params);
-      const result = await pool.query(query, params);
-
-      console.log("Executing Count Query:", countQuery);
-      console.log("Count Parameters:", countParams);
-      const countResult = await pool.query(countQuery, countParams);
-      const total = countResult.rows[0]?.total || 0;
-
-      return {
-        data: result.rows,
-        total: parseInt(total, 10) // Ensure total is an integer
-      };
+      // Get a client from pool
+      const client = await pool.connect();
+      
+      try {
+        const startTime = Date.now();
+        
+        // Execute main query
+        console.log("Executing Query:", query);
+        console.log("Parameters:", params);
+        const result = await client.query(query, params);
+        
+        // Execute count query
+        console.log("Executing Count Query:", countQuery);
+        console.log("Count Parameters:", countParams);
+        const countResult = await client.query(countQuery, countParams);
+        
+        const queryTime = Date.now() - startTime;
+        console.log(`Query execution completed in ${queryTime}ms`);
+        
+        // Get both total videos and total quotes
+        const totalVideos = parseInt(countResult.rows[0]?.total_videos || 0, 10);
+        const totalQuotes = parseInt(countResult.rows[0]?.total_quotes || 0, 10);
+  
+        return {
+          data: result.rows,
+          total: totalVideos, // For pagination (number of videos)
+          totalQuotes: totalQuotes, // Total number of quotes matching the search
+          queryTime: queryTime // Return query execution time for diagnostics
+        };
+      } finally {
+        // Always release the client back to the pool
+        client.release();
+      }
     } catch (error) {
         console.error("Database Query Error:", error);
         // Rethrow or handle the error appropriately for your application
-        throw new Error('Failed to execute search query.');
+        throw new Error(`Failed to execute search query: ${error.message}`);
     }
   },
 
@@ -172,8 +232,19 @@ const quoteModel = {
       ORDER BY "videoCount" DESC
     `;
 
-    const result = await pool.query(query);
-    return result.rows;
+    let client;
+    try {
+      client = await pool.connect();
+      const startTime = Date.now();
+      const result = await client.query(query);
+      console.log(`Stats query completed in ${Date.now() - startTime}ms`);
+      return result.rows;
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+      throw new Error(`Failed to fetch stats: ${error.message}`);
+    } finally {
+      if (client) client.release();
+    }
   },
 
   // Get random quotes (using TABLESAMPLE SYSTEM for better performance on large tables)
@@ -207,12 +278,18 @@ const quoteModel = {
       LIMIT 5;
     `;
 
+    let client;
     try {
-        const result = await pool.query(query);
-        return result.rows;
-    } catch(error){
-        console.error("Error fetching random quotes:", error);
-        throw new Error('Failed to fetch random quotes.');
+      client = await pool.connect();
+      const startTime = Date.now();
+      const result = await client.query(query);
+      console.log(`Random quotes query completed in ${Date.now() - startTime}ms`);
+      return result.rows;
+    } catch (error) {
+      console.error("Error fetching random quotes:", error);
+      throw new Error(`Failed to fetch random quotes: ${error.message}`);
+    } finally {
+      if (client) client.release();
     }
   }
 };

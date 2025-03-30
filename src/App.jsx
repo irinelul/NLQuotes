@@ -424,7 +424,7 @@ const App = () => {
                 );
                 setQuotes(response.data);
                 setTotalPages(Math.ceil(response.total / 10));
-                setTotalQuotes(response.total);
+                setTotalQuotes(response.totalQuotes || 0);
                 await new Promise(resolve => setTimeout(resolve, 300));
             } catch (error) {
                 setError('Error fetching quotes');
@@ -636,26 +636,30 @@ const App = () => {
                     <Quotes quotes={quotes} searchTerm={searchTerm} />
                 </>
             )}
-            <div className="footer-message">
-                Made with passion by a fan • Generously supported by The Librarian
-            </div>
             
             {quotes.length > 0 && (
                 <div className="pagination-buttons">
                     <button 
                         onClick={() => handlePageChange(page - 1)} 
-                        disabled={page === 1 || quotes.length < 10}
+                        disabled={page === 1}
                     >
                         Previous
                     </button>
+                    <span className="pagination-info">
+                        Page {page} of {totalPages || 1}
+                    </span>
                     <button 
                         onClick={() => handlePageChange(page + 1)} 
-                        disabled={page === totalPages || quotes.length < 10}
+                        disabled={page >= totalPages || totalPages === 0}
                     >
                         Next
                     </button>
                 </div>
             )}
+            
+            <div className="footer-message">
+                Made with passion by a fan • Generously supported by The Librarian
+            </div>
 
             <button 
                 className="feedback-button"

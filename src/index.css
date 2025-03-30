@@ -168,8 +168,17 @@ button:disabled {
 .pagination-buttons {
     display: flex;
     justify-content: center;
-    gap: 0.25rem;
+    gap: 1rem;
     margin-top: 2rem;
+    align-items: center;
+}
+
+.pagination-info {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin: 0 0.5rem;
+    min-width: 120px;
+    text-align: center;
 }
 
 .quotes-table {
