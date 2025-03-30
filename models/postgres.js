@@ -9,9 +9,11 @@ console.log('Initializing PostgreSQL connection module...');
 // Create connection pool with optimized settings
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false // Accept self-signed certificates
-  },
+  ssl: process.env.NODE_ENV === 'production' 
+    ? true  // Use default SSL in production (Render requires SSL)
+    : {
+        rejectUnauthorized: false // Accept self-signed certificates in development
+      },
   max: 10, // Reduced from 20 to prevent connection overload
   min: 2, // Keep at least 2 connections ready
   idleTimeoutMillis: 30000, // Reduced from 60000 to recycle connections faster
@@ -130,6 +132,17 @@ pool.on('remove', (client) => {
     } catch (fallbackErr) {
       console.error('❌ Fallback connection also failed:', fallbackErr.message);
       console.error('❌ CRITICAL: Unable to establish any PostgreSQL connection');
+      
+      // Log more specific SSL-related error details if relevant
+      if (fallbackErr.message.includes('ssl')) {
+        console.error('SSL ERROR DETECTED: This may be an SSL configuration issue');
+        console.error('Check if the database requires SSL and if the configuration is correct');
+        console.error('Current NODE_ENV:', process.env.NODE_ENV);
+        console.error('Current SSL config:', JSON.stringify({
+          ssl: process.env.NODE_ENV === 'production' ? true : { rejectUnauthorized: false }
+        }));
+      }
+      
       console.error('Please check:');
       console.error('1. DATABASE_URL environment variable is correct');
       console.error('2. PostgreSQL server is running and accessible');
