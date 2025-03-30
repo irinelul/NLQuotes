@@ -1,9 +1,10 @@
 this is a northernlion quote aggregator
 
 the current workflow is
-1. extract audio from all videos using yt-dlp (3k videos from https://www.youtube.com/@TheLibraryofLetourneau ) - main channel and older videos NOT available
-2. save them in gdrive as webm
-3. process through insanely fast whisper (https://github.com/Vaibhavs10/insanely-fast-whisper)
-4. parse transcription
-5. load to mongo db
-6. serve
+1. extract audio from all videos using yt-dlp 
+2. save them as webm
+3. process through faster-whisper
+4. process through local llm to guess game from title
+6. parse transcription
+7. load to mongo db
+8. serve
