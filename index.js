@@ -7,131 +7,148 @@ import axios from 'axios';
 import fs from 'fs';
 import rateLimit from 'express-rate-limit';
 import slowDown from 'express-slow-down';
+
+// Load environment variables
 dotenv.config();
 
+// Validate required environment variables
+const requiredEnvVars = ['DATABASE_URL'];
+const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
+
+if (missingEnvVars.length > 0) {
+  console.error('ERROR: Missing required environment variables:');
+  missingEnvVars.forEach(envVar => console.error(`- ${envVar}`));
+  console.error('Please create a .env file with these variables.');
+  process.exit(1);
+}
+
+// Check database URL format
+const dbUrlPattern = /^postgres(ql)?:\/\/.+:.+@.+:\d+\/.+$/i;
+if (!dbUrlPattern.test(process.env.DATABASE_URL)) {
+  console.warn('WARNING: DATABASE_URL may be incorrectly formatted.');
+  console.warn('Expected format: postgres://username:password@hostname:port/database');
+  console.warn(`Got: ${process.env.DATABASE_URL.replace(/:[^:]*@/, ':****@')}`);
+}
+
 const app = express();
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 3001;
 
-// Rate limiting and brute force protection
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-  message: 'Too many requests from this IP, please try again after 15 minutes',
-  skip: (req) => {
-    // Skip rate limiting for certain paths
-    return req.path === '/' || req.path.startsWith('/assets/');
-  }
-});
-
-// Apply slower response times after limit threshold to discourage abuse
-const speedLimiter = slowDown({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  delayAfter: 30, // allow 30 requests per 15 minutes without slowing down
-  delayMs: (hits) => hits * 100, // add 100ms delay per request above threshold
-  skip: (req) => {
-    return req.path === '/' || req.path.startsWith('/assets/');
-  }
-});
-
-// Apply rate limiting and speed limiting to all requests
-app.use(apiLimiter);
-app.use(speedLimiter);
-
-// Security middleware
+// ======= OPTIMIZED CONNECTION HANDLING =======
+// Configure connection and security in a single middleware to prevent conflicts
 app.use((req, res, next) => {
-  // Basic security headers for all responses
+  // Set connection and security headers in one place
   res.set({
-    'X-Content-Type-Options': 'nosniff', // Prevents MIME type sniffing
-    'X-Frame-Options': 'DENY', // Prevents clickjacking through iframes
-    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains', // Enforce HTTPS
-    'X-XSS-Protection': '1; mode=block', // Enable browser's XSS protection
-    'Referrer-Policy': 'strict-origin-when-cross-origin', // Control referrer information
-    'Permissions-Policy': 'geolocation=(), microphone=(), camera=()', // Restrict browser features
+    // Connection optimization
+    'Connection': 'keep-alive',
+    'Keep-Alive': 'timeout=60', // Reduced from 120s to 60s
+    
+    // Security headers
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'X-XSS-Protection': '1; mode=block',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'geolocation=(), microphone=(), camera=()'
   });
   
-  // Block suspicious requests
-  const userAgent = req.get('User-Agent') || '';
-  const requestPath = req.path || '';
-  
-  // Check for common vulnerability scanners or suspicious requests
-  const suspiciousPatterns = [
-    /sqlmap|nessus|nikto|nmap|acunetix|w3af|burpsuite|ZAP/i, // Common scanner UAs
-    /wp-admin|wp-login|wp-content|xmlrpc|administrator|admin-console|manager\/html/i, // Common attack paths
-    /\.php$|\.asp$|\.aspx$|\.jsp$|\.cgi$/i // File extensions we don't use
-  ];
-  
-  if (
-    suspiciousPatterns.some(pattern => pattern.test(userAgent)) ||
-    suspiciousPatterns.some(pattern => pattern.test(requestPath))
-  ) {
-    console.warn(`Blocked suspicious request: ${req.ip}, ${userAgent}, ${requestPath}`);
-    return res.status(403).json({ error: 'Forbidden' });
+  // Only add HSTS in production environments
+  if (process.env.NODE_ENV === 'production') {
+    res.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }
   
-  // Prevent HTTP parameter pollution
-  if (req.query) {
-    Object.keys(req.query).forEach(key => {
-      if (Array.isArray(req.query[key])) {
-        req.query[key] = req.query[key][0]; // Take only the first value
-      }
-    });
-  }
-  
-  next();
-});
-
-// Configure cors with specific options
-const corsOptions = {
-  origin: '*',
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  maxAge: 86400 // 24 hours in seconds - tells browsers to cache preflight requests
-};
-
-app.use(cors(corsOptions));
-app.use(express.json());
-
-// Add middleware to set connection headers for all responses
-app.use((req, res, next) => {
-  // Set Keep-Alive headers to maintain persistent connections
-  res.set('Connection', 'keep-alive');
-  res.set('Keep-Alive', 'timeout=120'); // 2 minutes timeout
-  
-  // Add Cache-Control headers for static resources (but not for API responses)
+  // Conditionally set cache headers for static assets
   if (req.path.startsWith('/assets/') || req.path.includes('.')) {
     res.set('Cache-Control', 'public, max-age=86400'); // 24 hours for static assets
   }
   
-  // Log connection information
-  const connectionInfo = {
-    ip: req.ip,
-    userAgent: req.get('User-Agent'),
-    time: new Date().toISOString()
-  };
-  console.log('Connection from:', connectionInfo);
-  
   next();
 });
 
+// ======= RATE LIMITING WITH OPTIMIZED SETTINGS =======
+// Apply rate limiting with more reasonable limits
+const apiLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes (reduced from 15)
+  max: 200, // Increased from 100 to 200 requests per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many requests, please try again later',
+  skip: (req) => req.path === '/' || req.path.startsWith('/assets/')
+});
+
+// Apply speed limiting only to the most sensitive endpoints
+const speedLimiter = slowDown({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  delayAfter: 50, // Increased from 30
+  delayMs: (hits) => Math.min(500, hits * 50), // Cap delay at 500ms
+  skip: (req) => {
+    return req.path === '/' || 
+           req.path.startsWith('/assets/') || 
+           req.method === 'GET' && !req.path.includes('/api');
+  }
+});
+
+// Apply rate limiting and speed limiting more selectively
+app.use('/api', apiLimiter);
+app.use('/api/flag', speedLimiter); // Only apply speed limiting to sensitive endpoints
+
+// ======= OPTIMIZED CORS =======
+const corsOptions = {
+  origin: '*',
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'If-None-Match'],
+  maxAge: 86400 // 24 hours in seconds
+};
+
+app.use(cors(corsOptions));
+app.use(express.json({ limit: '250kb' })); // Limit payload size
+
+// ======= STREAMLINED STATIC FILE SERVING =======
 app.use(express.static('dist', {
     setHeaders: (res, path) => {
+        // Set correct MIME types
         if (path.endsWith('.css')) {
             res.setHeader('Content-Type', 'text/css');
         } else if (path.endsWith('.js')) {
             res.setHeader('Content-Type', 'application/javascript');
         }
         
-        // Add caching headers for static files
-        res.setHeader('Cache-Control', 'public, max-age=86400'); // 24 hours
+        // Cache static assets
+        res.setHeader('Cache-Control', 'public, max-age=86400');
     }
 }));
 
-// Configure morgan for logging
-morgan.token('body', (req) => JSON.stringify(req.body));
-morgan.token('bodyLength', (req) => (JSON.stringify(req.body)).length);
-app.use(morgan(':method :url  status :status - :response-time ms content: :body :bodyLength Length  :res[header]'));
+// ======= REDUCED LOGGING =======
+// Only log essential information to reduce overhead
+morgan.token('method-path', (req) => `${req.method} ${req.path}`);
+morgan.token('response-info', (req, res) => `${res.statusCode} - ${res.getHeader('content-length') || 0}b`);
+app.use(morgan(':method-path :response-info :response-time ms', {
+  skip: (req) => req.path.startsWith('/assets/')
+}));
+
+// ======= SECURITY FILTER =======
+// Block suspicious requests without heavy processing
+app.use((req, res, next) => {
+  const userAgent = req.get('User-Agent') || '';
+  const requestPath = req.path || '';
+  
+  // Simplified pattern matching for better performance
+  if (
+    /sqlmap|nikto|nmap|acunetix|burpsuite|ZAP/i.test(userAgent) ||
+    /wp-|xmlrpc|admin|\.php|\.asp/i.test(requestPath)
+  ) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  
+  // Prevent HTTP parameter pollution more efficiently
+  if (req.query) {
+    for (const key in req.query) {
+      if (Array.isArray(req.query[key])) {
+        req.query[key] = req.query[key][0];
+      }
+    }
+  }
+  
+  next();
+});
 
 app.get('/api', async (req, res) => {
     // Input validation and sanitization
@@ -392,6 +409,66 @@ app.get('/api/games', async (req, res) => {
         console.error('Error reading game titles:', error);
         res.status(500).json({ error: 'Failed to fetch game titles' });
     }
+});
+
+// Health check endpoint for monitoring and diagnostics
+app.get('/health', async (req, res) => {
+    const health = {
+        uptime: process.uptime(),
+        timestamp: Date.now(),
+        memory: process.memoryUsage(),
+        status: 'UP'
+    };
+    
+    try {
+        // Check database connectivity
+        const dbHealthy = await quoteModel.checkHealth();
+        health.database = dbHealthy ? 'connected' : 'disconnected';
+        
+        if (!dbHealthy) {
+            health.status = 'DEGRADED';
+            return res.status(200).json(health);
+        }
+        
+        res.json(health);
+    } catch (error) {
+        health.status = 'DOWN';
+        health.error = 'Service unavailable';
+        health.database = 'error';
+        res.status(500).json(health);
+    }
+});
+
+// Add a global error handler with connection error recovery
+app.use((err, req, res, next) => {
+    console.error('Unhandled application error:', err.stack);
+    
+    // Check if it's a database connection error
+    const isDbConnectionError = 
+        err.message && (
+            err.message.includes('database') || 
+            err.message.includes('connection') || 
+            err.message.includes('PostgreSQL')
+        );
+    
+    if (isDbConnectionError) {
+        // Try to reconnect immediately
+        setTimeout(async () => {
+            try {
+                await quoteModel.checkHealth();
+                console.log('Database reconnection successful after error');
+            } catch (e) {
+                console.error('Failed to reconnect to database:', e.message);
+            }
+        }, 1000);
+    }
+    
+    res.status(500).json({
+        error: 'Internal server error',
+        message: process.env.NODE_ENV === 'production' 
+            ? 'Something went wrong' 
+            : err.message
+    });
 });
 
 const errorHandler = (error, req, res, next) => {
