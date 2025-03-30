@@ -439,6 +439,30 @@ app.get('/health', async (req, res) => {
     }
 });
 
+// Database status endpoint - for monitoring in beta version
+app.get('/api/db-status', async (req, res) => {
+  console.log('Database status check requested');
+  try {
+    const healthStatus = await quoteModel.checkHealth();
+    res.json({
+      status: healthStatus.healthy ? 'connected' : 'error',
+      message: healthStatus.healthy 
+        ? `Connected to PostgreSQL (${healthStatus.responseTime} response time)` 
+        : `Error connecting to PostgreSQL: ${healthStatus.error}`,
+      details: healthStatus,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error checking database status:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to check database status',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Add a global error handler with connection error recovery
 app.use((err, req, res, next) => {
     console.error('Unhandled application error:', err.stack);

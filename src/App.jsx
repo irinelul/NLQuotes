@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams,useLocation  } from 'react-router-dom';
 import { format } from 'date-fns';
 import Disclaimer from './components/Disclaimer';
 import SearchableDropdown from './components/SearchableDropdown';
+import BetaDisclaimer from './components/BetaDisclaimer';
 
 const URL = 'https://www.youtube.com/watch?v=';
 
@@ -477,6 +478,7 @@ const App = () => {
             marginTop: '2rem',
             width: '100%'
         }}>
+            <BetaDisclaimer />
             <div className="logo-container" onClick={() => {
                 setSearchTerm('');
                 setQuotes([]);
