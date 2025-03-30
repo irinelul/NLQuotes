@@ -540,7 +540,6 @@ const App = () => {
             marginTop: '2rem',
             width: '100%'
         }}>
-            <BetaDisclaimer />
             <div className="logo-container" onClick={() => {
                 setSearchTerm('');
                 setQuotes([]);
