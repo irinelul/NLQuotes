@@ -980,6 +980,78 @@ button:disabled {
     border-left: 1px solid rgba(255, 255, 255, 0.3);
 }
 
+/* API Status Styles */
+.api-status {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px dashed rgba(255, 255, 255, 0.3);
+    font-family: monospace;
+    font-size: 0.9rem;
+}
+
+.api-status-message {
+    margin-bottom: 0.75rem;
+    line-height: 1.4;
+}
+
+.render-status {
+    margin: 0.75rem 0;
+    padding: 0.75rem;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    border-left: 3px solid #ffeb3b;
+}
+
+.render-fix-suggestion {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.endpoint-status {
+    background-color: rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+    padding: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.endpoint-status ul {
+    margin: 0.5rem 0 0;
+    padding-left: 1.5rem;
+    list-style-type: none;
+}
+
+.endpoint-status li {
+    margin-bottom: 0.3rem;
+    padding: 0.2rem 0;
+}
+
+.troubleshooting-tips {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    padding: 0.75rem;
+    margin-top: 0.75rem;
+}
+
+.troubleshooting-tips ol {
+    margin: 0.5rem 0 0;
+    padding-left: 1.5rem;
+}
+
+.troubleshooting-tips li {
+    margin-bottom: 0.4rem;
+}
+
+.troubleshooting-tips a {
+    text-decoration: underline;
+    transition: opacity 0.2s;
+}
+
+.troubleshooting-tips a:hover {
+    opacity: 0.8;
+}
+
 @keyframes pulse-subtle {
     0% {
         opacity: 0.8;
