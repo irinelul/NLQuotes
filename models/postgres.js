@@ -4,45 +4,100 @@ const { Pool } = pg;
 
 dotenv.config();
 
-// Create a connection pool with optimized settings
+// Create connection pool with optimized settings
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  max: 20, // Increase max connections to handle more concurrent users
-  idleTimeoutMillis: 60000, // Increase idle timeout to 60s to keep connections alive longer
-  connectionTimeoutMillis: 1000, // Reduce timeout to 1s for faster feedback
-  keepAlive: true, // Enable TCP keepalive
-  keepAliveInitialDelayMillis: 10000 // 10 seconds before first keepalive packet
+  ssl: {
+    rejectUnauthorized: false // Accept self-signed certificates
+  },
+  max: 10, // Reduced from 20 to prevent connection overload
+  min: 2, // Keep at least 2 connections ready
+  idleTimeoutMillis: 30000, // Reduced from 60000 to recycle connections faster
+  connectionTimeoutMillis: 5000, // Increased from 1000 for better reliability
+  allowExitOnIdle: false, // Don't close pool on idle
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 5000 // Reduced from 10000
 });
 
-// Test the connection and log timing
-console.time('DB Connect');
+// Better connection error handling
+pool.on('error', (err, client) => {
+  console.error('Unexpected database error:', err);
+  // Don't crash the server on connection errors
+});
 
-// Initialize connection using an IIFE
+// Pool connection counter for monitoring
+let totalConnections = 0;
+pool.on('connect', () => {
+  totalConnections++;
+  if (totalConnections % 10 === 0) {
+    console.log(`Database connection milestone: ${totalConnections} total connections made`);
+  }
+});
+
+// Warm up the connection pool with one verified connection
 (async () => {
-  // Create a warmed-up client from the pool
+  console.time('DB Connect');
+  try {
+    console.log('Attempting to connect to PostgreSQL...');
+    console.log(`Connection string: ${process.env.DATABASE_URL.replace(/:[^:]*@/, ':****@')}`); // Hide password
+    console.log('SSL settings:', JSON.stringify({
+      ssl: { rejectUnauthorized: false }
+    }));
+    
+    const client = await pool.connect();
+    try {
+      const res = await client.query('SELECT NOW() as connection_time');
+      console.timeEnd('DB Connect');
+      console.log(`PostgreSQL connected at ${res.rows[0].connection_time}`);
+      console.log('Database connection successful!');
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error('Error during initial PostgreSQL connection:', err.message);
+    console.error('Connection error details:', err);
+    console.timeEnd('DB Connect');
+    
+    // Attempt a second connection with different SSL settings for troubleshooting
+    try {
+      console.log('Attempting alternate connection configuration...');
+      const { Client } = pg;
+      const testClient = new Client({
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false }
+      });
+      
+      await testClient.connect();
+      console.log('Alternate connection successful!');
+      const result = await testClient.query('SELECT version()');
+      console.log('PostgreSQL version:', result.rows[0].version);
+      await testClient.end();
+    } catch (fallbackErr) {
+      console.error('Fallback connection also failed:', fallbackErr.message);
+    }
+  }
+})();
+
+// Health check function to verify database connectivity
+const checkDatabaseHealth = async () => {
   let client;
   try {
     client = await pool.connect();
-    console.timeEnd('DB Connect'); // Logs connection time
-    console.log('Connected to PostgreSQL successfully');
-    
-    // Test query to verify full connection functionality
-    const testResult = await client.query('SELECT NOW() as current_time');
-    console.log(`PostgreSQL time: ${testResult.rows[0].current_time}`);
-  } catch (error) {
-    console.error('Error connecting to PostgreSQL:', error.message);
-    // Don't exit - allow retries on subsequent requests
+    await client.query('SELECT 1');
+    return true;
+  } catch (err) {
+    console.error('Database health check failed:', err.message);
+    return false;
   } finally {
-    if (client) {
-      // Return client to pool for reuse
-      client.release();
-    }
+    if (client) client.release();
   }
-})().catch(err => console.error('Connection initialization error:', err));
+};
 
 // Quote model functions
 const quoteModel = {
+  // Database health check exposed to API
+  checkHealth: checkDatabaseHealth,
+  
   // Search quotes with pagination using PostgreSQL FTS
   async search({ searchTerm, searchPath, gameName, selectedValue, year, sortOrder, page = 1, limit = 10 }) {
     // Validate and sanitize inputs
@@ -179,24 +234,53 @@ const quoteModel = {
     const countParams = params.slice(0, paramIndex - 1); // Exclude LIMIT and OFFSET params
 
     try {
-      // Get a client from pool
-      const client = await pool.connect();
+      // Get a client with timeout to prevent hanging connections
+      const clientPromise = pool.connect();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Database connection timeout')), 5000)
+      );
+      
+      const client = await Promise.race([clientPromise, timeoutPromise])
+        .catch(err => {
+          if (err.message === 'Database connection timeout') {
+            throw new Error('Database connection timed out after 5s');
+          }
+          throw err;
+        });
       
       try {
         const startTime = Date.now();
         
-        // Execute main query
-        console.log("Executing Query:", query);
-        console.log("Parameters:", params);
-        const result = await client.query(query, params);
+        // Execute main query with timeout
+        const queryPromise = client.query(query, params);
+        const queryTimeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Query execution timeout')), 10000)
+        );
         
-        // Execute count query
-        console.log("Executing Count Query:", countQuery);
-        console.log("Count Parameters:", countParams);
-        const countResult = await client.query(countQuery, countParams);
+        const result = await Promise.race([queryPromise, queryTimeoutPromise])
+          .catch(err => {
+            if (err.message === 'Query execution timeout') {
+              throw new Error('Query timed out after 10s');
+            }
+            throw err;
+          });
+        
+        // Execute count query with timeout
+        const countPromise = client.query(countQuery, countParams);
+        const countTimeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Count query timeout')), 5000)
+        );
+        
+        const countResult = await Promise.race([countPromise, countTimeoutPromise])
+          .catch(err => {
+            if (err.message === 'Count query timeout') {
+              // Return empty count result instead of failing
+              return { rows: [{ total_videos: 0, total_quotes: 0 }] };
+            }
+            throw err;
+          });
         
         const queryTime = Date.now() - startTime;
-        console.log(`Query execution completed in ${queryTime}ms`);
         
         // Get both total videos and total quotes
         const totalVideos = parseInt(countResult.rows[0]?.total_videos || 0, 10);
@@ -204,18 +288,22 @@ const quoteModel = {
   
         return {
           data: result.rows,
-          total: totalVideos, // For pagination (number of videos)
-          totalQuotes: totalQuotes, // Total number of quotes matching the search
-          queryTime: queryTime // Return query execution time for diagnostics
+          total: totalVideos,
+          totalQuotes: totalQuotes,
+          queryTime: queryTime
         };
       } finally {
         // Always release the client back to the pool
         client.release();
       }
     } catch (error) {
-        console.error("Database Query Error:", error);
-        // Rethrow or handle the error appropriately for your application
-        throw new Error(`Failed to execute search query: ${error.message}`);
+      console.error("Database Query Error:", error);
+      // Provide a meaningful error without exposing details
+      if (error.message.includes('timeout')) {
+        throw new Error('Database query timed out. Please try again or with a more specific search.');
+      } else {
+        throw new Error('Database error occurred. Please try again later.');
+      }
     }
   },
 
