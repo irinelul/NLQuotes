@@ -18,7 +18,8 @@ const getAll = (searchTerm, page, strict, selectedValue, selectedMode, year, sor
     });
     return request.then(response => ({
         data: response.data.data,
-        total: response.data.total
+        total: response.data.total,
+        totalQuotes: response.data.totalQuotes || 0
     }));
 };
 

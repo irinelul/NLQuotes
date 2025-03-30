@@ -17,6 +17,8 @@
     "date-fns": "^4.1.0",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
+    "express-rate-limit": "^7.1.5",
+    "express-slow-down": "^2.0.1",
     "mongoose": "^8.7.1",
     "morgan": "^1.10.0",
     "nodemon": "^3.1.7",
