@@ -190,7 +190,7 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                     </thead>
                     <tbody>
                         {quotes.map((quoteGroup) => (
-                            <tr key={quoteGroup._id}>
+                            <tr key={quoteGroup.video_id || `quote-group-${Math.random()}`}>
                                 <td>{quoteGroup.quotes[0]?.title || 'N/A'}</td>
                                 <td>{quoteGroup.quotes[0]?.channel_source || 'N/A'}</td>
                                 <td>

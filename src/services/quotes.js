@@ -111,38 +111,17 @@ const getAll = async (searchTerm, page, strict, selectedValue, selectedMode, yea
             throw new Error('Search unavailable during database migration');
         }
         
-        // Special handling: Try both empty endpoint and /api endpoint
-        let response;
-        try {
-            // First, try the base endpoint (which would be "/" in production on Render)
-            response = await makeApiRequest('', 'get', {  
-                searchTerm: searchTerm || '', 
-                page: page || 1,   
-                strict: strict,
-                selectedValue: selectedValue || 'all',
-                selectedMode: selectedMode || 'searchText',
-                year: year || '',
-                sortOrder: sortOrder || 'default',
-                gameName: gameName || 'all'
-            });
-        } catch (error) {
-            console.log('First API attempt failed, trying alternate path...');
-            // If that fails, try /api explicitly
-            response = await axios.get('/api', { 
-                ...axiosConfig,
-                params: {  
-                    searchTerm: searchTerm || '', 
-                    page: page || 1,   
-                    strict: strict,
-                    selectedValue: selectedValue || 'all',
-                    selectedMode: selectedMode || 'searchText',
-                    year: year || '',
-                    sortOrder: sortOrder || 'default',
-                    gameName: gameName || 'all'
-                }
-            });
-            console.log('Alternate API path succeeded');
-        }
+        // Make the request directly to the /api endpoint
+        const response = await makeApiRequest('/api', 'get', {  
+            searchTerm: searchTerm || '', 
+            page: page || 1,   
+            strict: strict,
+            selectedValue: selectedValue || 'all',
+            selectedMode: selectedMode || 'searchText',
+            year: year || '',
+            sortOrder: sortOrder || 'default',
+            gameName: gameName || 'all'
+        });
         
         // If we get here, one of the attempts succeeded
         return {
