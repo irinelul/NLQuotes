@@ -333,9 +333,14 @@ const App = () => {
                         // Check if we got a valid response
                         if (response.ok) {
                             const data = await response.json();
-                            gamesData = data;
-                            console.log(`Successfully fetched games from ${path}`);
-                            break;
+                            if (data && data.games && Array.isArray(data.games)) {
+                                gamesData = data;
+                                console.log(`Successfully fetched games from ${path}`);
+                                break;
+                            } else {
+                                console.log(`Response from ${path} didn't contain valid games data`);
+                                failureMessages.push(`Invalid data from ${path}`);
+                            }
                         } else {
                             const errorMsg = `Failed to fetch games from ${path}: ${response.status}`;
                             console.log(errorMsg);

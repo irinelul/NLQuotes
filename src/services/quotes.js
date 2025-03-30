@@ -9,8 +9,8 @@ const isHttps = window.location.protocol === 'https:';
 
 // Define possible API path prefixes to try
 const pathPrefixes = [
+    '', // No prefix (direct routes) - TRY THIS FIRST on Render
     '/api', // Standard setup
-    '',     // No prefix (direct routes)
     '/app/api', // Potential subfolder configuration
 ];
 
@@ -19,7 +19,6 @@ const pathPrefixes = [
 const possibleBaseUrls = isOnRender ? [
     '', // Current domain (default)
     window.location.origin, // Explicit origin
-    window.location.origin.replace('https:', 'http:'), // Try HTTP if HTTPS fails
 ] : [''];
 
 // Configure Axios with settings to handle SSL issues
@@ -33,9 +32,9 @@ const axiosConfig = {
 
 // For Render.com, we may need to adjust SSL verification
 if (isOnRender) {
-    console.log('Running on Render.com, adjusting for potential SSL issues');
-    // Axios in browser doesn't have a direct way to disable SSL verification
-    // But we can try alternative approaches to work around SSL issues
+    console.log('Running on Render.com, adjusting API paths');
+    // Set the first path to try based on Render's routing
+    pathPrefixes.unshift('');
 }
 
 // Add a delay helper for migration mode
@@ -60,7 +59,9 @@ const makeApiRequest = async (endpoint, method = 'get', params = null, data = nu
         // Try each path prefix
         for (const prefix of pathPrefixes) {
             try {
-                const fullPath = `${baseUrl}${prefix}${endpoint}`;
+                // Build the full path. If endpoint doesn't start with /, add it
+                const pathSeparator = (endpoint && !endpoint.startsWith('/') && prefix !== '') ? '/' : '';
+                const fullPath = `${baseUrl}${prefix}${pathSeparator}${endpoint}`;
                 console.log(`Trying API request: ${method.toUpperCase()} ${fullPath}`);
                 
                 if (method === 'get') {
@@ -110,20 +111,43 @@ const getAll = async (searchTerm, page, strict, selectedValue, selectedMode, yea
             throw new Error('Search unavailable during database migration');
         }
         
-        const response = await makeApiRequest('', 'get', {  
-            searchTerm: searchTerm || '', 
-            page: page || 1,   
-            strict: strict,
-            selectedValue: selectedValue || 'all',
-            selectedMode: selectedMode || 'searchText',
-            year: year || '',
-            sortOrder: sortOrder || 'default',
-            gameName: gameName || 'all'
-        });
+        // Special handling: Try both empty endpoint and /api endpoint
+        let response;
+        try {
+            // First, try the base endpoint (which would be "/" in production on Render)
+            response = await makeApiRequest('', 'get', {  
+                searchTerm: searchTerm || '', 
+                page: page || 1,   
+                strict: strict,
+                selectedValue: selectedValue || 'all',
+                selectedMode: selectedMode || 'searchText',
+                year: year || '',
+                sortOrder: sortOrder || 'default',
+                gameName: gameName || 'all'
+            });
+        } catch (error) {
+            console.log('First API attempt failed, trying alternate path...');
+            // If that fails, try /api explicitly
+            response = await axios.get('/api', { 
+                ...axiosConfig,
+                params: {  
+                    searchTerm: searchTerm || '', 
+                    page: page || 1,   
+                    strict: strict,
+                    selectedValue: selectedValue || 'all',
+                    selectedMode: selectedMode || 'searchText',
+                    year: year || '',
+                    sortOrder: sortOrder || 'default',
+                    gameName: gameName || 'all'
+                }
+            });
+            console.log('Alternate API path succeeded');
+        }
         
+        // If we get here, one of the attempts succeeded
         return {
-            data: response.data.data,
-            total: response.data.total,
+            data: response.data.data || [],
+            total: response.data.total || 0,
             totalQuotes: response.data.totalQuotes || 0
         };
     } catch (error) {
