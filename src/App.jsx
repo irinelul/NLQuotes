@@ -305,11 +305,45 @@ const App = () => {
     useEffect(() => {
         const fetchGames = async () => {
             try {
-                const response = await fetch('/api/games');
-                const data = await response.json();
-                setGames(data.games);
+                // Try multiple path configurations to handle potential Render.com path issues
+                const pathsToTry = [
+                    '/api/games',
+                    '/games',
+                    '/app/api/games'
+                ];
+                
+                let gamesData = null;
+                
+                // Try each path until one works
+                for (const path of pathsToTry) {
+                    try {
+                        console.log(`Trying to fetch games from: ${path}`);
+                        const response = await fetch(path);
+                        
+                        // Check if we got a valid response
+                        if (response.ok) {
+                            const data = await response.json();
+                            gamesData = data;
+                            console.log(`Successfully fetched games from ${path}`);
+                            break;
+                        } else {
+                            console.log(`Failed to fetch games from ${path}: ${response.status}`);
+                        }
+                    } catch (pathError) {
+                        console.log(`Error fetching games from ${path}:`, pathError);
+                    }
+                }
+                
+                // If we got data from any of the paths, use it
+                if (gamesData && gamesData.games) {
+                    setGames(gamesData.games);
+                } else {
+                    throw new Error('Could not fetch games from any endpoint');
+                }
             } catch (error) {
                 console.error('Error fetching games:', error);
+                // Set empty array as fallback
+                setGames([]);
             }
         };
         fetchGames();

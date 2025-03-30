@@ -150,6 +150,16 @@ app.use((req, res, next) => {
   next();
 });
 
+// Add console logs at the start of the file to check routes loading
+console.log('Starting server with API routes:');
+console.log('- /api (main search endpoint)');
+console.log('- /api/db-status (database status endpoint)');
+console.log('- /api/random (random quotes endpoint)');
+console.log('- /api/games (games list endpoint)');
+console.log('- /api/flag (flagging endpoint)');
+console.log('- /health (health check endpoint)');
+console.log('- /stats (stats endpoint)');
+
 app.get('/api', async (req, res) => {
     // Input validation and sanitization
     const page = Math.max(1, parseInt(req.query.page) || 1); // Ensure page is at least 1
@@ -441,26 +451,43 @@ app.get('/health', async (req, res) => {
 
 // Database status endpoint - for monitoring in beta version
 app.get('/api/db-status', async (req, res) => {
-  console.log('Database status check requested');
+  console.log('⚠️ Database status check requested from: ' + req.ip);
+  console.log('👉 Request URL path: ' + req.path);
+  console.log('👉 Full request URL: ' + req.originalUrl);
+  console.log('👉 Request headers:', req.headers);
+  
   try {
+    console.log('🔍 Attempting to check database health...');
     const healthStatus = await quoteModel.checkHealth();
-    res.json({
+    console.log('✅ Database health check complete:', healthStatus.healthy ? 'HEALTHY' : 'UNHEALTHY');
+    
+    const response = {
       status: healthStatus.healthy ? 'connected' : 'error',
       message: healthStatus.healthy 
         ? `Connected to PostgreSQL (${healthStatus.responseTime} response time)` 
         : `Error connecting to PostgreSQL: ${healthStatus.error}`,
       details: healthStatus,
       timestamp: new Date().toISOString()
-    });
+    };
+    
+    console.log('📤 Sending DB status response:', response.status);
+    res.json(response);
   } catch (error) {
-    console.error('Error checking database status:', error);
+    console.error('❌ Error checking database status:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Failed to check database status',
+      message: 'Failed to check database status: ' + error.message,
       error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
       timestamp: new Date().toISOString()
     });
   }
+});
+
+// Add a test endpoint that's simpler to check if Express routing is working correctly
+app.get('/test', (req, res) => {
+  console.log('Test endpoint hit');
+  res.json({ status: 'ok', message: 'Test endpoint working' });
 });
 
 // Add a global error handler with connection error recovery
@@ -509,7 +536,24 @@ app.use(errorHandler);
 
 // Create server with optimized settings
 const server = app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📊 Try accessing /test to verify the server is working`);
+    console.log(`📊 Database status endpoint: /api/db-status`);
+    
+    // Log all registered routes for debugging
+    console.log('\n🛣️ Registered Routes:');
+    app._router.stack.forEach(middleware => {
+        if(middleware.route) { // routes registered directly on the app
+            console.log(`${middleware.route.stack[0].method.toUpperCase()} ${middleware.route.path}`);
+        } else if(middleware.name === 'router') { // router middleware
+            middleware.handle.stack.forEach(handler => {
+                if(handler.route) {
+                    const method = handler.route.stack[0].method.toUpperCase();
+                    console.log(`${method} ${middleware.regexp} -> ${handler.route.path}`);
+                }
+            });
+        }
+    });
 });
 
 // Configure server timeouts
