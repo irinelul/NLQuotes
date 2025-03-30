@@ -42,7 +42,7 @@ if (isOnRender) {
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Flag to indicate if we're in migration mode (will be set to true after failed attempts)
-let isMigrationMode = true; // Set to true by default during database migration
+let isMigrationMode = false; // Migration complete - set to false to enable searches
 
 // Helper to try API calls with different path prefixes and base URLs
 const makeApiRequest = async (endpoint, method = 'get', params = null, data = null) => {
@@ -99,7 +99,7 @@ const makeApiRequest = async (endpoint, method = 'get', params = null, data = nu
     console.log('Collected errors:', errors);
     isMigrationMode = true;
     
-    throw new Error('Database migration in progress. API temporarily unavailable.');
+    throw new Error('Connection error. API temporarily unavailable.');
 };
 
 const getAll = async (searchTerm, page, strict, selectedValue, selectedMode, year, sortOrder, gameName) => {
