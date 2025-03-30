@@ -979,6 +979,17 @@ button:disabled {
     line-height: 1.4;
 }
 
+.migration-complete {
+    border-left: 3px solid #4caf50;
+    background-color: rgba(76, 175, 80, 0.1);
+}
+
+/* Override the spin animation for the completed status */
+.migration-complete + .db-status .db-status-indicator,
+.db-status-indicator:contains('✅') {
+    animation: none;
+}
+
 .migration-details {
     margin-top: 0.75rem;
     padding-top: 0.75rem;
