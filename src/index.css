@@ -966,7 +966,54 @@ button:disabled {
 
 .db-status-indicator {
     font-size: 1.4rem;
-    animation: pulse-subtle 1.5s infinite;
+    animation: spin 2s infinite linear;
+}
+
+.migration-note {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background-color: rgba(0, 0, 0, 0.15);
+    border-radius: 6px;
+    font-size: 0.95rem;
+    border-left: 3px solid #ffeb3b;
+    line-height: 1.4;
+}
+
+.migration-details {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed rgba(255, 255, 255, 0.2);
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.ssl-note {
+    margin-top: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    background-color: rgba(255, 255, 0, 0.1);
+    border-radius: 4px;
+    font-size: 0.85rem;
+    border-left: 3px solid #ffeb3b;
+}
+
+.inline-link {
+    color: white;
+    text-decoration: underline;
+    font-weight: bold;
+    transition: color 0.2s;
+}
+
+.inline-link:hover {
+    color: #ffeb3b;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .db-status-message {

@@ -281,6 +281,15 @@ const Quotes = ({ quotes = [], searchTerm }) => {
     );
 };
 
+// Add a fallback function for when API calls fail during migration
+const useEmptyQuotesFallback = () => {
+    return {
+        data: [],
+        total: 0,
+        totalQuotes: 0
+    };
+};
+
 const App = () => {
     const [quotes, setQuotes] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -338,7 +347,9 @@ const App = () => {
                 if (gamesData && gamesData.games) {
                     setGames(gamesData.games);
                 } else {
-                    throw new Error('Could not fetch games from any endpoint');
+                    // During migration, use empty array as fallback without showing error
+                    console.log('Could not fetch games - using empty fallback during migration');
+                    setGames([]);
                 }
             } catch (error) {
                 console.error('Error fetching games:', error);
@@ -424,8 +435,12 @@ const App = () => {
             setTotalQuotes(response.quotes.length);
             await new Promise(resolve => setTimeout(resolve, 300));
         } catch (error) {
-            setError('Error fetching random quotes');
-            console.error('Error:', error);
+            console.error('Error fetching random quotes:', error);
+            // During migration, show a specific message about the database
+            setError('Database migration in progress. Random quotes feature is currently unavailable.');
+            setQuotes([]);
+            setTotalPages(0);
+            setTotalQuotes(0);
         } finally {
             setLoading(false);
         }
@@ -462,8 +477,12 @@ const App = () => {
                 setTotalQuotes(response.totalQuotes || 0);
                 await new Promise(resolve => setTimeout(resolve, 300));
             } catch (error) {
-                setError('Error fetching quotes');
-                console.error('Error:', error);
+                console.error('Error fetching quotes:', error);
+                // During migration, show a specific message about the database
+                setError('Database migration in progress. Some features may be unavailable.');
+                setQuotes([]);
+                setTotalPages(0);
+                setTotalQuotes(0);
             } finally {
                 setLoading(false);
             }
