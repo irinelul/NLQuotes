@@ -439,15 +439,21 @@ const App = () => {
         setError(null);
         setHasSearched(true);
         try {
+            console.log('Fetching random quotes...');
             const response = await query.getRandomQuotes();
+            console.log('Random quotes response:', response);
+            
+            if (!response || !response.quotes) {
+                throw new Error('Invalid response format from server');
+            }
+            
             setQuotes(response.quotes);
             setTotalPages(1);
             setPage(1);
             setTotalQuotes(response.quotes.length);
-            await new Promise(resolve => setTimeout(resolve, 300));
         } catch (error) {
             console.error('Error fetching random quotes:', error);
-            setError('Unable to connect to database. If you\'re seeing this on the deployed site, try the main site at nlquotes.com. Database connection works fine on local development.');
+            setError(error.message || 'Unable to fetch random quotes. Please try again later.');
             setQuotes([]);
             setTotalPages(0);
             setTotalQuotes(0);

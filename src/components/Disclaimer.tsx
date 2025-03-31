@@ -16,8 +16,25 @@ const Disclaimer: React.FC = () => {
           <div className="disclaimer-tip">
             <span>⚡</span>
             <div>
-              <strong>Exact Matches Only</strong>
-              <p>We search for exact matches, not similar-sounding words. Try using the exact things you remember from the video.</p>
+              <strong>Flexible vs. Exact Searching</strong>
+              <div className="disclaimer-examples">
+                <div className="disclaimer-example">
+                  <p style={{ color: 'var(--accent-color)', fontWeight: 'bold' }}>Flexible Search (Default):</p>
+                  <p>Just type your keywords and find matches anywhere in the text:</p>
+                  <div style={{ marginLeft: '1rem' }}>
+                    <p>🔍 Mahdi vacation → Finds: "Mahdi is on vacation", "vacation with Mahdi"</p>
+                    <p>🔍 egg pog → Finds: "egg pog moment", "pog egg", "egg pogging"</p>
+                  </div>
+                </div>
+                <div className="disclaimer-example">
+                  <p style={{ color: 'var(--accent-color)', fontWeight: 'bold' }}>Exact Phrase Search:</p>
+                  <p>Use double quotes for precise matches:</p>
+                  <div style={{ marginLeft: '1rem' }}>
+                    <p>🔍 "Mahdi vacation" → Only finds: "Mahdi vacation" (exact phrase)</p>
+                    <p>🔍 "egg pog" → Only finds: "egg pog" (exact phrase)</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 

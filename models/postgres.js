@@ -225,17 +225,16 @@ const quoteModel = {
     let whereClauses = []; // Start with an empty array for WHERE conditions
 
     // --- Search Term Conditions ---
-    // Define cleanSearchTerm at the function scope level so it's available for the count query
     let cleanSearchTerm = '';
     
     if (searchTerm && searchTerm.trim() !== '') {
       // Extra sanitization - remove any SQL injection patterns - REMOVED unnecessary replace()
       cleanSearchTerm = searchTerm.trim(); // <-- Apply trim to cleanSearchTerm
     
-      if (cleanSearchTerm.length >2 ) {
-        whereClauses.push(`q.fts_doc @@ phraseto_tsquery('simple', $${paramIndex})`);
-        query = query.replace('SELECT q.*', `SELECT ts_rank(q.fts_doc, phraseto_tsquery('simple', $${paramIndex})) as rank, q.*`);
-        params.push(cleanSearchTerm); // Use the trimmed term
+      if (cleanSearchTerm.length > 2) {
+        whereClauses.push(`q.fts_doc @@ websearch_to_tsquery('simple', $${paramIndex})`);
+        query = query.replace('SELECT q.*', `SELECT ts_rank(q.fts_doc, websearch_to_tsquery('simple', $${paramIndex})) as rank, q.*`);
+        params.push(cleanSearchTerm);
         paramIndex += 1;
       }
     }
@@ -333,7 +332,7 @@ const quoteModel = {
         FROM (
           SELECT q.video_id, COUNT(*) AS quote_count
           FROM quotes q
-          CROSS JOIN phraseto_tsquery('simple', $1) AS query
+          CROSS JOIN websearch_to_tsquery('simple', $1) AS query
           WHERE q.fts_text_simple @@ query
       `;
       
@@ -477,34 +476,12 @@ const quoteModel = {
 
   // Get random quotes (using TABLESAMPLE SYSTEM for better performance on large tables)
   async getRandom() {
-    // TABLESAMPLE SYSTEM provides a block-level sample, much faster than ORDER BY RANDOM() on full table.
-    // The percentage (e.g., 1) determines how many blocks are read. Adjust as needed.
-    // We then randomly order the small sample.
-     const query = `
-      WITH sampled_quotes AS (
-        SELECT * FROM quotes TABLESAMPLE SYSTEM (1) -- Sample approx 1% of table blocks
-      ),
-      random_video_ids AS (
-        SELECT DISTINCT video_id
-        FROM sampled_quotes
-        ORDER BY RANDOM()
-        LIMIT 5 -- Limit to 5 random videos from the sample
-      )
-      SELECT q.video_id, q.title, q.upload_date, q.channel_source,
-             json_agg(json_build_object(
-               'text', q.text,
-               'line_number', q.line_number,
-               'timestamp_start', q.timestamp_start,
-               'title', q.title,
-               'upload_date', q.upload_date,
-               'channel_source', q.channel_source
-             ) ORDER BY q.line_number::int) AS quotes
-      FROM quotes q
-      JOIN random_video_ids rvi ON q.video_id = rvi.video_id
-      GROUP BY q.video_id, q.title, q.upload_date, q.channel_source
-      ORDER BY RANDOM() -- Optional: Randomize the order of the 5 selected videos
-      LIMIT 5;
-    `;
+    const query = `
+        SELECT
+        video_id, title, upload_date, channel_source, text, line_number, timestamp_start
+        FROM quotes
+        TABLESAMPLE BERNOULLI (0.01) 
+        LIMIT 10;`;
 
     let client;
     try {
@@ -512,7 +489,27 @@ const quoteModel = {
       const startTime = Date.now();
       const result = await client.query(query);
       console.log(`Random quotes query completed in ${Date.now() - startTime}ms`);
-      return result.rows;
+      
+      if (!result.rows || result.rows.length === 0) {
+        console.warn('No random quotes found in the database');
+        return [];
+      }
+      
+      // Transform the result to match the expected format
+      return result.rows.map(row => ({
+        video_id: row.video_id,
+        title: row.title,
+        upload_date: row.upload_date,
+        channel_source: row.channel_source,
+        quotes: [{
+          text: row.text,
+          line_number: row.line_number,
+          timestamp_start: row.timestamp_start,
+          title: row.title,
+          upload_date: row.upload_date,
+          channel_source: row.channel_source
+        }]
+      }));
     } catch (error) {
       console.error("Error fetching random quotes:", error);
       throw new Error(`Failed to fetch random quotes: ${error.message}`);
