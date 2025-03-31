@@ -168,16 +168,24 @@ const flagQuote = async (quoteData) => {
 
 const getRandomQuotes = async () => {
     try {
-        if (isMigrationMode) {
-            await delay(500);
-            throw new Error('Random quotes unavailable during database migration');
-        }
+
         
-        const response = await makeApiRequest('/random', 'get');
+        // Use the correct API endpoint path
+        const response = await makeApiRequest('/api/random', 'get');
+        if (!response.data || !response.data.quotes) {
+            throw new Error('Invalid response format from random quotes endpoint');
+        }
         return response.data;
     } catch (error) {
         console.error('Error fetching random quotes:', error);
-        throw error;
+        // Add more specific error handling
+        if (error.message.includes('Network Error')) {
+            throw new Error('Network connection failed. Please check your internet connection.');
+        } else if (error.message.includes('timeout')) {
+            throw new Error('Request timed out. Please try again.');
+        } else {
+            throw new Error('Unable to fetch random quotes. Please try again later.');
+        }
     }
 };
 

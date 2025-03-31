@@ -169,7 +169,7 @@ app.get('/api', async (req, res) => {
     let searchTerm = '';
     if (req.query.searchTerm) {
         // Basic sanitization - Remove SQL injection characters
-        searchTerm = req.query.searchTerm.replace(/['";=\-\(\)\{\}\[\]\\\/]/g, ' ').trim();
+        searchTerm = req.query.searchTerm.replace(/[;=\-\(\)\{\}\[\]\\\/]/g, ' ').trim();
     }
     
     // Validate and sanitize selectedValue
