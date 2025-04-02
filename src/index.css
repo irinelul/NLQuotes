@@ -26,7 +26,7 @@ body {
 
 #root {
     box-sizing: border-box;
-    max-width: 1200px;
+    max-width: 3000px;
     height: 100vh;
     width: 100%;
     margin: 0 auto;
@@ -185,9 +185,9 @@ button:disabled {
 
 .quotes-table {
     width: 98%;
-    max-width: 1800px;
+    max-width: 2700px;
     border-collapse: collapse;
-    margin: 1rem 0;
+    margin: 1rem auto;
     background-color: var(--surface-color);
     border-radius: 8px;
     overflow: hidden;

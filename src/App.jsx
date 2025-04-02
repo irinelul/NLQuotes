@@ -380,10 +380,10 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                 <table className="quotes-table">
                     <thead>
                         <tr>
-                            <th>{showEmbeddedVideos ? 'Video' : 'Title'}</th>
-                            <th>Channel</th>
-                            <th>Upload Date</th>
-                            <th>Quotes with Timestamps</th>
+                            <th style={{ width: '480px' }}>{showEmbeddedVideos ? 'Video' : 'Title'}</th>
+                            <th style={{ width: '120px' }}>Channel</th>
+                            <th style={{ width: '180px' }}>Upload Date</th>
+                            <th style={{ width: 'calc(100% - 780px)' }}>Quotes with Timestamps</th>
                         </tr>
                     </thead>
                     <tbody>
