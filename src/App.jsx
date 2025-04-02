@@ -440,15 +440,21 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                     verticalAlign: 'middle',
                                     height: '100%',
                                     padding: 0,
-                                    maxHeight: quoteGroup.quotes?.length > 3 ? '500px' : 'none'
+                                    maxHeight: quoteGroup.quotes?.length > 3 ? '500px' : 'none',
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    overflow: quoteGroup.quotes?.length > 3 ? 'auto' : 'hidden'
                                 }}>
                                     <div style={{ 
                                         height: '100%',
                                         maxHeight: quoteGroup.quotes?.length > 3 ? '500px' : 'none',
-                                        overflowY: quoteGroup.quotes?.length > 3 ? 'auto' : 'visible',
+                                        overflowY: quoteGroup.quotes?.length > 3 ? 'auto' : 'hidden',
                                         padding: '0.5rem 0',
                                         display: 'flex',
-                                        flexDirection: 'column'
+                                        flexDirection: 'column',
+                                        width: '100%',
+                                        justifyContent: quoteGroup.quotes?.length > 3 ? 'flex-start' : 'center'
                                     }}>
                                         {quoteGroup.quotes?.map((quote, index) => (
                                             <div key={index} style={{ 
