@@ -452,13 +452,13 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                 }}>
                                     <div style={{ 
                                         width: '100%',
+                                        height: quoteGroup.quotes?.length > 6 ? '500px' : 'auto',
                                         overflowY: quoteGroup.quotes?.length > 6 ? 'auto' : 'hidden',
                                         padding: '0.5rem 0',
                                         display: 'flex',
                                         flexDirection: 'column',
                                         justifyContent: quoteGroup.quotes?.length > 6 ? 'flex-start' : 'center',
-                                        alignItems: 'flex-start',
-                                        minHeight: '100%'
+                                        alignItems: 'flex-start'
                                     }}>
                                         {quoteGroup.quotes?.map((quote, index) => (
                                             <div key={index} style={{ 
