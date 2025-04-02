@@ -10,8 +10,7 @@ import { ensureApiReady, registerPlayer, unregisterPlayer, pauseOtherPlayers } f
 
 const URL = 'https://www.youtube.com/watch?v=';
 
-// Remove the global players array since we're using the registry in youtubeApiLoader
-// let players = [];
+// Using the player registry from youtubeApiLoader for managing multiple players
 
 // Simpler approach with minimal DOM manipulation
 const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
@@ -19,37 +18,68 @@ const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
     const [error, setError] = useState(null);
     const [currentTimestamp, setCurrentTimestamp] = useState(timestamp);
     const iframeRef = React.useRef(null);
+    const playerRef = React.useRef(null);
     
-    // Auto-play when timestamp is provided
+    // Initialize YouTube player when iframe is loaded
+    useEffect(() => {
+        if (isPlaying && iframeRef.current) {
+            ensureApiReady().then(() => {
+                const player = new window.YT.Player(iframeRef.current, {
+                    videoId,
+                    playerVars: {
+                        autoplay: 1,
+                        start: Math.max(1, Math.floor(currentTimestamp) - 1),
+                        enablejsapi: 1,
+                        origin: window.location.origin
+                    },
+                    events: {
+                        onReady: (event) => {
+                            playerRef.current = event.target;
+                            registerPlayer(event.target);
+                            event.target.playVideo();
+                            pauseOtherPlayers(event.target);
+                        },
+                        onStateChange: (event) => {
+                            if (event.data === window.YT.PlayerState.PLAYING) {
+                                pauseOtherPlayers(event.target);
+                            }
+                        },
+                        onError: () => {
+                            setError('Failed to load video');
+                            setIsPlaying(false);
+                        }
+                    }
+                });
+            }).catch(err => {
+                console.error('Error initializing YouTube player:', err);
+                setError('Failed to initialize video player');
+                setIsPlaying(false);
+            });
+        }
+
+        return () => {
+            if (playerRef.current) {
+                unregisterPlayer(playerRef.current);
+                playerRef.current = null;
+            }
+        };
+    }, [isPlaying, videoId]);
+
+    // Handle timestamp changes
     useEffect(() => {
         if (timestamp && !isPlaying) {
-            // Immediately start playing when a timestamp is set
             setCurrentTimestamp(timestamp);
             setIsPlaying(true);
             console.log(`Auto-playing video ${videoId} at timestamp ${timestamp}`);
-        } else if (timestamp !== currentTimestamp) {
+        } else if (timestamp !== currentTimestamp && playerRef.current) {
             setCurrentTimestamp(timestamp);
-            
-            // If video is already playing, use postMessage to seek to new timestamp
-            if (isPlaying && iframeRef.current) {
-                try {
-                    // Calculate seconds value for the timestamp
-                    const seconds = Math.max(1, Math.floor(timestamp) - 1);
-                    
-                    // Use YouTube Player API via postMessage
-                    iframeRef.current.contentWindow.postMessage(
-                        JSON.stringify({
-                            event: 'command',
-                            func: 'seekTo',
-                            args: [seconds, true]
-                        }), 
-                        '*'
-                    );
-                    
-                    console.log(`Seeking to timestamp: ${seconds}s in video ${videoId}`);
-                } catch (err) {
-                    console.error('Error seeking to timestamp:', err);
-                }
+            const seconds = Math.max(1, Math.floor(timestamp) - 1);
+            try {
+                playerRef.current.seekTo(seconds, true);
+                playerRef.current.playVideo();
+                console.log(`Seeking to timestamp: ${seconds}s in video ${videoId}`);
+            } catch (err) {
+                console.error('Error seeking to timestamp:', err);
             }
         }
     }, [timestamp, videoId, isPlaying, currentTimestamp]);
@@ -67,12 +97,7 @@ const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
         setIsPlaying(false);
     };
 
-    // Generate the iframe src URL with the YouTube player API enabled
-    const getIframeSrc = () => {
-        const seconds = Math.max(1, Math.floor(currentTimestamp) - 1);
-        // Add enablejsapi=1 to allow postMessage communication
-        return `https://www.youtube.com/embed/${videoId}?autoplay=1&start=${seconds}&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
-    };
+    // We don't need getIframeSrc anymore as we're using the YouTube Player API directly
 
     // Error display
     if (error) {
@@ -188,21 +213,14 @@ const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
             }}
             data-video-id={videoId}
         >
-            <iframe
+            <div
                 ref={iframeRef}
-                src={getIframeSrc()}
-                width="100%"
-                height="100%"
-                frameBorder="0"
-                allowFullScreen
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                onError={handleIframeError}
                 style={{
                     width: '100%',
                     height: '100%',
                     border: 'none'
                 }}
-            ></iframe>
+            ></div>
         </div>
     );
 };
