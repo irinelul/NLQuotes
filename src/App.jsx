@@ -730,10 +730,6 @@ const App = () => {
                 Made with passion by a fan • Generously supported by The Librarian
             </div>
 
-            <div className="footer-message">
-                Made with passion by a fan • Generously supported by The Librarian
-            </div>
-
             <button 
                 className="feedback-button"
                 onClick={() => setFeedbackModalOpen(true)}
