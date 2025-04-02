@@ -9,11 +9,17 @@ import BetaDisclaimer from './components/BetaDisclaimer';
 
 const URL = 'https://www.youtube.com/watch?v=';
 
+// Add global players array to track all YouTube players
+let players = [];
+
 const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
     const playerRef = React.useRef(null);
     const containerRef = React.useRef(null);
     const [isApiLoaded, setIsApiLoaded] = useState(false);
     const [error, setError] = useState(null);
+
+    // Add ref to track if this player is currently playing
+    const isPlayingRef = React.useRef(false);
 
     React.useEffect(() => {
         // Check if API is already loaded
@@ -38,6 +44,8 @@ const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
             if (playerRef.current) {
                 try {
                     playerRef.current.destroy();
+                    // Remove this player from the global players array
+                    players = players.filter(p => p !== playerRef.current);
                 } catch (e) {
                     console.log('Error destroying player:', e);
                 }
@@ -75,6 +83,27 @@ const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
                     'onReady': (event) => {
                         // Store the player instance
                         playerRef.current = event.target;
+                        // Add this player to the global players array
+                        players.push(playerRef.current);
+                    },
+                    'onStateChange': (event) => {
+                        // When video starts playing
+                        if (event.data === window.YT.PlayerState.PLAYING) {
+                            isPlayingRef.current = true;
+                            // Pause all other players
+                            players.forEach(player => {
+                                if (player !== playerRef.current && player.pauseVideo) {
+                                    try {
+                                        player.pauseVideo();
+                                    } catch (e) {
+                                        console.log('Error pausing other player:', e);
+                                    }
+                                }
+                            });
+                        } else if (event.data === window.YT.PlayerState.PAUSED || 
+                                 event.data === window.YT.PlayerState.ENDED) {
+                            isPlayingRef.current = false;
+                        }
                     },
                     'onError': (event) => {
                         console.error('YouTube Player Error:', event.data);
@@ -91,6 +120,8 @@ const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
             if (playerRef.current) {
                 try {
                     playerRef.current.destroy();
+                    // Remove this player from the global players array
+                    players = players.filter(p => p !== playerRef.current);
                 } catch (e) {
                     console.log('Error destroying player:', e);
                 }
@@ -111,11 +142,21 @@ const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
         if (playerRef.current && timestamp) {
             try {
                 playerRef.current.seekTo(timestamp - 1);
+                // Pause all other players when seeking to a new timestamp
+                players.forEach(player => {
+                    if (player !== playerRef.current && player.pauseVideo) {
+                        try {
+                            player.pauseVideo();
+                        } catch (e) {
+                            console.log('Error pausing other player:', e);
+                        }
+                    }
+                });
             } catch (error) {
                 console.error('Error seeking to timestamp:', error);
             }
         }
-    }, [timestamp]);
+    }, [timestamp, videoId]);
 
     if (error) {
         return (
