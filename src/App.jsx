@@ -390,7 +390,7 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                         {quotes.map((quoteGroup) => (
                             <tr key={quoteGroup.video_id || `quote-group-${Math.random()}`} style={{
                                 borderBottom: '2px solid var(--border-color)',
-                                height: quoteGroup.quotes?.length > 3 ? '500px' : 'auto',
+                                height: quoteGroup.quotes?.length > 6 ? '500px' : 'auto',
                                 padding: '1rem 0'
                             }}>
                                 <td style={{ 
@@ -447,20 +447,18 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                     verticalAlign: 'middle',
                                     height: '100%',
                                     padding: '1rem',
-                                    maxHeight: quoteGroup.quotes?.length > 3 ? '500px' : 'none',
-                                    display: 'flex',
-                                    justifyContent: 'center',
-                                    alignItems: 'center',
+                                    maxHeight: quoteGroup.quotes?.length > 6 ? '500px' : 'none',
                                     overflow: 'hidden'
                                 }}>
                                     <div style={{ 
-                                        height: '100%',
                                         width: '100%',
-                                        overflowY: quoteGroup.quotes?.length > 3 ? 'auto' : 'hidden',
+                                        overflowY: quoteGroup.quotes?.length > 6 ? 'auto' : 'hidden',
                                         padding: '0.5rem 0',
                                         display: 'flex',
                                         flexDirection: 'column',
-                                        justifyContent: quoteGroup.quotes?.length > 3 ? 'flex-start' : 'center'
+                                        justifyContent: quoteGroup.quotes?.length > 6 ? 'flex-start' : 'center',
+                                        alignItems: 'flex-start',
+                                        minHeight: '100%'
                                     }}>
                                         {quoteGroup.quotes?.map((quote, index) => (
                                             <div key={index} style={{ 
@@ -471,7 +469,8 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                                 padding: '0.75rem 0',
                                                 borderBottom: index < quoteGroup.quotes.length - 1 ? '1px solid var(--border-color)' : 'none',
                                                 borderColor: 'var(--border-color)',
-                                                flexShrink: 0
+                                                flexShrink: 0,
+                                                width: '100%'
                                             }}>
                                                 <button
                                                     onClick={() => handleTimestampClick(quoteGroup.video_id, Math.floor(quote.timestamp_start))}

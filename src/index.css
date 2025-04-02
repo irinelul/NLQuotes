@@ -198,7 +198,7 @@ button:disabled {
     background-color: var(--surface-color);
     color: var(--text-primary);
     padding: 1rem;
-    text-align: left;
+    text-align: center;
     font-weight: 600;
     border-bottom: 2px solid var(--border-color);
 }
