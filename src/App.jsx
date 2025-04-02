@@ -11,6 +11,7 @@ const URL = 'https://www.youtube.com/watch?v=';
 
 const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
     const playerRef = React.useRef(null);
+    const containerRef = React.useRef(null);
     const [isApiLoaded, setIsApiLoaded] = useState(false);
     const [error, setError] = useState(null);
 
@@ -35,16 +36,27 @@ const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
         return () => {
             // Cleanup
             if (playerRef.current) {
-                playerRef.current.destroy();
+                try {
+                    playerRef.current.destroy();
+                } catch (e) {
+                    console.log('Error destroying player:', e);
+                }
             }
             delete window.onYouTubeIframeAPIReady;
         };
     }, []);
 
     React.useEffect(() => {
-        if (!isApiLoaded || !videoId) return;
+        if (!isApiLoaded || !videoId || !containerRef.current) return;
 
         try {
+            // Create a new container div if it doesn't exist
+            if (!document.getElementById(`youtube-player-${videoId}`)) {
+                const container = document.createElement('div');
+                container.id = `youtube-player-${videoId}`;
+                containerRef.current.appendChild(container);
+            }
+
             playerRef.current = new window.YT.Player(`youtube-player-${videoId}`, {
                 height: '270',
                 width: '480',
@@ -77,7 +89,20 @@ const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
 
         return () => {
             if (playerRef.current) {
-                playerRef.current.destroy();
+                try {
+                    playerRef.current.destroy();
+                } catch (e) {
+                    console.log('Error destroying player:', e);
+                }
+            }
+            // Clean up the container div
+            const container = document.getElementById(`youtube-player-${videoId}`);
+            if (container && container.parentNode) {
+                try {
+                    container.parentNode.removeChild(container);
+                } catch (e) {
+                    console.log('Error removing container:', e);
+                }
             }
         };
     }, [videoId, isApiLoaded]);
@@ -127,7 +152,7 @@ const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
     }
 
     return (
-        <div id={`youtube-player-${videoId}`} style={{ margin: '0 auto' }}></div>
+        <div ref={containerRef} style={{ margin: '0 auto' }}></div>
     );
 };
 
@@ -364,7 +389,11 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                     <tbody>
                         {quotes.map((quoteGroup) => (
                             <tr key={quoteGroup.video_id || `quote-group-${Math.random()}`}>
-                                <td>
+                                <td style={{ 
+                                    padding: 0,
+                                    verticalAlign: 'middle',
+                                    height: '100%'
+                                }}>
                                     {showEmbeddedVideos ? (
                                         <YouTubePlayer 
                                             videoId={quoteGroup.video_id}
@@ -379,8 +408,15 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                             style={{ 
                                                 color: '#4A90E2',
                                                 textDecoration: 'none',
-                                                display: 'block',
-                                                padding: '0.5rem 0'
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                padding: '0.5rem 0',
+                                                width: '100%',
+                                                height: '100%',
+                                                position: 'relative',
+                                                top: 0,
+                                                left: 0
                                             }}
                                             onClick={(e) => {
                                                 e.preventDefault();
