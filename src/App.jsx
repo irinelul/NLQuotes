@@ -13,150 +13,166 @@ const URL = 'https://www.youtube.com/watch?v=';
 let players = [];
 
 const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
-    const playerRef = React.useRef(null);
-    const containerRef = React.useRef(null);
-    const [isApiLoaded, setIsApiLoaded] = useState(false);
+    const [isPlaying, setIsPlaying] = useState(false);
     const [error, setError] = useState(null);
+    const containerRef = React.useRef(null);
+    const playerRef = React.useRef(null);
+    const [isApiLoaded, setIsApiLoaded] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
 
-    // Add ref to track if this player is currently playing
-    const isPlayingRef = React.useRef(false);
-
-    React.useEffect(() => {
-        // Check if API is already loaded
-        if (window.YT && window.YT.Player) {
-            setIsApiLoaded(true);
-            return;
-        }
-
-        // Load the YouTube IFrame Player API code asynchronously
-        const tag = document.createElement('script');
-        tag.src = 'https://www.youtube.com/iframe_api';
-        const firstScriptTag = document.getElementsByTagName('script')[0];
-        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-
-        // Create YouTube player when API is ready
-        window.onYouTubeIframeAPIReady = () => {
-            setIsApiLoaded(true);
-        };
-
-        return () => {
-            // Cleanup
-            if (playerRef.current) {
-                try {
-                    playerRef.current.destroy();
-                    // Remove this player from the global players array
-                    players = players.filter(p => p !== playerRef.current);
-                } catch (e) {
-                    console.log('Error destroying player:', e);
-                }
-            }
-            delete window.onYouTubeIframeAPIReady;
-        };
-    }, []);
-
-    React.useEffect(() => {
-        if (!isApiLoaded || !videoId || !containerRef.current) return;
-
-        try {
-            // Create a new container div if it doesn't exist
-            if (!document.getElementById(`youtube-player-${videoId}`)) {
-                const container = document.createElement('div');
-                container.id = `youtube-player-${videoId}`;
-                containerRef.current.appendChild(container);
+    // Function to load the YouTube API
+    const loadYouTubeAPI = () => {
+        return new Promise((resolve) => {
+            if (window.YT && window.YT.Player) {
+                setIsApiLoaded(true);
+                resolve();
+                return;
             }
 
-            playerRef.current = new window.YT.Player(`youtube-player-${videoId}`, {
-                height: '270',
-                width: '480',
-                videoId: videoId,
-                playerVars: {
-                    'autoplay': 0,
-                    'controls': 1,
-                    'disablekb': 0,
-                    'enablejsapi': 1,
-                    'fs': 0,
-                    'rel': 0,
-                    'showinfo': 0,
-                    'modestbranding': 1
-                },
-                events: {
-                    'onReady': (event) => {
-                        // Store the player instance
-                        playerRef.current = event.target;
-                        // Add this player to the global players array
-                        players.push(playerRef.current);
-                    },
-                    'onStateChange': (event) => {
-                        // When video starts playing
-                        if (event.data === window.YT.PlayerState.PLAYING) {
-                            isPlayingRef.current = true;
-                            // Pause all other players
-                            players.forEach(player => {
-                                if (player !== playerRef.current && player.pauseVideo) {
-                                    try {
-                                        player.pauseVideo();
-                                    } catch (e) {
-                                        console.log('Error pausing other player:', e);
-                                    }
-                                }
-                            });
-                        } else if (event.data === window.YT.PlayerState.PAUSED || 
-                                 event.data === window.YT.PlayerState.ENDED) {
-                            isPlayingRef.current = false;
-                        }
-                    },
-                    'onError': (event) => {
-                        console.error('YouTube Player Error:', event.data);
-                        setError('Failed to load video. Please try refreshing the page.');
+            if (!window.onYouTubeIframeAPIReady) {
+                window.onYouTubeIframeAPIReady = () => {
+                    setIsApiLoaded(true);
+                    resolve();
+                };
+                const script = document.createElement('script');
+                script.src = 'https://www.youtube.com/iframe_api';
+                document.body.appendChild(script);
+            } else {
+                // If API is already loading, wait for it
+                const checkYT = setInterval(() => {
+                    if (window.YT && window.YT.Player) {
+                        clearInterval(checkYT);
+                        setIsApiLoaded(true);
+                        resolve();
                     }
-                }
-            });
-        } catch (error) {
-            console.error('Error creating YouTube player:', error);
-            setError('Failed to initialize video player. Please try refreshing the page.');
+                }, 100);
+            }
+        });
+    };
+
+    // Cleanup function
+    const cleanup = () => {
+        if (playerRef.current) {
+            try {
+                playerRef.current.destroy();
+                players = players.filter(p => p !== playerRef.current);
+            } catch (e) {
+                console.log('Error destroying player:', e);
+            }
         }
+    };
 
-        return () => {
-            if (playerRef.current) {
-                try {
-                    playerRef.current.destroy();
-                    // Remove this player from the global players array
-                    players = players.filter(p => p !== playerRef.current);
-                } catch (e) {
-                    console.log('Error destroying player:', e);
-                }
-            }
-            // Clean up the container div
-            const container = document.getElementById(`youtube-player-${videoId}`);
-            if (container && container.parentNode) {
-                try {
-                    container.parentNode.removeChild(container);
-                } catch (e) {
-                    console.log('Error removing container:', e);
-                }
-            }
-        };
-    }, [videoId, isApiLoaded]);
-
+    // Initialize YouTube API when timestamp is clicked
     React.useEffect(() => {
-        if (playerRef.current && timestamp) {
+        if (timestamp) {
+            const initializePlayer = async () => {
+                try {
+                    setIsLoading(true);
+                    await loadYouTubeAPI();
+                    
+                    // Wait for container to be available
+                    const waitForContainer = () => {
+                        return new Promise((resolve) => {
+                            if (containerRef.current) {
+                                resolve(containerRef.current);
+                                return;
+                            }
+
+                            const checkInterval = setInterval(() => {
+                                if (containerRef.current) {
+                                    clearInterval(checkInterval);
+                                    resolve(containerRef.current);
+                                }
+                            }, 100);
+
+                            // Timeout after 2 seconds
+                            setTimeout(() => {
+                                clearInterval(checkInterval);
+                                resolve(null);
+                            }, 2000);
+                        });
+                    };
+
+                    const container = await waitForContainer();
+                    
+                    if (!container) {
+                        throw new Error('Container not found after waiting');
+                    }
+
+                    // Create new player
+                    playerRef.current = new window.YT.Player(container, {
+                        height: '270',
+                        width: '480',
+                        videoId: videoId,
+                        playerVars: {
+                            'autoplay': 1,
+                            'controls': 1,
+                            'disablekb': 0,
+                            'enablejsapi': 1,
+                            'fs': 0,
+                            'rel': 0,
+                            'showinfo': 0,
+                            'modestbranding': 1
+                        },
+                        events: {
+                            'onReady': (event) => {
+                                console.log('Player ready:', event.target);
+                                playerRef.current = event.target;
+                                players.push(playerRef.current);
+                                if (timestamp) {
+                                    playerRef.current.seekTo(timestamp - 1);
+                                }
+                                setIsLoading(false);
+                                setIsPlaying(true);
+                            },
+                            'onStateChange': (event) => {
+                                if (event.data === window.YT.PlayerState.PLAYING) {
+                                    setIsPlaying(true);
+                                    // Pause all other players
+                                    players.forEach(player => {
+                                        if (player !== playerRef.current && player.pauseVideo) {
+                                            try {
+                                                player.pauseVideo();
+                                            } catch (e) {
+                                                console.log('Error pausing other player:', e);
+                                            }
+                                        }
+                                    });
+                                } else if (event.data === window.YT.PlayerState.PAUSED || 
+                                         event.data === window.YT.PlayerState.ENDED) {
+                                    setIsPlaying(false);
+                                }
+                            },
+                            'onError': (event) => {
+                                console.error('YouTube Player Error:', event.data);
+                                setError('Failed to load video. Please try refreshing the page.');
+                                setIsLoading(false);
+                            }
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error initializing player:', error);
+                    setError('Failed to initialize video player. Please try refreshing the page.');
+                    setIsLoading(false);
+                }
+            };
+
+            initializePlayer();
+
+            return cleanup;
+        }
+    }, [timestamp, videoId]);
+
+    // Handle timestamp changes
+    React.useEffect(() => {
+        if (playerRef.current && timestamp && isPlaying) {
             try {
                 playerRef.current.seekTo(timestamp - 1);
-                // Pause all other players when seeking to a new timestamp
-                players.forEach(player => {
-                    if (player !== playerRef.current && player.pauseVideo) {
-                        try {
-                            player.pauseVideo();
-                        } catch (e) {
-                            console.log('Error pausing other player:', e);
-                        }
-                    }
-                });
             } catch (error) {
                 console.error('Error seeking to timestamp:', error);
             }
         }
-    }, [timestamp, videoId]);
+    }, [timestamp, isPlaying]);
 
     if (error) {
         return (
@@ -176,7 +192,7 @@ const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
         );
     }
 
-    if (!isApiLoaded) {
+    if (isLoading) {
         return (
             <div style={{ 
                 width: '480px', 
@@ -192,8 +208,47 @@ const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
         );
     }
 
+    if (!isPlaying) {
+        return (
+            <div 
+                ref={containerRef}
+                style={{ 
+                    width: '480px', 
+                    height: '270px', 
+                    position: 'relative',
+                    backgroundColor: 'var(--surface-color)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                }}
+            >
+                <img 
+                    src={`https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`}
+                    alt="Video thumbnail"
+                    loading="lazy"
+                    style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                    }}
+                    onError={(e) => {
+                        e.target.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                    }}
+                />
+            </div>
+        );
+    }
+
     return (
-        <div ref={containerRef} style={{ margin: '0 auto' }}></div>
+        <div 
+            ref={containerRef}
+            style={{ 
+                width: '480px', 
+                height: '270px', 
+                margin: '0 auto',
+                backgroundColor: 'var(--surface-color)'
+            }}
+        />
     );
 };
 
