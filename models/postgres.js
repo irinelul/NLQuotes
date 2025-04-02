@@ -212,7 +212,7 @@ const quoteModel = {
     let query = `
       SELECT q.video_id, q.title, q.upload_date, q.channel_source,
              json_agg(json_build_object(
-               'text', q.text,
+               'text', ts_headline('simple', q.text, websearch_to_tsquery('simple', $1)),
                'line_number', q.line_number,
                'timestamp_start', q.timestamp_start,
                'title', q.title,          -- Keep for context within quote object

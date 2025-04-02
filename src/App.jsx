@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import Disclaimer from './components/Disclaimer';
 import SearchableDropdown from './components/SearchableDropdown';
 import BetaDisclaimer from './components/BetaDisclaimer';
+import DOMPurify from 'dompurify';
 
 const URL = 'https://www.youtube.com/watch?v=';
 
@@ -47,6 +48,13 @@ const FlagModal = ({ isOpen, onClose, onSubmit, quote }) => {
         </div>
     );
 };
+
+const backdateTimestamp = (timestamp) => {
+    return Math.max(0, Math.floor(timestamp) - 1);
+}
+
+// `b` is returned from ts_headline when a match is found
+const ALLOWED_TAGS = ['b'];
 
 const FeedbackModal = ({ isOpen, onClose, onSubmit }) => {
     const [feedback, setFeedback] = useState('');
@@ -205,7 +213,7 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                 </td>
                                 <td>
                                     {quoteGroup.quotes?.map((quote, index) => (
-                                        <div key={index} style={{ 
+                                        <div className="quote-item" key={index} style={{ 
                                             display: 'flex', 
                                             alignItems: 'center', 
                                             gap: '0.75rem',
@@ -213,14 +221,19 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                             padding: '0.75rem 0',
                                             borderBottom: index < quoteGroup.quotes.length - 1 ? '1px solid var(--border-color)' : 'none'
                                         }}>
-                                            <a
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                href={`${URL}${quoteGroup.video_id}&t=${Math.floor(quote.timestamp_start) - 1}`}
-                                                style={{ flex: 1 }}
-                                            >
-                                                {quote.text} (Timestamp: {formatTimestamp(Math.floor(quote.timestamp_start) - 1)})
-                                            </a>
+                                            <div>
+                                              <a
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  href={`${URL}${quoteGroup.video_id}&t=${backdateTimestamp(quote.timestamp_start)}`}
+                                                  style={{ flex: 1, marginRight: '0.3rem' }}
+                                                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(quote.text, { ALLOWED_TAGS }) }}
+                                              >
+                                              </a>
+                                              <span>
+                                                ({formatTimestamp(backdateTimestamp(quote.timestamp_start))})
+                                              </span>
+                                            </div>
                                             <button
                                                 onClick={() => handleFlagClick(
                                                     quote.text,
@@ -234,6 +247,7 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                                     backgroundColor: 'transparent',
                                                     color: 'var(--accent-color)',
                                                     border: 'none',
+                                                    marginLeft: 'auto',
                                                     padding: '0.5rem',
                                                     cursor: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 'not-allowed' : 'pointer',
                                                     opacity: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 0.6 : 1,
