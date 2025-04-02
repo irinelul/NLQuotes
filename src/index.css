@@ -17,7 +17,7 @@ body {
     min-height: 100vh;
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     color: var(--text-primary);
     background-color: var(--background-color);
@@ -25,7 +25,9 @@ body {
 }
 
 #root {
+    box-sizing: border-box;
     max-width: 1200px;
+    height: 100vh;
     width: 100%;
     margin: 0 auto;
     padding: 2rem;
@@ -294,7 +296,7 @@ button:disabled {
     padding: 2rem 0;
     font-size: 0.95rem;
     font-style: italic;
-    margin-top: 2rem;
+    margin-top: auto;
     letter-spacing: 0.3px;
 }
 
