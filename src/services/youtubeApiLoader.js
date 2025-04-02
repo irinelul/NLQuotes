@@ -87,12 +87,24 @@ export function unregisterPlayer(player) {
 
 export function pauseOtherPlayers(currentPlayer) {
   playerRegistry.forEach(player => {
-    if (player !== currentPlayer && player.pauseVideo) {
+    if (player !== currentPlayer && player.stopVideo) {
       try {
-        player.pauseVideo();
+        player.stopVideo();
+        // Get the container element
+        const iframe = player.getIframe();
+        if (iframe) {
+          const container = iframe.parentElement;
+          if (container && container.__reactProps$) {
+            // Access the React props and call setState
+            const setIsPlaying = container.__reactProps$.children.props.setIsPlaying;
+            if (typeof setIsPlaying === 'function') {
+              setIsPlaying(false);
+            }
+          }
+        }
       } catch (e) {
-        console.log('Error pausing other player:', e);
+        console.log('Error stopping player:', e);
       }
     }
   });
-} 
+}
