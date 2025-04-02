@@ -9,6 +9,128 @@ import BetaDisclaimer from './components/BetaDisclaimer';
 
 const URL = 'https://www.youtube.com/watch?v=';
 
+const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
+    const playerRef = React.useRef(null);
+    const [isApiLoaded, setIsApiLoaded] = useState(false);
+    const [error, setError] = useState(null);
+
+    React.useEffect(() => {
+        // Check if API is already loaded
+        if (window.YT && window.YT.Player) {
+            setIsApiLoaded(true);
+            return;
+        }
+
+        // Load the YouTube IFrame Player API code asynchronously
+        const tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        const firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+        // Create YouTube player when API is ready
+        window.onYouTubeIframeAPIReady = () => {
+            setIsApiLoaded(true);
+        };
+
+        return () => {
+            // Cleanup
+            if (playerRef.current) {
+                playerRef.current.destroy();
+            }
+            delete window.onYouTubeIframeAPIReady;
+        };
+    }, []);
+
+    React.useEffect(() => {
+        if (!isApiLoaded || !videoId) return;
+
+        try {
+            playerRef.current = new window.YT.Player(`youtube-player-${videoId}`, {
+                height: '270',
+                width: '480',
+                videoId: videoId,
+                playerVars: {
+                    'autoplay': 0,
+                    'controls': 1,
+                    'disablekb': 0,
+                    'enablejsapi': 1,
+                    'fs': 0,
+                    'rel': 0,
+                    'showinfo': 0,
+                    'modestbranding': 1
+                },
+                events: {
+                    'onReady': (event) => {
+                        // Store the player instance
+                        playerRef.current = event.target;
+                    },
+                    'onError': (event) => {
+                        console.error('YouTube Player Error:', event.data);
+                        setError('Failed to load video. Please try refreshing the page.');
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Error creating YouTube player:', error);
+            setError('Failed to initialize video player. Please try refreshing the page.');
+        }
+
+        return () => {
+            if (playerRef.current) {
+                playerRef.current.destroy();
+            }
+        };
+    }, [videoId, isApiLoaded]);
+
+    React.useEffect(() => {
+        if (playerRef.current && timestamp) {
+            try {
+                playerRef.current.seekTo(timestamp - 1);
+            } catch (error) {
+                console.error('Error seeking to timestamp:', error);
+            }
+        }
+    }, [timestamp]);
+
+    if (error) {
+        return (
+            <div style={{ 
+                width: '480px', 
+                height: '270px', 
+                backgroundColor: 'var(--surface-color)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--text-secondary)',
+                textAlign: 'center',
+                padding: '1rem'
+            }}>
+                {error}
+            </div>
+        );
+    }
+
+    if (!isApiLoaded) {
+        return (
+            <div style={{ 
+                width: '480px', 
+                height: '270px', 
+                backgroundColor: 'var(--surface-color)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--text-secondary)'
+            }}>
+                Loading video player...
+            </div>
+        );
+    }
+
+    return (
+        <div id={`youtube-player-${videoId}`} style={{ margin: '0 auto' }}></div>
+    );
+};
+
 const FlagModal = ({ isOpen, onClose, onSubmit, quote }) => {
     const [reason, setReason] = useState('');
 
@@ -141,6 +263,21 @@ const Quotes = ({ quotes = [], searchTerm }) => {
         channel: null,
         timestamp: null
     });
+    const [activeTimestamp, setActiveTimestamp] = useState({ videoId: null, timestamp: null });
+    const [showEmbeddedVideos, setShowEmbeddedVideos] = useState(() => {
+        // Initialize from localStorage, default to false if not set
+        const saved = localStorage.getItem('preferEmbeddedVideos');
+        return saved ? JSON.parse(saved) : false;
+    });
+
+    // Update localStorage when preference changes
+    useEffect(() => {
+        localStorage.setItem('preferEmbeddedVideos', JSON.stringify(showEmbeddedVideos));
+    }, [showEmbeddedVideos]);
+
+    const handleTimestampClick = (videoId, timestamp) => {
+        setActiveTimestamp({ videoId, timestamp });
+    };
 
     const handleFlagClick = (quote, videoId, title, channel, timestamp) => {
         setModalState({
@@ -177,13 +314,49 @@ const Quotes = ({ quotes = [], searchTerm }) => {
 
     return (
         <div>
+            <div style={{ 
+                display: 'flex', 
+                justifyContent: 'flex-end', 
+                marginBottom: '1rem',
+                gap: '0.5rem',
+                alignItems: 'center'
+            }}>
+                <span style={{ color: 'var(--text-secondary)' }}>View:</span>
+                <button
+                    onClick={() => setShowEmbeddedVideos(false)}
+                    style={{
+                        padding: '0.5rem 1rem',
+                        backgroundColor: showEmbeddedVideos ? 'var(--surface-color)' : 'var(--accent-color)',
+                        color: showEmbeddedVideos ? 'var(--text-primary)' : 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                    }}
+                >
+                    Titles
+                </button>
+                <button
+                    onClick={() => setShowEmbeddedVideos(true)}
+                    style={{
+                        padding: '0.5rem 1rem',
+                        backgroundColor: showEmbeddedVideos ? 'var(--accent-color)' : 'var(--surface-color)',
+                        color: showEmbeddedVideos ? 'white' : 'var(--text-primary)',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                    }}
+                >
+                    Videos
+                </button>
+            </div>
             {quotes.length > 0 ? (
                 <table className="quotes-table">
                     <thead>
                         <tr>
-                            <th>Title</th>
+                            <th>{showEmbeddedVideos ? 'Video' : 'Title'}</th>
                             <th>Channel</th>
-                            <th>Video URL</th>
                             <th>Upload Date</th>
                             <th>Quotes with Timestamps</th>
                         </tr>
@@ -191,13 +364,34 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                     <tbody>
                         {quotes.map((quoteGroup) => (
                             <tr key={quoteGroup.video_id || `quote-group-${Math.random()}`}>
-                                <td>{quoteGroup.quotes[0]?.title || 'N/A'}</td>
-                                <td>{quoteGroup.quotes[0]?.channel_source || 'N/A'}</td>
                                 <td>
-                                    <a target="_blank" rel="noopener noreferrer" href={`${URL}${quoteGroup.video_id}`}>
-                                        Video Link
-                                    </a>
+                                    {showEmbeddedVideos ? (
+                                        <YouTubePlayer 
+                                            videoId={quoteGroup.video_id}
+                                            timestamp={activeTimestamp.videoId === quoteGroup.video_id ? activeTimestamp.timestamp : null}
+                                            onTimestampClick={handleTimestampClick}
+                                        />
+                                    ) : (
+                                        <a 
+                                            href={`${URL}${quoteGroup.video_id}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style={{ 
+                                                color: '#4A90E2',
+                                                textDecoration: 'none',
+                                                display: 'block',
+                                                padding: '0.5rem 0'
+                                            }}
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                window.open(`${URL}${quoteGroup.video_id}`, '_blank');
+                                            }}
+                                        >
+                                            {quoteGroup.quotes[0]?.title || 'Untitled Video'}
+                                        </a>
+                                    )}
                                 </td>
+                                <td>{quoteGroup.quotes[0]?.channel_source || 'N/A'}</td>
                                 <td>
                                     {quoteGroup.quotes[0]?.upload_date
                                         ? formatDate(quoteGroup.quotes[0].upload_date)
@@ -211,16 +405,24 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                             gap: '0.75rem',
                                             marginBottom: '0.75rem',
                                             padding: '0.75rem 0',
-                                            borderBottom: index < quoteGroup.quotes.length - 1 ? '1px solid var(--border-color)' : 'none'
+                                            borderBottom: index < quoteGroup.quotes.length - 1 ? '1px solid var(--border-color)' : 'none',
+                                            borderColor: 'var(--border-color)'
                                         }}>
-                                            <a
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                href={`${URL}${quoteGroup.video_id}&t=${Math.floor(quote.timestamp_start) - 1}`}
-                                                style={{ flex: 1 }}
+                                            <button
+                                                onClick={() => handleTimestampClick(quoteGroup.video_id, Math.floor(quote.timestamp_start))}
+                                                style={{ 
+                                                    flex: 1,
+                                                    textAlign: 'left',
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    color: '#4A90E2',
+                                                    cursor: 'pointer',
+                                                    padding: 0,
+                                                    font: 'inherit'
+                                                }}
                                             >
                                                 {quote.text} (Timestamp: {formatTimestamp(Math.floor(quote.timestamp_start) - 1)})
-                                            </a>
+                                            </button>
                                             <button
                                                 onClick={() => handleFlagClick(
                                                     quote.text,
