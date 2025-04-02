@@ -6,174 +6,75 @@ import { format } from 'date-fns';
 import Disclaimer from './components/Disclaimer';
 import SearchableDropdown from './components/SearchableDropdown';
 import BetaDisclaimer from './components/BetaDisclaimer';
+import { ensureApiReady, registerPlayer, unregisterPlayer, pauseOtherPlayers } from './services/youtubeApiLoader';
 
 const URL = 'https://www.youtube.com/watch?v=';
 
-// Add global players array to track all YouTube players
-let players = [];
+// Remove the global players array since we're using the registry in youtubeApiLoader
+// let players = [];
 
+// Simpler approach with minimal DOM manipulation
 const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [error, setError] = useState(null);
-    const containerRef = React.useRef(null);
-    const playerRef = React.useRef(null);
-    const [isApiLoaded, setIsApiLoaded] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-
-    // Function to load the YouTube API
-    const loadYouTubeAPI = () => {
-        return new Promise((resolve) => {
-            if (window.YT && window.YT.Player) {
-                setIsApiLoaded(true);
-                resolve();
-                return;
-            }
-
-            if (!window.onYouTubeIframeAPIReady) {
-                window.onYouTubeIframeAPIReady = () => {
-                    setIsApiLoaded(true);
-                    resolve();
-                };
-                const script = document.createElement('script');
-                script.src = 'https://www.youtube.com/iframe_api';
-                document.body.appendChild(script);
-            } else {
-                // If API is already loading, wait for it
-                const checkYT = setInterval(() => {
-                    if (window.YT && window.YT.Player) {
-                        clearInterval(checkYT);
-                        setIsApiLoaded(true);
-                        resolve();
-                    }
-                }, 100);
-            }
-        });
-    };
-
-    // Cleanup function
-    const cleanup = () => {
-        if (playerRef.current) {
-            try {
-                playerRef.current.destroy();
-                players = players.filter(p => p !== playerRef.current);
-            } catch (e) {
-                console.log('Error destroying player:', e);
-            }
-        }
-    };
-
-    // Initialize YouTube API when timestamp is clicked
-    React.useEffect(() => {
-        if (timestamp) {
-            const initializePlayer = async () => {
+    const [currentTimestamp, setCurrentTimestamp] = useState(timestamp);
+    const iframeRef = React.useRef(null);
+    
+    // Auto-play when timestamp is provided
+    useEffect(() => {
+        if (timestamp && !isPlaying) {
+            // Immediately start playing when a timestamp is set
+            setCurrentTimestamp(timestamp);
+            setIsPlaying(true);
+            console.log(`Auto-playing video ${videoId} at timestamp ${timestamp}`);
+        } else if (timestamp !== currentTimestamp) {
+            setCurrentTimestamp(timestamp);
+            
+            // If video is already playing, use postMessage to seek to new timestamp
+            if (isPlaying && iframeRef.current) {
                 try {
-                    setIsLoading(true);
-                    await loadYouTubeAPI();
+                    // Calculate seconds value for the timestamp
+                    const seconds = Math.max(1, Math.floor(timestamp) - 1);
                     
-                    // Wait for container to be available
-                    const waitForContainer = () => {
-                        return new Promise((resolve) => {
-                            if (containerRef.current) {
-                                resolve(containerRef.current);
-                                return;
-                            }
-
-                            const checkInterval = setInterval(() => {
-                                if (containerRef.current) {
-                                    clearInterval(checkInterval);
-                                    resolve(containerRef.current);
-                                }
-                            }, 100);
-
-                            // Timeout after 2 seconds
-                            setTimeout(() => {
-                                clearInterval(checkInterval);
-                                resolve(null);
-                            }, 2000);
-                        });
-                    };
-
-                    const container = await waitForContainer();
+                    // Use YouTube Player API via postMessage
+                    iframeRef.current.contentWindow.postMessage(
+                        JSON.stringify({
+                            event: 'command',
+                            func: 'seekTo',
+                            args: [seconds, true]
+                        }), 
+                        '*'
+                    );
                     
-                    if (!container) {
-                        throw new Error('Container not found after waiting');
-                    }
-
-                    // Create new player
-                    playerRef.current = new window.YT.Player(container, {
-                        height: '270',
-                        width: '480',
-                        videoId: videoId,
-                        playerVars: {
-                            'autoplay': 1,
-                            'controls': 1,
-                            'disablekb': 0,
-                            'enablejsapi': 1,
-                            'fs': 0,
-                            'rel': 0,
-                            'showinfo': 0,
-                            'modestbranding': 1
-                        },
-                        events: {
-                            'onReady': (event) => {
-                                console.log('Player ready:', event.target);
-                                playerRef.current = event.target;
-                                players.push(playerRef.current);
-                                if (timestamp) {
-                                    playerRef.current.seekTo(timestamp - 1);
-                                }
-                                setIsLoading(false);
-                                setIsPlaying(true);
-                            },
-                            'onStateChange': (event) => {
-                                if (event.data === window.YT.PlayerState.PLAYING) {
-                                    setIsPlaying(true);
-                                    // Pause all other players
-                                    players.forEach(player => {
-                                        if (player !== playerRef.current && player.pauseVideo) {
-                                            try {
-                                                player.pauseVideo();
-                                            } catch (e) {
-                                                console.log('Error pausing other player:', e);
-                                            }
-                                        }
-                                    });
-                                } else if (event.data === window.YT.PlayerState.PAUSED || 
-                                         event.data === window.YT.PlayerState.ENDED) {
-                                    setIsPlaying(false);
-                                }
-                            },
-                            'onError': (event) => {
-                                console.error('YouTube Player Error:', event.data);
-                                setError('Failed to load video. Please try refreshing the page.');
-                                setIsLoading(false);
-                            }
-                        }
-                    });
-                } catch (error) {
-                    console.error('Error initializing player:', error);
-                    setError('Failed to initialize video player. Please try refreshing the page.');
-                    setIsLoading(false);
+                    console.log(`Seeking to timestamp: ${seconds}s in video ${videoId}`);
+                } catch (err) {
+                    console.error('Error seeking to timestamp:', err);
                 }
-            };
-
-            initializePlayer();
-
-            return cleanup;
-        }
-    }, [timestamp, videoId]);
-
-    // Handle timestamp changes
-    React.useEffect(() => {
-        if (playerRef.current && timestamp && isPlaying) {
-            try {
-                playerRef.current.seekTo(timestamp - 1);
-            } catch (error) {
-                console.error('Error seeking to timestamp:', error);
             }
         }
-    }, [timestamp, isPlaying]);
+    }, [timestamp, videoId, isPlaying, currentTimestamp]);
+    
+    // Handle play button click - load video with iframe
+    const handlePlayClick = () => {
+        console.log(`Play button clicked for ${videoId}`);
+        setCurrentTimestamp(timestamp || 0);
+        setIsPlaying(true);
+    };
+    
+    // Handle errors with iframe loading
+    const handleIframeError = () => {
+        setError('Failed to load video');
+        setIsPlaying(false);
+    };
 
+    // Generate the iframe src URL with the YouTube player API enabled
+    const getIframeSrc = () => {
+        const seconds = Math.max(1, Math.floor(currentTimestamp) - 1);
+        // Add enablejsapi=1 to allow postMessage communication
+        return `https://www.youtube.com/embed/${videoId}?autoplay=1&start=${seconds}&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
+    };
+
+    // Error display
     if (error) {
         return (
             <div style={{ 
@@ -184,42 +85,41 @@ const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: 'var(--text-secondary)',
-                textAlign: 'center',
+                flexDirection: 'column',
+                gap: '10px',
                 padding: '1rem'
             }}>
-                {error}
+                <div>{error}</div>
+                <button 
+                    onClick={() => {
+                        setError(null);
+                        handlePlayClick();
+                    }}
+                    style={{
+                        padding: '5px 10px',
+                        background: 'var(--accent-color)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                    }}
+                >
+                    Retry
+                </button>
             </div>
         );
     }
 
-    if (isLoading) {
-        return (
-            <div style={{ 
-                width: '480px', 
-                height: '270px', 
-                backgroundColor: 'var(--surface-color)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--text-secondary)'
-            }}>
-                Loading video player...
-            </div>
-        );
-    }
-
+    // Video thumbnail (when not playing)
     if (!isPlaying) {
         return (
-            <div 
-                ref={containerRef}
+            <div
                 style={{ 
                     width: '480px', 
                     height: '270px', 
                     position: 'relative',
                     backgroundColor: 'var(--surface-color)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
+                    overflow: 'hidden'
                 }}
             >
                 <img 
@@ -235,20 +135,75 @@ const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
                         e.target.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
                     }}
                 />
+                <div
+                    style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        backgroundColor: 'rgba(0,0,0,0.2)'
+                    }}
+                    onClick={handlePlayClick}
+                >
+                    <div
+                        style={{
+                            width: '60px',
+                            height: '60px',
+                            borderRadius: '50%',
+                            backgroundColor: 'rgba(255,0,0,0.8)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}
+                    >
+                        <div
+                            style={{
+                                width: '0',
+                                height: '0',
+                                borderTop: '15px solid transparent',
+                                borderBottom: '15px solid transparent',
+                                borderLeft: '24px solid white',
+                                marginLeft: '5px'
+                            }}
+                        />
+                    </div>
+                </div>
             </div>
         );
     }
 
+    // Direct iframe embed - most reliable approach
     return (
-        <div 
-            ref={containerRef}
+        <div
             style={{ 
                 width: '480px', 
-                height: '270px', 
-                margin: '0 auto',
-                backgroundColor: 'var(--surface-color)'
+                height: '270px',
+                backgroundColor: 'var(--surface-color)',
+                overflow: 'hidden'
             }}
-        />
+            data-video-id={videoId}
+        >
+            <iframe
+                ref={iframeRef}
+                src={getIframeSrc()}
+                width="100%"
+                height="100%"
+                frameBorder="0"
+                allowFullScreen
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                onError={handleIframeError}
+                style={{
+                    width: '100%',
+                    height: '100%',
+                    border: 'none'
+                }}
+            ></iframe>
+        </div>
     );
 };
 
@@ -424,7 +379,20 @@ const Quotes = ({ quotes = [], searchTerm }) => {
     };
 
     const handleTimestampClick = (videoId, timestamp) => {
+        // Always set the active timestamp which will trigger video loading
         setActiveTimestamp({ videoId, timestamp });
+        
+        // If not in embedded videos mode, switch to it when a timestamp is clicked
+        if (!showEmbeddedVideos) {
+            setShowEmbeddedVideos(true);
+            setIsViewSwitching(true);
+            
+            // Short delay to ensure the view switch completes
+            setTimeout(() => {
+                setIsViewSwitching(false);
+                setActiveTimestamp({ videoId, timestamp });
+            }, 100);
+        }
     };
 
     const handleFlagClick = (quote, videoId, title, channel, timestamp) => {
