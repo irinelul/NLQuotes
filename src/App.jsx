@@ -595,7 +595,14 @@ const App = () => {
                 for (const path of pathsToTry) {
                     try {
                         console.log(`Trying to fetch games from: ${path}`);
-                        const response = await fetch(path);
+                        const response = await fetch(path, {
+                            cache: 'no-store', // Disable caching
+                            headers: {
+                                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                                'Pragma': 'no-cache',
+                                'Expires': '0'
+                            }
+                        });
                         
                         // Check if we got a valid response
                         if (response.ok) {
