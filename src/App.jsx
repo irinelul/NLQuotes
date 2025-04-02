@@ -544,7 +544,8 @@ const App = () => {
             flexDirection: 'column', 
             alignItems: 'center', 
             marginTop: '2rem',
-            width: '100%'
+            width: '100%',
+            height: '100%',
         }}>
             <div className="logo-container" onClick={() => {
                 setSearchTerm('');
