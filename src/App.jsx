@@ -390,10 +390,11 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                         {quotes.map((quoteGroup) => (
                             <tr key={quoteGroup.video_id || `quote-group-${Math.random()}`} style={{
                                 borderBottom: '2px solid var(--border-color)',
-                                height: quoteGroup.quotes?.length > 3 ? '500px' : 'auto'
+                                height: quoteGroup.quotes?.length > 3 ? '500px' : 'auto',
+                                padding: '1rem 0'
                             }}>
                                 <td style={{ 
-                                    padding: 0,
+                                    padding: '1rem',
                                     verticalAlign: 'middle',
                                     height: '100%'
                                 }}>
@@ -430,8 +431,14 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                         </a>
                                     )}
                                 </td>
-                                <td style={{ verticalAlign: 'middle' }}>{quoteGroup.quotes[0]?.channel_source || 'N/A'}</td>
-                                <td style={{ verticalAlign: 'middle' }}>
+                                <td style={{ 
+                                    verticalAlign: 'middle',
+                                    padding: '1rem'
+                                }}>{quoteGroup.quotes[0]?.channel_source || 'N/A'}</td>
+                                <td style={{ 
+                                    verticalAlign: 'middle',
+                                    padding: '1rem'
+                                }}>
                                     {quoteGroup.quotes[0]?.upload_date
                                         ? formatDate(quoteGroup.quotes[0].upload_date)
                                         : 'N/A'}
@@ -439,21 +446,20 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                 <td style={{ 
                                     verticalAlign: 'middle',
                                     height: '100%',
-                                    padding: 0,
+                                    padding: '1rem',
                                     maxHeight: quoteGroup.quotes?.length > 3 ? '500px' : 'none',
                                     display: 'flex',
                                     justifyContent: 'center',
                                     alignItems: 'center',
-                                    overflow: quoteGroup.quotes?.length > 3 ? 'auto' : 'hidden'
+                                    overflow: 'hidden'
                                 }}>
                                     <div style={{ 
                                         height: '100%',
-                                        maxHeight: quoteGroup.quotes?.length > 3 ? '500px' : 'none',
+                                        width: '100%',
                                         overflowY: quoteGroup.quotes?.length > 3 ? 'auto' : 'hidden',
                                         padding: '0.5rem 0',
                                         display: 'flex',
                                         flexDirection: 'column',
-                                        width: '100%',
                                         justifyContent: quoteGroup.quotes?.length > 3 ? 'flex-start' : 'center'
                                     }}>
                                         {quoteGroup.quotes?.map((quote, index) => (
