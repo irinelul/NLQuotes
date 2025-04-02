@@ -335,11 +335,37 @@ const Quotes = ({ quotes = [], searchTerm }) => {
         const saved = localStorage.getItem('preferEmbeddedVideos');
         return saved ? JSON.parse(saved) : false;
     });
+    const [isViewSwitching, setIsViewSwitching] = useState(false);
+    const [retryCount, setRetryCount] = useState(0);
 
     // Update localStorage when preference changes
     useEffect(() => {
         localStorage.setItem('preferEmbeddedVideos', JSON.stringify(showEmbeddedVideos));
     }, [showEmbeddedVideos]);
+
+    // Effect to handle video loading retry
+    useEffect(() => {
+        if (showEmbeddedVideos && retryCount < 1) {
+            const timer = setTimeout(() => {
+                setRetryCount(prev => prev + 1);
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [showEmbeddedVideos, retryCount]);
+
+    const handleViewChange = (showVideos) => {
+        if (showVideos) {
+            // When switching to videos view, change immediately and set up retry
+            setShowEmbeddedVideos(true);
+            setIsViewSwitching(true);
+            setRetryCount(0);
+        } else {
+            // When switching to titles view, do it immediately
+            setShowEmbeddedVideos(false);
+            setIsViewSwitching(false);
+            setRetryCount(0);
+        }
+    };
 
     const handleTimestampClick = (videoId, timestamp) => {
         setActiveTimestamp({ videoId, timestamp });
@@ -389,7 +415,7 @@ const Quotes = ({ quotes = [], searchTerm }) => {
             }}>
                 <span style={{ color: 'var(--text-secondary)' }}>View:</span>
                 <button
-                    onClick={() => setShowEmbeddedVideos(false)}
+                    onClick={() => handleViewChange(false)}
                     style={{
                         padding: '0.5rem 1rem',
                         backgroundColor: showEmbeddedVideos ? 'var(--surface-color)' : 'var(--accent-color)',
@@ -403,18 +429,19 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                     Titles
                 </button>
                 <button
-                    onClick={() => setShowEmbeddedVideos(true)}
+                    onClick={() => handleViewChange(true)}
                     style={{
                         padding: '0.5rem 1rem',
                         backgroundColor: showEmbeddedVideos ? 'var(--accent-color)' : 'var(--surface-color)',
                         color: showEmbeddedVideos ? 'white' : 'var(--text-primary)',
                         border: 'none',
                         borderRadius: '4px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
+                        cursor: isViewSwitching ? 'wait' : 'pointer',
+                        transition: 'all 0.2s ease',
+                        opacity: isViewSwitching ? 0.7 : 1
                     }}
                 >
-                    Videos
+                    {isViewSwitching ? 'Loading...' : 'Videos'}
                 </button>
             </div>
             {quotes.length > 0 ? (
@@ -441,6 +468,7 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                 }}>
                                     {showEmbeddedVideos ? (
                                         <YouTubePlayer 
+                                            key={`${quoteGroup.video_id}-${retryCount}`}
                                             videoId={quoteGroup.video_id}
                                             timestamp={activeTimestamp.videoId === quoteGroup.video_id ? activeTimestamp.timestamp : null}
                                             onTimestampClick={handleTimestampClick}
