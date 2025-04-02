@@ -348,6 +348,7 @@ const Quotes = ({ quotes = [], searchTerm }) => {
         if (showEmbeddedVideos && retryCount < 1) {
             const timer = setTimeout(() => {
                 setRetryCount(prev => prev + 1);
+                setIsViewSwitching(false); // Reset the loading state after retry
             }, 500);
             return () => clearTimeout(timer);
         }
