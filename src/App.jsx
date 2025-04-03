@@ -603,7 +603,7 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                 alignItems: 'flex-start'
                             }}>
                                 {quoteGroup.quotes?.map((quote, index) => (
-                                    <div key={index} style={{
+                                    <div className="quote-item" key={index} style={{
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: '0.75rem',
@@ -649,7 +649,7 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                                 backgroundColor: 'transparent',
                                                 color: 'var(--accent-color)',
                                                 border: 'none',
-                                                marginLeft: 'auto', // Keep from origin/main
+                                                marginLeft: 'auto', // Keep from origin/main-3apr2025
                                                 padding: '0.5rem',
                                                 cursor: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 'not-allowed' : 'pointer',
                                                 opacity: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 0.6 : 1,
