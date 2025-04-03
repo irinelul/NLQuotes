@@ -71,18 +71,22 @@ const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
             setCurrentTimestamp(timestamp);
             setIsPlaying(true);
             console.log(`Auto-playing video ${videoId} at timestamp ${timestamp}`);
-        } else if (timestamp !== currentTimestamp && playerRef.current) {
+        } else if (timestamp && playerRef.current) {
             setCurrentTimestamp(timestamp);
             const seconds = Math.max(1, Math.floor(timestamp) - 1);
             try {
-                playerRef.current.seekTo(seconds, true);
-                playerRef.current.playVideo();
-                console.log(`Seeking to timestamp: ${seconds}s in video ${videoId}`);
+                // Always reload the video when timestamp changes
+                playerRef.current.loadVideoById({
+                    videoId: videoId,
+                    startSeconds: seconds
+                });
+                pauseOtherPlayers(playerRef.current);
+                console.log(`Loading video ${videoId} at timestamp ${seconds}`);
             } catch (err) {
-                console.error('Error seeking to timestamp:', err);
+                console.error('Error loading video:', err);
             }
         }
-    }, [timestamp, videoId, isPlaying, currentTimestamp]);
+    }, [timestamp, videoId, isPlaying]);
     
     // Handle play button click - load video with iframe
     const handlePlayClick = () => {
