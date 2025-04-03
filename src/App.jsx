@@ -454,10 +454,9 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                 <table className="quotes-table">
                     <thead>
                         <tr>
-                            <th style={{ width: '480px' }}>Video</th>
-                            <th style={{ width: '120px' }}>Channel</th>
-                            <th style={{ width: '180px' }}>Upload Date</th>
-                            <th style={{ width: 'calc(100% - 780px)' }}>Quotes with Timestamps</th>
+                            <th style={{ width: '480px', textAlign: 'center' }}>Video</th>
+                            <th style={{ width: '200px', textAlign: 'center' }}>Channel & Date</th>
+                            <th style={{ width: 'calc(100% - 680px)', textAlign: 'center' }}>Quotes with Timestamps</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -470,7 +469,8 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                 <td style={{ 
                                     padding: '1rem',
                                     verticalAlign: 'middle',
-                                    height: '100%'
+                                    height: '100%',
+                                    textAlign: 'center'
                                 }}>
                                     <YouTubePlayer 
                                         key={`${quoteGroup.video_id}-${retryCount}`}
@@ -481,22 +481,23 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                 </td>
                                 <td style={{ 
                                     verticalAlign: 'middle',
-                                    padding: '1rem'
-                                }}>{quoteGroup.quotes[0]?.channel_source || 'N/A'}</td>
-                                <td style={{ 
-                                    verticalAlign: 'middle',
-                                    padding: '1rem'
+                                    padding: '1rem',
+                                    textAlign: 'center'
                                 }}>
-                                    {quoteGroup.quotes[0]?.upload_date
-                                        ? formatDate(quoteGroup.quotes[0].upload_date)
-                                        : 'N/A'}
+                                    <div>{quoteGroup.quotes[0]?.channel_source || 'N/A'}</div>
+                                    <div style={{ marginTop: '0.5rem' }}>
+                                        {quoteGroup.quotes[0]?.upload_date
+                                            ? formatDate(quoteGroup.quotes[0].upload_date)
+                                            : 'N/A'}
+                                    </div>
                                 </td>
                                 <td style={{
                                     verticalAlign: 'middle',
                                     height: '100%',
                                     padding: '1rem',
                                     maxHeight: quoteGroup.quotes?.length > 6 ? '500px' : 'none',
-                                    overflow: 'hidden'
+                                    overflow: 'hidden',
+                                    textAlign: 'center'
                                 }}>
                                     <div style={{
                                         width: '100%',
