@@ -389,7 +389,7 @@ const Quotes = ({ quotes = [], searchTerm }) => {
         timestamp: null
     });
     const [activeTimestamp, setActiveTimestamp] = useState({ videoId: null, timestamp: null });
-    const [showEmbeddedVideos, setShowEmbeddedVideos] = useState(false);
+    const [showEmbeddedVideos] = useState(true);
     const [isViewSwitching, setIsViewSwitching] = useState(false);
     const [retryCount, setRetryCount] = useState(0);
 
@@ -404,20 +404,6 @@ const Quotes = ({ quotes = [], searchTerm }) => {
         }
     }, [showEmbeddedVideos, retryCount]);
 
-    const handleViewChange = (showVideos) => {
-        if (showVideos) {
-            // When switching to videos view, change immediately and set up retry
-            setShowEmbeddedVideos(true);
-            setIsViewSwitching(true);
-            setRetryCount(0);
-        } else {
-            // When switching to titles view, do it immediately
-            setShowEmbeddedVideos(false);
-            setIsViewSwitching(false);
-            setRetryCount(0);
-        }
-    };
-
     const handleTimestampClick = (videoId, timestamp) => {
         // If clicking a quote from a different video, stop the current video
         if (activeTimestamp.videoId && activeTimestamp.videoId !== videoId) {
@@ -427,21 +413,6 @@ const Quotes = ({ quotes = [], searchTerm }) => {
         
         // Always set the active timestamp which will trigger video loading
         setActiveTimestamp({ videoId, timestamp });
-        
-        // If not in embedded videos mode, switch to it when a timestamp is clicked
-        if (!showEmbeddedVideos) {
-            setShowEmbeddedVideos(true);
-            setIsViewSwitching(true);
-            
-            // Short delay to ensure the view switch completes
-            setTimeout(() => {
-                setIsViewSwitching(false);
-                setActiveTimestamp({ videoId, timestamp });
-            }, 100);
-        } else {
-            // If already in video mode, just update the timestamp
-            setActiveTimestamp({ videoId, timestamp });
-        }
     };
 
     const handleFlagClick = (quote, videoId, title, channel, timestamp) => {
@@ -479,49 +450,11 @@ const Quotes = ({ quotes = [], searchTerm }) => {
 
     return (
         <div>
-            <div style={{ 
-                display: 'flex', 
-                justifyContent: 'flex-end', 
-                marginBottom: '1rem',
-                gap: '0.5rem',
-                alignItems: 'center'
-            }}>
-                <span style={{ color: 'var(--text-secondary)' }}>View:</span>
-                <button
-                    onClick={() => handleViewChange(false)}
-                    style={{
-                        padding: '0.5rem 1rem',
-                        backgroundColor: showEmbeddedVideos ? 'var(--surface-color)' : 'var(--accent-color)',
-                        color: showEmbeddedVideos ? 'var(--text-primary)' : 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                    }}
-                >
-                    Titles
-                </button>
-                <button
-                    onClick={() => handleViewChange(true)}
-                    style={{
-                        padding: '0.5rem 1rem',
-                        backgroundColor: showEmbeddedVideos ? 'var(--accent-color)' : 'var(--surface-color)',
-                        color: showEmbeddedVideos ? 'white' : 'var(--text-primary)',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: isViewSwitching ? 'wait' : 'pointer',
-                        transition: 'all 0.2s ease',
-                        opacity: isViewSwitching ? 0.7 : 1
-                    }}
-                >
-                    {isViewSwitching ? 'Loading...' : 'Videos'}
-                </button>
-            </div>
             {quotes.length > 0 ? (
                 <table className="quotes-table">
                     <thead>
                         <tr>
-                            <th style={{ width: '480px' }}>{showEmbeddedVideos ? 'Video' : 'Title'}</th>
+                            <th style={{ width: '480px' }}>Video</th>
                             <th style={{ width: '120px' }}>Channel</th>
                             <th style={{ width: '180px' }}>Upload Date</th>
                             <th style={{ width: 'calc(100% - 780px)' }}>Quotes with Timestamps</th>
@@ -539,39 +472,12 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                     verticalAlign: 'middle',
                                     height: '100%'
                                 }}>
-                                    {showEmbeddedVideos ? (
-                                        <YouTubePlayer 
-                                            key={`${quoteGroup.video_id}-${retryCount}`}
-                                            videoId={quoteGroup.video_id}
-                                            timestamp={activeTimestamp.videoId === quoteGroup.video_id ? activeTimestamp.timestamp : null}
-                                            onTimestampClick={handleTimestampClick}
-                                        />
-                                    ) : (
-                                        <a 
-                                            href={`${URL}${quoteGroup.video_id}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            style={{ 
-                                                color: '#4A90E2',
-                                                textDecoration: 'none',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                padding: '0.5rem 0',
-                                                width: '100%',
-                                                height: '100%',
-                                                position: 'relative',
-                                                top: 0,
-                                                left: 0
-                                            }}
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                window.open(`${URL}${quoteGroup.video_id}`, '_blank');
-                                            }}
-                                        >
-                                            {quoteGroup.quotes[0]?.title || 'Untitled Video'}
-                                        </a>
-                                    )}
+                                    <YouTubePlayer 
+                                        key={`${quoteGroup.video_id}-${retryCount}`}
+                                        videoId={quoteGroup.video_id}
+                                        timestamp={activeTimestamp.videoId === quoteGroup.video_id ? activeTimestamp.timestamp : null}
+                                        onTimestampClick={handleTimestampClick}
+                                    />
                                 </td>
                                 <td style={{ 
                                     verticalAlign: 'middle',
@@ -725,8 +631,6 @@ const App = () => {
     const [games, setGames] = useState([]);
     const [selectedGame, setSelectedGame] = useState("all");
     const [activeTimestamp, setActiveTimestamp] = useState({ videoId: null, timestamp: null });
-    const [showEmbeddedVideos, setShowEmbeddedVideos] = useState(false);
-    const [isViewSwitching, setIsViewSwitching] = useState(false);
     const [retryCount, setRetryCount] = useState(0);
 
     useEffect(() => {
