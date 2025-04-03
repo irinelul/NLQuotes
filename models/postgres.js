@@ -228,12 +228,11 @@ const quoteModel = {
     let cleanSearchTerm = '';
     
     if (searchTerm && searchTerm.trim() !== '') {
-      // Extra sanitization - remove any SQL injection patterns - REMOVED unnecessary replace()
-      cleanSearchTerm = searchTerm.trim(); // <-- Apply trim to cleanSearchTerm
+      // Extra sanitization - remove any SQL injection patterns 
+      cleanSearchTerm = searchTerm.trim(); 
     
       if (cleanSearchTerm.length > 2) {
         whereClauses.push(`q.fts_doc @@ websearch_to_tsquery('simple', $${paramIndex})`);
-        query = query.replace('SELECT q.*', `SELECT ts_rank(q.fts_doc, websearch_to_tsquery('simple', $${paramIndex})) as rank, q.*`);
         params.push(cleanSearchTerm);
         paramIndex += 1;
       }
@@ -286,7 +285,6 @@ const quoteModel = {
       // or limit the results heavily if no filters are applied.
       // For this example, we allow no filters.
     }
-
 
     // --- Grouping ---
     // Group by video fields AFTER filtering. This aggregates all quotes
