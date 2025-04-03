@@ -7,6 +7,7 @@ import Disclaimer from './components/Disclaimer';
 import SearchableDropdown from './components/SearchableDropdown';
 import BetaDisclaimer from './components/BetaDisclaimer';
 import { ensureApiReady, registerPlayer, unregisterPlayer, pauseOtherPlayers } from './services/youtubeApiLoader';
+import DOMPurify from 'dompurify';
 
 const URL = 'https://www.youtube.com/watch?v=';
 
@@ -285,6 +286,13 @@ const FlagModal = ({ isOpen, onClose, onSubmit, quote }) => {
         </div>
     );
 };
+
+const backdateTimestamp = (timestamp) => {
+    return Math.max(0, Math.floor(timestamp) - 1);
+}
+
+// `b` is returned from ts_headline when a match is found
+const ALLOWED_TAGS = ['b'];
 
 const FeedbackModal = ({ isOpen, onClose, onSubmit }) => {
     const [feedback, setFeedback] = useState('');
@@ -567,86 +575,69 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                         ? formatDate(quoteGroup.quotes[0].upload_date)
                                         : 'N/A'}
                                 </td>
-                                <td style={{ 
-                                    verticalAlign: 'middle',
-                                    height: '100%',
-                                    padding: '1rem',
-                                    maxHeight: quoteGroup.quotes?.length > 6 ? '500px' : 'none',
-                                    overflow: 'hidden'
-                                }}>
-                                    <div style={{ 
-                                        width: '100%',
-                                        height: quoteGroup.quotes?.length > 6 ? '500px' : 'auto',
-                                        overflowY: quoteGroup.quotes?.length > 6 ? 'auto' : 'hidden',
-                                        padding: '0.5rem 0',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        justifyContent: quoteGroup.quotes?.length > 6 ? 'flex-start' : 'center',
-                                        alignItems: 'flex-start'
-                                    }}>
-                                        {quoteGroup.quotes?.map((quote, index) => (
-                                            <div key={index} style={{ 
-                                                display: 'flex', 
-                                                alignItems: 'center', 
-                                                gap: '0.75rem',
-                                                marginBottom: '0.75rem',
-                                                padding: '0.75rem 0',
-                                                borderBottom: index < quoteGroup.quotes.length - 1 ? '1px solid var(--border-color)' : 'none',
-                                                borderColor: 'var(--border-color)',
-                                                flexShrink: 0,
-                                                width: '100%'
-                                            }}>
-                                                <button
-                                                    onClick={() => handleTimestampClick(quoteGroup.video_id, Math.floor(quote.timestamp_start))}
-                                                    style={{ 
-                                                        flex: 1,
-                                                        textAlign: 'left',
-                                                        background: 'none',
-                                                        border: 'none',
-                                                        color: '#4A90E2',
-                                                        cursor: 'pointer',
-                                                        padding: 0,
-                                                        font: 'inherit'
-                                                    }}
-                                                >
-                                                    {quote.text} (Timestamp: {formatTimestamp(Math.floor(quote.timestamp_start) - 1)})
-                                                </button>
-                                                <button
-                                                    onClick={() => handleFlagClick(
-                                                        quote.text,
-                                                        quoteGroup.video_id,
-                                                        quoteGroup.quotes[0]?.title,
-                                                        quoteGroup.quotes[0]?.channel_source,
-                                                        quote.timestamp_start
-                                                    )}
-                                                    disabled={flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]}
-                                                    style={{
-                                                        backgroundColor: 'transparent',
-                                                        color: 'var(--accent-color)',
-                                                        border: 'none',
-                                                        padding: '0.5rem',
-                                                        cursor: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 'not-allowed' : 'pointer',
-                                                        opacity: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 0.6 : 1,
-                                                        fontSize: '1.25rem',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        transition: 'transform 0.2s'
-                                                    }}
-                                                    onMouseOver={e => {
-                                                        if (!flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]) {
-                                                            e.currentTarget.style.transform = 'scale(1.1)';
-                                                        }
-                                                    }}
-                                                    onMouseOut={e => {
-                                                        e.currentTarget.style.transform = 'scale(1)';
-                                                    }}
-                                                >
-                                                    {flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? '⏳' : '🚩'}
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
+                                <td>
+                                    {quoteGroup.quotes?.map((quote, index) => (
+                                        <div key={index} style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: '0.75rem',
+                                            marginBottom: '0.75rem',
+                                            padding: '0.75rem 0',
+                                            borderBottom: index < quoteGroup.quotes.length - 1 ? '1px solid var(--border-color)' : 'none',
+                                            borderColor: 'var(--border-color)',
+                                            flexShrink: 0,
+                                            width: '100%'
+                                        }}>
+                                            <button
+                                                onClick={() => handleTimestampClick(quoteGroup.video_id, Math.floor(quote.timestamp_start))}
+                                                style={{ 
+                                                    flex: 1,
+                                                    textAlign: 'left',
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    color: '#4A90E2',
+                                                    cursor: 'pointer',
+                                                    padding: 0,
+                                                    font: 'inherit'
+                                                }}
+                                            >
+                                                {quote.text} (Timestamp: {formatTimestamp(Math.floor(quote.timestamp_start) - 1)})
+                                            </button>
+                                            <button
+                                                onClick={() => handleFlagClick(
+                                                    quote.text,
+                                                    quoteGroup.video_id,
+                                                    quoteGroup.quotes[0]?.title,
+                                                    quoteGroup.quotes[0]?.channel_source,
+                                                    quote.timestamp_start
+                                                )}
+                                                disabled={flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]}
+                                                style={{
+                                                    backgroundColor: 'transparent',
+                                                    color: 'var(--accent-color)',
+                                                    border: 'none',
+                                                    padding: '0.5rem',
+                                                    cursor: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 'not-allowed' : 'pointer',
+                                                    opacity: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 0.6 : 1,
+                                                    fontSize: '1.25rem',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    transition: 'transform 0.2s'
+                                                }}
+                                                onMouseOver={e => {
+                                                    if (!flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]) {
+                                                        e.currentTarget.style.transform = 'scale(1.1)';
+                                                    }
+                                                }}
+                                                onMouseOut={e => {
+                                                    e.currentTarget.style.transform = 'scale(1)';
+                                                }}
+                                            >
+                                                {flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? '⏳' : '🚩'}
+                                            </button>
+                                        </div>
+                                    ))}
                                 </td>
                             </tr>
                         ))}
