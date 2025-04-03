@@ -455,7 +455,7 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                     <thead>
                         <tr>
                             <th style={{ width: '480px', textAlign: 'center' }}>Video</th>
-                            <th style={{ width: '200px', textAlign: 'center' }}>Channel & Date</th>
+                            <th style={{ width: '200px', textAlign: 'center' }}>Details</th>
                             <th style={{ width: 'calc(100% - 680px)', textAlign: 'center' }}>Quotes with Timestamps</th>
                         </tr>
                     </thead>
@@ -484,6 +484,14 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                     padding: '1rem',
                                     textAlign: 'center'
                                 }}>
+                                    <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                                        {quoteGroup.quotes[0]?.title || 'N/A'}
+                                    </div>
+                                    <div style={{ 
+                                        borderBottom: '1px solid var(--border-color)',
+                                        margin: '0.5rem 0',
+                                        width: '100%'
+                                    }} />
                                     <div>{quoteGroup.quotes[0]?.channel_source || 'N/A'}</div>
                                     <div style={{ marginTop: '0.5rem' }}>
                                         {quoteGroup.quotes[0]?.upload_date
