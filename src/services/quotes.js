@@ -113,14 +113,14 @@ const getAll = async (searchTerm, page, strict, selectedValue, selectedMode, yea
         
         // Make the request directly to the /api endpoint
         const response = await makeApiRequest('/api', 'get', {  
-            searchTerm: searchTerm || '', 
+            search: searchTerm || '', 
             page: page || 1,   
             strict: strict,
-            selectedValue: selectedValue || 'all',
+            channel: selectedValue || 'all',
             selectedMode: selectedMode || 'searchText',
             year: year || '',
-            sortOrder: sortOrder || 'default',
-            gameName: gameName || 'all'
+            sort: sortOrder || 'default',
+            game: gameName || 'all'
         });
         
         // If we get here, one of the attempts succeeded
