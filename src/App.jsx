@@ -6,9 +6,248 @@ import { format } from 'date-fns';
 import Disclaimer from './components/Disclaimer';
 import SearchableDropdown from './components/SearchableDropdown';
 import BetaDisclaimer from './components/BetaDisclaimer';
+import { ensureApiReady, registerPlayer, unregisterPlayer, pauseOtherPlayers } from './services/youtubeApiLoader';
 import DOMPurify from 'dompurify';
 
 const URL = 'https://www.youtube.com/watch?v=';
+
+// Using the player registry from youtubeApiLoader for managing multiple players
+
+// Simpler approach with minimal DOM manipulation
+const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [error, setError] = useState(null);
+    const [currentTimestamp, setCurrentTimestamp] = useState(timestamp);
+    const iframeRef = React.useRef(null);
+    const playerRef = React.useRef(null);
+    
+    // Initialize YouTube player when iframe is loaded
+    useEffect(() => {
+        if (isPlaying && iframeRef.current) {
+            ensureApiReady().then(() => {
+                const player = new window.YT.Player(iframeRef.current, {
+                    videoId,
+                    playerVars: {
+                        autoplay: 1,
+                        start: Math.max(1, Math.floor(currentTimestamp) - 1),
+                        enablejsapi: 1,
+                        origin: window.location.origin
+                    },
+                    events: {
+                        onReady: (event) => {
+                            playerRef.current = event.target;
+                            registerPlayer(event.target);
+                            event.target.playVideo();
+                            pauseOtherPlayers(event.target);
+                        },
+                        onStateChange: (event) => {
+                            if (event.data === window.YT.PlayerState.PLAYING) {
+                                pauseOtherPlayers(event.target);
+                            }
+                        },
+                        onError: () => {
+                            setError('Failed to load video');
+                            setIsPlaying(false);
+                        }
+                    }
+                });
+            }).catch(err => {
+                console.error('Error initializing YouTube player:', err);
+                setError('Failed to initialize video player');
+                setIsPlaying(false);
+            });
+        }
+
+        return () => {
+            if (playerRef.current) {
+                unregisterPlayer(playerRef.current);
+                playerRef.current = null;
+            }
+        };
+    }, [isPlaying, videoId]);
+
+    // Handle timestamp changes
+    useEffect(() => {
+        if (timestamp && !isPlaying) {
+            setCurrentTimestamp(timestamp);
+            setIsPlaying(true);
+            console.log(`Auto-playing video ${videoId} at timestamp ${timestamp}`);
+        } else if (timestamp && playerRef.current) {
+            setCurrentTimestamp(timestamp);
+            const seconds = Math.max(1, Math.floor(timestamp) - 1);
+            try {
+                // Always reload the video when timestamp changes
+                playerRef.current.loadVideoById({
+                    videoId: videoId,
+                    startSeconds: seconds
+                });
+                playerRef.current.playVideo();
+                pauseOtherPlayers(playerRef.current);
+                console.log(`Loading video ${videoId} at timestamp ${seconds}`);
+            } catch (err) {
+                console.error('Error loading video:', err);
+            }
+        }
+    }, [timestamp, videoId, isPlaying]);
+    
+    // Handle play button click - load video with iframe
+    const handlePlayClick = () => {
+        console.log(`Play button clicked for ${videoId}`);
+        setCurrentTimestamp(timestamp || 0);
+        setIsPlaying(true);
+    };
+    
+    // Handle errors with iframe loading
+    const handleIframeError = () => {
+        setError('Failed to load video');
+        setIsPlaying(false);
+    };
+
+    // We don't need getIframeSrc anymore as we're using the YouTube Player API directly
+
+    // Error display
+    if (error) {
+        return (
+            <div style={{ 
+                width: '480px', 
+                height: '270px', 
+                backgroundColor: 'var(--surface-color)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--text-secondary)',
+                flexDirection: 'column',
+                gap: '10px',
+                padding: '1rem'
+            }}>
+                <div>{error}</div>
+                <button 
+                    onClick={() => {
+                        setError(null);
+                        handlePlayClick();
+                    }}
+                    style={{
+                        padding: '5px 10px',
+                        background: 'var(--accent-color)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                    }}
+                >
+                    Retry
+                </button>
+            </div>
+        );
+    }
+
+    // Video thumbnail (when not playing)
+    if (!isPlaying) {
+        return (
+            <div
+                style={{ 
+                    width: '480px', 
+                    height: '270px', 
+                    position: 'relative',
+                    backgroundColor: 'var(--surface-color)',
+                    overflow: 'hidden'
+                }}
+            >
+                <img 
+                    src={`https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`}
+                    alt="Video thumbnail"
+                    loading="lazy"
+                    style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                    }}
+                    onError={(e) => {
+                        e.target.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                    }}
+                />
+                <div
+                    style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        backgroundColor: 'rgba(0,0,0,0.2)'
+                    }}
+                    onClick={handlePlayClick}
+                >
+                    <div
+                        style={{
+                            width: '60px',
+                            height: '60px',
+                            borderRadius: '50%',
+                            backgroundColor: 'rgba(255,0,0,0.8)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}
+                    >
+                        <div
+                            style={{
+                                width: '0',
+                                height: '0',
+                                borderTop: '15px solid transparent',
+                                borderBottom: '15px solid transparent',
+                                borderLeft: '24px solid white',
+                                marginLeft: '5px'
+                            }}
+                        />
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Direct iframe embed - most reliable approach
+    return (
+        <div
+            style={{ 
+                width: '480px', 
+                height: '270px',
+                backgroundColor: 'var(--surface-color)',
+                overflow: 'hidden'
+            }}
+            data-video-id={videoId}
+        >
+            <div
+                ref={iframeRef}
+                style={{
+                    width: '100%',
+                    height: '100%',
+                    border: 'none',
+                    display: isPlaying ? 'block' : 'none'
+                }}
+                setIsPlaying={setIsPlaying}
+            ></div>
+            {!isPlaying && (
+                <img 
+                    src={`https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`}
+                    alt="Video thumbnail"
+                    loading="lazy"
+                    style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        display: isPlaying ? 'none' : 'block'
+                    }}
+                    onError={(e) => {
+                        e.target.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                    }}
+                />
+            )}
+        </div>
+    );
+};
 
 const FlagModal = ({ isOpen, onClose, onSubmit, quote }) => {
     const [reason, setReason] = useState('');
@@ -149,6 +388,32 @@ const Quotes = ({ quotes = [], searchTerm }) => {
         channel: null,
         timestamp: null
     });
+    const [activeTimestamp, setActiveTimestamp] = useState({ videoId: null, timestamp: null });
+    const [showEmbeddedVideos] = useState(true);
+    const [isViewSwitching, setIsViewSwitching] = useState(false);
+    const [retryCount, setRetryCount] = useState(0);
+
+    // Effect to handle video loading retry
+    useEffect(() => {
+        if (showEmbeddedVideos && retryCount < 1) {
+            const timer = setTimeout(() => {
+                setRetryCount(prev => prev + 1);
+                setIsViewSwitching(false); // Reset the loading state after retry
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [showEmbeddedVideos, retryCount]);
+
+    const handleTimestampClick = (videoId, timestamp) => {
+        // If clicking a quote from a different video, stop the current video
+        if (activeTimestamp.videoId && activeTimestamp.videoId !== videoId) {
+            // Use pauseOtherPlayers from our registry
+            pauseOtherPlayers(null); // Passing null to pause all players
+        }
+        
+        // Always set the active timestamp which will trigger video loading
+        setActiveTimestamp({ videoId, timestamp });
+    };
 
     const handleFlagClick = (quote, videoId, title, channel, timestamp) => {
         setModalState({
@@ -189,87 +454,129 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                 <table className="quotes-table">
                     <thead>
                         <tr>
-                            <th>Title</th>
-                            <th>Channel</th>
-                            <th>Video URL</th>
-                            <th>Upload Date</th>
-                            <th>Quotes with Timestamps</th>
+                            <th style={{ width: '480px', textAlign: 'center' }}>Video</th>
+                            <th style={{ width: '200px', textAlign: 'center' }}>Channel & Date</th>
+                            <th style={{ width: 'calc(100% - 680px)', textAlign: 'center' }}>Quotes with Timestamps</th>
                         </tr>
                     </thead>
                     <tbody>
                         {quotes.map((quoteGroup) => (
-                            <tr key={quoteGroup.video_id || `quote-group-${Math.random()}`}>
-                                <td>{quoteGroup.quotes[0]?.title || 'N/A'}</td>
-                                <td>{quoteGroup.quotes[0]?.channel_source || 'N/A'}</td>
-                                <td>
-                                    <a target="_blank" rel="noopener noreferrer" href={`${URL}${quoteGroup.video_id}`}>
-                                        Video Link
-                                    </a>
+                            <tr key={quoteGroup.video_id || `quote-group-${Math.random()}`} style={{
+                                borderBottom: '2px solid var(--border-color)',
+                                height: quoteGroup.quotes?.length > 6 ? '500px' : 'auto',
+                                padding: '1rem 0'
+                            }}>
+                                <td style={{ 
+                                    padding: '1rem',
+                                    verticalAlign: 'middle',
+                                    height: '100%',
+                                    textAlign: 'center'
+                                }}>
+                                    <YouTubePlayer 
+                                        key={`${quoteGroup.video_id}-${retryCount}`}
+                                        videoId={quoteGroup.video_id}
+                                        timestamp={activeTimestamp.videoId === quoteGroup.video_id ? activeTimestamp.timestamp : null}
+                                        onTimestampClick={handleTimestampClick}
+                                    />
                                 </td>
-                                <td>
-                                    {quoteGroup.quotes[0]?.upload_date
-                                        ? formatDate(quoteGroup.quotes[0].upload_date)
-                                        : 'N/A'}
+                                <td style={{ 
+                                    verticalAlign: 'middle',
+                                    padding: '1rem',
+                                    textAlign: 'center'
+                                }}>
+                                    <div>{quoteGroup.quotes[0]?.channel_source || 'N/A'}</div>
+                                    <div style={{ marginTop: '0.5rem' }}>
+                                        {quoteGroup.quotes[0]?.upload_date
+                                            ? formatDate(quoteGroup.quotes[0].upload_date)
+                                            : 'N/A'}
+                                    </div>
                                 </td>
-                                <td>
-                                    {quoteGroup.quotes?.map((quote, index) => (
-                                        <div className="quote-item" key={index} style={{ 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            gap: '0.75rem',
-                                            marginBottom: '0.75rem',
-                                            padding: '0.75rem 0',
-                                            borderBottom: index < quoteGroup.quotes.length - 1 ? '1px solid var(--border-color)' : 'none'
-                                        }}>
-                                            <div>
-                                              <a
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                  href={`${URL}${quoteGroup.video_id}&t=${backdateTimestamp(quote.timestamp_start)}`}
-                                                  style={{ flex: 1, marginRight: '0.3rem' }}
-                                                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(quote.text, { ALLOWED_TAGS }) }}
-                                              >
-                                              </a>
-                                              <span>
-                                                ({formatTimestamp(backdateTimestamp(quote.timestamp_start))})
-                                              </span>
+                                <td style={{
+                                    verticalAlign: 'middle',
+                                    height: '100%',
+                                    padding: '1rem',
+                                    maxHeight: quoteGroup.quotes?.length > 6 ? '500px' : 'none',
+                                    overflow: 'hidden',
+                                    textAlign: 'center'
+                                }}>
+                                    <div style={{
+                                        width: '100%',
+                                        height: quoteGroup.quotes?.length > 6 ? '500px' : 'auto',
+                                        overflowY: quoteGroup.quotes?.length > 6 ? 'auto' : 'hidden',
+                                        padding: '0.5rem 0',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        justifyContent: quoteGroup.quotes?.length > 6 ? 'flex-start' : 'center',
+                                        alignItems: 'flex-start'
+                                    }}>
+                                        {quoteGroup.quotes?.map((quote, index) => (
+                                            <div className="quote-item" key={index} style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.75rem',
+                                                marginBottom: '0.75rem',
+                                                padding: '0.75rem 0',
+                                                borderBottom: index < quoteGroup.quotes.length - 1 ? '1px solid var(--border-color)' : 'none',
+                                                borderColor: 'var(--border-color)',
+                                                flexShrink: 0, 
+                                                width: '100%' 
+                                            }}>
+                                                <button
+                                                    onClick={() => handleTimestampClick(quoteGroup.video_id, backdateTimestamp(quote.timestamp_start))}
+                                                    style={{
+                                                        flex: 1,
+                                                        textAlign: 'left',
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        color: '#4A90E2',
+                                                        cursor: 'pointer',
+                                                        padding: 0,
+                                                        font: 'inherit'
+                                                    }}
+                                                >
+                                                    <span style={{ verticalAlign: 'middle' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(quote.text, { ALLOWED_TAGS }) }} />
+                                                    <span style={{ verticalAlign: 'middle', marginLeft: '0.5em' }}>
+                                                        ({formatTimestamp(backdateTimestamp(quote.timestamp_start))})
+                                                    </span>
+                                                </button>
+
+                                                <button
+                                                    onClick={() => handleFlagClick(
+                                                        quote.text,
+                                                        quoteGroup.video_id,
+                                                        quoteGroup.quotes[0]?.title,
+                                                        quoteGroup.quotes[0]?.channel_source,
+                                                        quote.timestamp_start
+                                                    )}
+                                                    disabled={flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]}
+                                                    style={{
+                                                        backgroundColor: 'transparent',
+                                                        color: 'var(--accent-color)',
+                                                        border: 'none',
+                                                        marginLeft: 'auto',
+                                                        padding: '0.5rem',
+                                                        cursor: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 'not-allowed' : 'pointer',
+                                                        opacity: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 0.6 : 1,
+                                                        fontSize: '1.25rem',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        transition: 'transform 0.2s'
+                                                    }}
+                                                    onMouseOver={e => {
+                                                        if (!flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]) {
+                                                            e.currentTarget.style.transform = 'scale(1.1)';
+                                                        }
+                                                    }}
+                                                    onMouseOut={e => {
+                                                        e.currentTarget.style.transform = 'scale(1)';
+                                                    }}
+                                                >
+                                                    {flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? '⏳' : '🚩'}
+                                                </button>
                                             </div>
-                                            <button
-                                                onClick={() => handleFlagClick(
-                                                    quote.text,
-                                                    quoteGroup.video_id,
-                                                    quoteGroup.quotes[0]?.title,
-                                                    quoteGroup.quotes[0]?.channel_source,
-                                                    quote.timestamp_start
-                                                )}
-                                                disabled={flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]}
-                                                style={{
-                                                    backgroundColor: 'transparent',
-                                                    color: 'var(--accent-color)',
-                                                    border: 'none',
-                                                    marginLeft: 'auto',
-                                                    padding: '0.5rem',
-                                                    cursor: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 'not-allowed' : 'pointer',
-                                                    opacity: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 0.6 : 1,
-                                                    fontSize: '1.25rem',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    transition: 'transform 0.2s'
-                                                }}
-                                                onMouseOver={e => {
-                                                    if (!flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]) {
-                                                        e.currentTarget.style.transform = 'scale(1.1)';
-                                                    }
-                                                }}
-                                                onMouseOut={e => {
-                                                    e.currentTarget.style.transform = 'scale(1)';
-                                                }}
-                                            >
-                                                {flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? '⏳' : '🚩'}
-                                            </button>
-                                        </div>
-                                    ))}
+                                        ))}
+                                    </div>
                                 </td>
                             </tr>
                         ))}
@@ -324,6 +631,8 @@ const App = () => {
     const [submittingFeedback, setSubmittingFeedback] = useState(false);
     const [games, setGames] = useState([]);
     const [selectedGame, setSelectedGame] = useState("all");
+    const [activeTimestamp, setActiveTimestamp] = useState({ videoId: null, timestamp: null });
+    const [retryCount, setRetryCount] = useState(0);
 
     useEffect(() => {
         const fetchGames = async () => {
@@ -342,7 +651,14 @@ const App = () => {
                 for (const path of pathsToTry) {
                     try {
                         console.log(`Trying to fetch games from: ${path}`);
-                        const response = await fetch(path);
+                        const response = await fetch(path, {
+                            cache: 'no-store', // Disable caching
+                            headers: {
+                                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                                'Pragma': 'no-cache',
+                                'Expires': '0'
+                            }
+                        });
                         
                         // Check if we got a valid response
                         if (response.ok) {

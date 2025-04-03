@@ -228,12 +228,11 @@ const quoteModel = {
     let cleanSearchTerm = '';
     
     if (searchTerm && searchTerm.trim() !== '') {
-      // Extra sanitization - remove any SQL injection patterns - REMOVED unnecessary replace()
-      cleanSearchTerm = searchTerm.trim(); // <-- Apply trim to cleanSearchTerm
+      // Extra sanitization - remove any SQL injection patterns 
+      cleanSearchTerm = searchTerm.trim(); 
     
       if (cleanSearchTerm.length > 2) {
         whereClauses.push(`q.fts_doc @@ websearch_to_tsquery('simple', $${paramIndex})`);
-        query = query.replace('SELECT q.*', `SELECT ts_rank(q.fts_doc, websearch_to_tsquery('simple', $${paramIndex})) as rank, q.*`);
         params.push(cleanSearchTerm);
         paramIndex += 1;
       }
@@ -287,7 +286,6 @@ const quoteModel = {
       // For this example, we allow no filters.
     }
 
-
     // --- Grouping ---
     // Group by video fields AFTER filtering. This aggregates all quotes
     // for videos where AT LEAST ONE quote matched the WHERE criteria.
@@ -297,24 +295,19 @@ const quoteModel = {
       query += ` GROUP BY q.video_id, q.title, q.upload_date, q.channel_source`;
     }
 
-    // --- Sorting (Applied after grouping) ---
-    // If we did an exact phrase search and added a rank field, sort by rank first
-    if (sortOrder) {
-      // Ensure the column exists unambiguously after grouping
-      if (exactPhrase && searchTerm && searchTerm.trim() !== '') {
-        // Sort by rank first, then by date
-        query += ` ORDER BY rank DESC, q.upload_date ${sortOrder === 'newest' ? 'DESC' : 'ASC'}`;
-      } else {
-        query += ` ORDER BY q.upload_date ${sortOrder === 'newest' ? 'DESC' : 'ASC'}`;
-      }
-    } else {
-      // Default sort order - also include rank if available
-      if (exactPhrase && searchTerm && searchTerm.trim() !== '') {
-        query += ` ORDER BY rank DESC, q.upload_date DESC`; 
-      } else {
-        query += ` ORDER BY q.upload_date DESC`; // Default sort by newest
-      }
-    }
+// --- Sorting (Applied after grouping) ---
+if (sortOrder === 'default') {
+  if (exactPhrase && searchTerm && searchTerm.trim() !== '') {
+    query += ` ORDER BY rank DESC`;
+  }
+} else if (sortOrder === 'newest' || sortOrder === 'oldest') {
+  if (exactPhrase && searchTerm && searchTerm.trim() !== '') {
+    query += ` ORDER BY rank DESC, q.upload_date ${sortOrder === 'newest' ? 'DESC' : 'ASC'}`;
+  } else {
+    query += ` ORDER BY q.upload_date ${sortOrder === 'newest' ? 'DESC' : 'ASC'}`;
+  }
+}
+
 
     // --- Pagination ---
     query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;

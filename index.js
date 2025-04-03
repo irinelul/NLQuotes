@@ -110,9 +110,6 @@ app.use(express.static('dist', {
         } else if (path.endsWith('.js')) {
             res.setHeader('Content-Type', 'application/javascript');
         }
-        
-        // Cache static assets
-        res.setHeader('Cache-Control', 'public, max-age=86400');
     }
 }));
 
@@ -162,39 +159,14 @@ console.log('- /stats (stats endpoint)');
 
 app.get('/api', async (req, res) => {
     // Input validation and sanitization
-    const page = Math.max(1, parseInt(req.query.page) || 1); // Ensure page is at least 1
-    const exactPhrase = req.query.exactPhrase === 'true';
-    
-    // Sanitize searchTerm - remove dangerous SQL characters
-    let searchTerm = '';
-    if (req.query.searchTerm) {
-        // Basic sanitization - Remove SQL injection characters
-        searchTerm = req.query.searchTerm.replace(/[;=\-\(\)\{\}\[\]\\\/]/g, ' ').trim();
-    }
-    
-    // Validate and sanitize selectedValue
-    const allowedValues = ['all', 'Librarian', 'Northernlion']; // Add all valid channels here
-    const selectedValue = allowedValues.includes(req.query.selectedValue) ? 
-                          req.query.selectedValue : 'all';
-    
-    // Remove selectedMode - we're no longer using title search
-    
-    // Validate year is a 4-digit number
-    let year = null;
-    if (req.query.year) {
-        const yearInt = parseInt(req.query.year);
-        if (!isNaN(yearInt) && yearInt >= 1990 && yearInt <= new Date().getFullYear()) {
-            year = yearInt.toString();
-        }
-    }
-    
-    // Validate sortOrder
-    const allowedSortOrders = ['newest', 'oldest', 'default'];
-    const sortOrder = allowedSortOrders.includes(req.query.sortOrder) ? 
-                      req.query.sortOrder : 'default';
-    
-    // Safely handle gameName
-    let gameName = "all";
+    let searchTerm = req.query.search || '';
+    let selectedValue = req.query.channel || 'all';
+    let year = req.query.year || '';
+    let sortOrder = req.query.sort || 'default';
+    let page = parseInt(req.query.page) || 1;
+    let exactPhrase = req.query.strict === 'true';
+    let gameName = req.query.game || 'all';
+
     if (req.query.gameName) {
         try {
             // Decode and basic sanitization
@@ -216,17 +188,6 @@ app.get('/api', async (req, res) => {
     // Always search in text, not title
     const searchPath = "text";
 
-    // Generate an ETag based on the sanitized query parameters - remove selectedMode
-    const requestETag = `W/"quotes-${searchTerm}-${selectedValue}-${year}-${sortOrder}-${gameName}-${page}-${exactPhrase}"`;
-    
-    // Check if client has a matching ETag
-    const ifNoneMatch = req.headers['if-none-match'];
-    if (ifNoneMatch === requestETag) {
-        // Client already has the data, send 304 Not Modified
-        console.log('Cache hit, returning 304 Not Modified');
-        return res.status(304).send();
-    }
-
     try {
         // Add rate limiting check
         // ... (add rate limiting code here if needed)
@@ -244,10 +205,8 @@ app.get('/api', async (req, res) => {
         });
         const totalTime = Date.now() - startTime;
 
-        // Set security headers along with performance and caching headers
+        // Set security headers
         res.set({
-            'ETag': requestETag,
-            'Cache-Control': 'private, max-age=300', // Cache for 5 minutes on client
             'X-Response-Time': `${totalTime}ms`,
             'X-Content-Type-Options': 'nosniff',
             'X-Frame-Options': 'DENY',
