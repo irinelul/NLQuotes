@@ -297,24 +297,19 @@ const quoteModel = {
       query += ` GROUP BY q.video_id, q.title, q.upload_date, q.channel_source`;
     }
 
-    // --- Sorting (Applied after grouping) ---
-    // If we did an exact phrase search and added a rank field, sort by rank first
-    if (sortOrder) {
-      // Ensure the column exists unambiguously after grouping
-      if (exactPhrase && searchTerm && searchTerm.trim() !== '') {
-        // Sort by rank first, then by date
-        query += ` ORDER BY rank DESC, q.upload_date ${sortOrder === 'newest' ? 'DESC' : 'ASC'}`;
-      } else {
-        query += ` ORDER BY q.upload_date ${sortOrder === 'newest' ? 'DESC' : 'ASC'}`;
-      }
-    } else {
-      // Default sort order - also include rank if available
-      if (exactPhrase && searchTerm && searchTerm.trim() !== '') {
-        query += ` ORDER BY rank DESC, q.upload_date DESC`; 
-      } else {
-        query += ` ORDER BY q.upload_date DESC`; // Default sort by newest
-      }
-    }
+// --- Sorting (Applied after grouping) ---
+if (sortOrder === 'default') {
+  if (exactPhrase && searchTerm && searchTerm.trim() !== '') {
+    query += ` ORDER BY rank DESC`;
+  }
+} else if (sortOrder === 'newest' || sortOrder === 'oldest') {
+  if (exactPhrase && searchTerm && searchTerm.trim() !== '') {
+    query += ` ORDER BY rank DESC, q.upload_date ${sortOrder === 'newest' ? 'DESC' : 'ASC'}`;
+  } else {
+    query += ` ORDER BY q.upload_date ${sortOrder === 'newest' ? 'DESC' : 'ASC'}`;
+  }
+}
+
 
     // --- Pagination ---
     query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
