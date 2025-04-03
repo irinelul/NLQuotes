@@ -9,16 +9,16 @@ const isHttps = window.location.protocol === 'https:';
 
 // Define possible API path prefixes to try
 const pathPrefixes = [
-    '', // No prefix (direct routes) - TRY THIS FIRST on Render
-    '/api', // Standard setup
+    '/api', // Standard setup - TRY THIS FIRST
+    '', // No prefix (direct routes)
     '/app/api', // Potential subfolder configuration
 ];
 
 // Define possible base URLs for direct access if proxy fails
 // This helps bypass potential SSL/Proxy issues
 const possibleBaseUrls = isOnRender ? [
-    '', // Current domain (default)
     window.location.origin, // Explicit origin
+    '', // Current domain (default)
 ] : [''];
 
 // Configure Axios with settings to handle SSL issues
@@ -33,8 +33,6 @@ const axiosConfig = {
 // For Render.com, we may need to adjust SSL verification
 if (isOnRender) {
     console.log('Running on Render.com, adjusting API paths');
-    // Set the first path to try based on Render's routing
-    pathPrefixes.unshift('');
 }
 
 // Add a delay helper for migration mode
@@ -59,9 +57,15 @@ const makeApiRequest = async (endpoint, method = 'get', params = null, data = nu
         // Try each path prefix
         for (const prefix of pathPrefixes) {
             try {
-                // Build the full path. If endpoint doesn't start with /, add it
-                const pathSeparator = (endpoint && !endpoint.startsWith('/') && prefix !== '') ? '/' : '';
-                const fullPath = `${baseUrl}${prefix}${pathSeparator}${endpoint}`;
+                // Build the full path, ensuring we don't double up on /api
+                let fullPath = endpoint;
+                if (prefix && !endpoint.startsWith(prefix)) {
+                    fullPath = `${prefix}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+                }
+                if (baseUrl) {
+                    fullPath = `${baseUrl}${fullPath}`;
+                }
+                
                 console.log(`Trying API request: ${method.toUpperCase()} ${fullPath}`);
                 
                 if (method === 'get') {
@@ -113,14 +117,14 @@ const getAll = async (searchTerm, page, strict, selectedValue, selectedMode, yea
         
         // Make the request directly to the /api endpoint
         const response = await makeApiRequest('/api', 'get', {  
-            searchTerm: searchTerm || '', 
+            search: searchTerm || '', 
             page: page || 1,   
             strict: strict,
-            selectedValue: selectedValue || 'all',
+            channel: selectedValue || 'all',
             selectedMode: selectedMode || 'searchText',
             year: year || '',
-            sortOrder: sortOrder || 'default',
-            gameName: gameName || 'all'
+            sort: sortOrder || 'default',
+            game: gameName || 'all'
         });
         
         // If we get here, one of the attempts succeeded
