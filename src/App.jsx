@@ -496,13 +496,13 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                     height: '100%',
                                     padding: '1rem',
                                     maxHeight: quoteGroup.quotes?.length > 6 ? '500px' : 'none',
-                                    overflow: 'hidden',
+                                    overflow: 'visible',
                                     textAlign: 'center'
                                 }}>
                                     <div style={{
                                         width: '100%',
                                         height: quoteGroup.quotes?.length > 6 ? '500px' : 'auto',
-                                        overflowY: quoteGroup.quotes?.length > 6 ? 'auto' : 'hidden',
+                                        overflowY: quoteGroup.quotes?.length > 6 ? 'auto' : 'visible',
                                         padding: '0.5rem 0',
                                         display: 'flex',
                                         flexDirection: 'column',
@@ -519,7 +519,8 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                                 borderBottom: index < quoteGroup.quotes.length - 1 ? '1px solid var(--border-color)' : 'none',
                                                 borderColor: 'var(--border-color)',
                                                 flexShrink: 0, 
-                                                width: '100%' 
+                                                width: '100%',
+                                                overflow: 'visible'
                                             }}>
                                                 <button
                                                     onClick={() => handleTimestampClick(quoteGroup.video_id, backdateTimestamp(quote.timestamp_start))}
@@ -531,7 +532,19 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                                         color: '#4A90E2',
                                                         cursor: 'pointer',
                                                         padding: 0,
-                                                        font: 'inherit'
+                                                        font: 'inherit',
+                                                        minWidth: 0,
+                                                        overflow: 'visible',
+                                                        textOverflow: 'ellipsis',
+                                                        transition: 'transform 0.2s ease',
+                                                        position: 'relative',
+                                                        zIndex: 1
+                                                    }}
+                                                    onMouseOver={e => {
+                                                        e.currentTarget.style.transform = 'scale(1.02)';
+                                                    }}
+                                                    onMouseOut={e => {
+                                                        e.currentTarget.style.transform = 'scale(1)';
                                                     }}
                                                 >
                                                     <span style={{ verticalAlign: 'middle' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(quote.text, { ALLOWED_TAGS }) }} />
@@ -540,40 +553,70 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                                     </span>
                                                 </button>
 
-                                                <button
-                                                    onClick={() => handleFlagClick(
-                                                        quote.text,
-                                                        quoteGroup.video_id,
-                                                        quoteGroup.quotes[0]?.title,
-                                                        quoteGroup.quotes[0]?.channel_source,
-                                                        quote.timestamp_start
-                                                    )}
-                                                    disabled={flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]}
-                                                    style={{
-                                                        backgroundColor: 'transparent',
-                                                        color: 'var(--accent-color)',
-                                                        border: 'none',
-                                                        marginLeft: 'auto',
-                                                        padding: '0.5rem',
-                                                        cursor: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 'not-allowed' : 'pointer',
-                                                        opacity: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 0.6 : 1,
-                                                        fontSize: '1.25rem',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        transition: 'transform 0.2s'
-                                                    }}
-                                                    onMouseOver={e => {
-                                                        if (!flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]) {
-                                                            e.currentTarget.style.transform = 'scale(1.1)';
-                                                        }
-                                                    }}
-                                                    onMouseOut={e => {
-                                                        e.currentTarget.style.transform = 'scale(1)';
-                                                    }}
-                                                >
-                                                    {flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? '⏳' : '🚩'}
-                                                </button>
+                                                <div style={{ 
+                                                    display: 'flex', 
+                                                    gap: '0.5rem',
+                                                    marginLeft: 'auto',
+                                                    flexShrink: 0
+                                                }}>
+                                                    <button
+                                                        onClick={() => window.open(`https://www.youtube.com/watch?v=${quoteGroup.video_id}&t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`, '_blank')}
+                                                        style={{
+                                                            backgroundColor: 'transparent',
+                                                            color: '#4A90E2',
+                                                            border: 'none',
+                                                            padding: '0.5rem',
+                                                            cursor: 'pointer',
+                                                            fontSize: '1.25rem',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            transition: 'transform 0.2s'
+                                                        }}
+                                                        onMouseOver={e => {
+                                                            e.currentTarget.style.transform = 'scale(1.3)';
+                                                        }}
+                                                        onMouseOut={e => {
+                                                            e.currentTarget.style.transform = 'scale(1)';
+                                                        }}
+                                                    >
+                                                        ↗
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => handleFlagClick(
+                                                            quote.text,
+                                                            quoteGroup.video_id,
+                                                            quoteGroup.quotes[0]?.title,
+                                                            quoteGroup.quotes[0]?.channel_source,
+                                                            quote.timestamp_start
+                                                        )}
+                                                        disabled={flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]}
+                                                        style={{
+                                                            backgroundColor: 'transparent',
+                                                            color: 'var(--accent-color)',
+                                                            border: 'none',
+                                                            padding: '0.5rem',
+                                                            cursor: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 'not-allowed' : 'pointer',
+                                                            opacity: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 0.6 : 1,
+                                                            fontSize: '1.25rem',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            transition: 'transform 0.2s'
+                                                        }}
+                                                        onMouseOver={e => {
+                                                            if (!flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]) {
+                                                                e.currentTarget.style.transform = 'scale(1.3)';
+                                                            }
+                                                        }}
+                                                        onMouseOut={e => {
+                                                            e.currentTarget.style.transform = 'scale(1)';
+                                                        }}
+                                                    >
+                                                        {flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? '⏳' : '🚩'}
+                                                    </button>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
