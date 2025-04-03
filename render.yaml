@@ -14,8 +14,4 @@ services:
     routes:
       - type: rewrite
         source: /*
-        destination: /
-    headers:
-      - path: /*
-        name: Cache-Control
-        value: public, max-age=0, must-revalidate 
+        destination: / 

@@ -380,18 +380,9 @@ const Quotes = ({ quotes = [], searchTerm }) => {
         timestamp: null
     });
     const [activeTimestamp, setActiveTimestamp] = useState({ videoId: null, timestamp: null });
-    const [showEmbeddedVideos, setShowEmbeddedVideos] = useState(() => {
-        // Initialize from localStorage, default to false if not set
-        const saved = localStorage.getItem('preferEmbeddedVideos');
-        return saved ? JSON.parse(saved) : false;
-    });
+    const [showEmbeddedVideos, setShowEmbeddedVideos] = useState(false);
     const [isViewSwitching, setIsViewSwitching] = useState(false);
     const [retryCount, setRetryCount] = useState(0);
-
-    // Update localStorage when preference changes
-    useEffect(() => {
-        localStorage.setItem('preferEmbeddedVideos', JSON.stringify(showEmbeddedVideos));
-    }, [showEmbeddedVideos]);
 
     // Effect to handle video loading retry
     useEffect(() => {
@@ -710,6 +701,10 @@ const App = () => {
     const [submittingFeedback, setSubmittingFeedback] = useState(false);
     const [games, setGames] = useState([]);
     const [selectedGame, setSelectedGame] = useState("all");
+    const [activeTimestamp, setActiveTimestamp] = useState({ videoId: null, timestamp: null });
+    const [showEmbeddedVideos, setShowEmbeddedVideos] = useState(false);
+    const [isViewSwitching, setIsViewSwitching] = useState(false);
+    const [retryCount, setRetryCount] = useState(0);
 
     useEffect(() => {
         const fetchGames = async () => {
