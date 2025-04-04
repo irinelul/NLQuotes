@@ -502,7 +502,8 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                     padding: '1rem',
                                     maxHeight: '450px',
                                     overflow: 'visible',
-                                    textAlign: 'center'
+                                    textAlign: 'center',
+                                    position: 'relative'
                                 }}>
                                     <div style={{
                                         width: '100%',
@@ -512,7 +513,8 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                         display: 'flex',
                                         flexDirection: 'column',
                                         justifyContent: quoteGroup.quotes?.length > 2 ? 'flex-start' : 'center',
-                                        alignItems: 'flex-start'
+                                        alignItems: 'flex-start',
+                                        position: 'relative'
                                     }}>
                                         {quoteGroup.quotes?.map((quote, index) => (
                                             <div className="quote-item" key={index} style={{
@@ -525,8 +527,9 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                                 borderColor: 'var(--border-color)',
                                                 flexShrink: 0, 
                                                 width: '100%',
-                                                overflow: 'hidden',
-                                                wordBreak: 'break-word'
+                                                overflow: 'visible',
+                                                wordBreak: 'break-word',
+                                                position: 'relative'
                                             }}>
                                                 <button
                                                     onClick={() => handleTimestampClick(quoteGroup.video_id, backdateTimestamp(quote.timestamp_start))}
@@ -540,13 +543,13 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                                         padding: 0,
                                                         font: 'inherit',
                                                         minWidth: 0,
-                                                        overflow: 'hidden',
+                                                        overflow: 'visible',
                                                         textOverflow: 'ellipsis',
                                                         whiteSpace: 'normal',
                                                         wordBreak: 'break-word',
                                                         transition: 'transform 0.2s ease',
                                                         position: 'relative',
-                                                        zIndex: 1
+                                                        zIndex: 2
                                                     }}
                                                     onMouseOver={e => {
                                                         e.currentTarget.style.transform = 'scale(1.02)';
