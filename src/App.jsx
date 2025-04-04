@@ -144,15 +144,7 @@ const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
     // Video thumbnail (when not playing)
     if (!isPlaying) {
         return (
-            <div
-                style={{ 
-                    width: '480px', 
-                    height: '270px', 
-                    position: 'relative',
-                    backgroundColor: 'var(--surface-color)',
-                    overflow: 'hidden'
-                }}
-            >
+            <div className="youtube-container">
                 <img 
                     src={`https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`}
                     alt="Video thumbnail"
@@ -210,13 +202,8 @@ const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
 
     // Direct iframe embed - most reliable approach
     return (
-        <div
-            style={{ 
-                width: '480px', 
-                height: '270px',
-                backgroundColor: 'var(--surface-color)',
-                overflow: 'hidden'
-            }}
+        <div 
+            className="youtube-container"
             data-video-id={videoId}
         >
             <div
@@ -451,188 +438,270 @@ const Quotes = ({ quotes = [], searchTerm }) => {
     return (
         <div>
             {quotes.length > 0 ? (
-                <table className="quotes-table">
-                    <thead>
-                        <tr>
-                            <th style={{ width: '480px', textAlign: 'center' }}>Video</th>
-                            <th style={{ width: '200px', textAlign: 'center' }}>Details</th>
-                            <th style={{ width: 'calc(100% - 680px)', textAlign: 'center' }}>Quotes with Timestamps</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {quotes.map((quoteGroup) => (
-                            <tr key={quoteGroup.video_id || `quote-group-${Math.random()}`} style={{
-                                borderBottom: '2px solid var(--border-color)',
-                                height: quoteGroup.quotes?.length > 6 ? '500px' : 'auto',
-                                padding: '1rem 0'
-                            }}>
-                                <td style={{ 
-                                    padding: '1rem',
-                                    verticalAlign: 'middle',
-                                    height: '100%',
-                                    textAlign: 'center'
+                <>
+                    <table className="quotes-table">
+                        <thead>
+                            <tr>
+                                <th style={{ width: '480px', textAlign: 'center' }}>Video</th>
+                                <th style={{ width: '200px', textAlign: 'center' }}>Details</th>
+                                <th style={{ width: 'calc(100% - 680px)', textAlign: 'center' }}>Quotes with Timestamps</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {quotes.map((quoteGroup) => (
+                                <tr key={quoteGroup.video_id || `quote-group-${Math.random()}`} style={{
+                                    borderBottom: '2px solid var(--border-color)',
+                                    height: quoteGroup.quotes?.length > 6 ? '500px' : 'auto',
+                                    padding: '1rem 0'
                                 }}>
-                                    <YouTubePlayer 
-                                        key={`${quoteGroup.video_id}-${retryCount}`}
-                                        videoId={quoteGroup.video_id}
-                                        timestamp={activeTimestamp.videoId === quoteGroup.video_id ? activeTimestamp.timestamp : null}
-                                        onTimestampClick={handleTimestampClick}
-                                    />
-                                </td>
-                                <td style={{ 
-                                    verticalAlign: 'middle',
-                                    padding: '1rem',
-                                    textAlign: 'center'
-                                }}>
-                                    <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                                        {quoteGroup.quotes[0]?.title || 'N/A'}
-                                    </div>
-                                    <div style={{ 
-                                        borderBottom: '1px solid var(--border-color)',
-                                        margin: '0.5rem 0',
-                                        width: '100%'
-                                    }} />
-                                    <div>{quoteGroup.quotes[0]?.channel_source || 'N/A'}</div>
-                                    <div style={{ marginTop: '0.5rem' }}>
-                                        {quoteGroup.quotes[0]?.upload_date
-                                            ? formatDate(quoteGroup.quotes[0].upload_date)
-                                            : 'N/A'}
-                                    </div>
-                                </td>
-                                <td style={{
-                                    verticalAlign: 'middle',
-                                    height: '100%',
-                                    padding: '1rem',
-                                    maxHeight: quoteGroup.quotes?.length > 6 ? '500px' : 'none',
-                                    overflow: 'visible',
-                                    textAlign: 'center'
-                                }}>
-                                    <div style={{
-                                        width: '100%',
-                                        height: quoteGroup.quotes?.length > 6 ? '500px' : 'auto',
-                                        overflowY: quoteGroup.quotes?.length > 6 ? 'auto' : 'visible',
-                                        padding: '0.5rem 0',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        justifyContent: quoteGroup.quotes?.length > 6 ? 'flex-start' : 'center',
-                                        alignItems: 'flex-start'
+                                    <td style={{ 
+                                        padding: '1rem',
+                                        verticalAlign: 'middle',
+                                        height: '100%',
+                                        textAlign: 'center'
                                     }}>
-                                        {quoteGroup.quotes?.map((quote, index) => (
-                                            <div className="quote-item" key={index} style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '0.75rem',
-                                                marginBottom: '0.75rem',
-                                                padding: '0.75rem 0',
-                                                borderBottom: index < quoteGroup.quotes.length - 1 ? '1px solid var(--border-color)' : 'none',
-                                                borderColor: 'var(--border-color)',
-                                                flexShrink: 0, 
-                                                width: '100%',
-                                                overflow: 'visible'
-                                            }}>
-                                                <button
-                                                    onClick={() => handleTimestampClick(quoteGroup.video_id, backdateTimestamp(quote.timestamp_start))}
-                                                    style={{
-                                                        flex: 1,
-                                                        textAlign: 'left',
-                                                        background: 'none',
-                                                        border: 'none',
-                                                        color: '#4A90E2',
-                                                        cursor: 'pointer',
-                                                        padding: 0,
-                                                        font: 'inherit',
-                                                        minWidth: 0,
-                                                        overflow: 'visible',
-                                                        textOverflow: 'ellipsis',
-                                                        transition: 'transform 0.2s ease',
-                                                        position: 'relative',
-                                                        zIndex: 1
-                                                    }}
-                                                    onMouseOver={e => {
-                                                        e.currentTarget.style.transform = 'scale(1.02)';
-                                                    }}
-                                                    onMouseOut={e => {
-                                                        e.currentTarget.style.transform = 'scale(1)';
-                                                    }}
-                                                >
-                                                    <span style={{ verticalAlign: 'middle' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(quote.text, { ALLOWED_TAGS }) }} />
-                                                    <span style={{ verticalAlign: 'middle', marginLeft: '0.5em' }}>
-                                                        ({formatTimestamp(backdateTimestamp(quote.timestamp_start))})
-                                                    </span>
-                                                </button>
-
-                                                <div style={{ 
-                                                    display: 'flex', 
-                                                    gap: '0.5rem',
-                                                    marginLeft: 'auto',
-                                                    flexShrink: 0
+                                        <YouTubePlayer 
+                                            key={`${quoteGroup.video_id}-${retryCount}`}
+                                            videoId={quoteGroup.video_id}
+                                            timestamp={activeTimestamp.videoId === quoteGroup.video_id ? activeTimestamp.timestamp : null}
+                                            onTimestampClick={handleTimestampClick}
+                                        />
+                                    </td>
+                                    <td style={{ 
+                                        verticalAlign: 'middle',
+                                        padding: '1rem',
+                                        textAlign: 'center'
+                                    }}>
+                                        <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                                            {quoteGroup.quotes[0]?.title || 'N/A'}
+                                        </div>
+                                        <div style={{ 
+                                            borderBottom: '1px solid var(--border-color)',
+                                            margin: '0.5rem 0',
+                                            width: '100%'
+                                        }} />
+                                        <div>{quoteGroup.quotes[0]?.channel_source || 'N/A'}</div>
+                                        <div style={{ marginTop: '0.5rem' }}>
+                                            {quoteGroup.quotes[0]?.upload_date
+                                                ? formatDate(quoteGroup.quotes[0].upload_date)
+                                                : 'N/A'}
+                                        </div>
+                                    </td>
+                                    <td style={{
+                                        verticalAlign: 'middle',
+                                        height: '100%',
+                                        padding: '1rem',
+                                        maxHeight: quoteGroup.quotes?.length > 6 ? '500px' : 'none',
+                                        overflow: 'visible',
+                                        textAlign: 'center'
+                                    }}>
+                                        <div style={{
+                                            width: '100%',
+                                            height: quoteGroup.quotes?.length > 6 ? '500px' : 'auto',
+                                            overflowY: quoteGroup.quotes?.length > 6 ? 'auto' : 'visible',
+                                            padding: '0.5rem 0',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            justifyContent: quoteGroup.quotes?.length > 6 ? 'flex-start' : 'center',
+                                            alignItems: 'flex-start'
+                                        }}>
+                                            {quoteGroup.quotes?.map((quote, index) => (
+                                                <div className="quote-item" key={index} style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.75rem',
+                                                    marginBottom: '0.75rem',
+                                                    padding: '0.75rem 0',
+                                                    borderBottom: index < quoteGroup.quotes.length - 1 ? '1px solid var(--border-color)' : 'none',
+                                                    borderColor: 'var(--border-color)',
+                                                    flexShrink: 0, 
+                                                    width: '100%',
+                                                    overflow: 'visible'
                                                 }}>
                                                     <button
-                                                        onClick={() => window.open(`https://www.youtube.com/watch?v=${quoteGroup.video_id}&t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`, '_blank')}
+                                                        onClick={() => handleTimestampClick(quoteGroup.video_id, backdateTimestamp(quote.timestamp_start))}
                                                         style={{
-                                                            backgroundColor: 'transparent',
-                                                            color: '#4A90E2',
+                                                            flex: 1,
+                                                            textAlign: 'left',
+                                                            background: 'none',
                                                             border: 'none',
-                                                            padding: '0.5rem',
+                                                            color: '#4A90E2',
                                                             cursor: 'pointer',
-                                                            fontSize: '1.25rem',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            transition: 'transform 0.2s'
+                                                            padding: 0,
+                                                            font: 'inherit',
+                                                            minWidth: 0,
+                                                            overflow: 'visible',
+                                                            textOverflow: 'ellipsis',
+                                                            transition: 'transform 0.2s ease',
+                                                            position: 'relative',
+                                                            zIndex: 1
                                                         }}
                                                         onMouseOver={e => {
-                                                            e.currentTarget.style.transform = 'scale(1.3)';
+                                                            e.currentTarget.style.transform = 'scale(1.02)';
                                                         }}
                                                         onMouseOut={e => {
                                                             e.currentTarget.style.transform = 'scale(1)';
                                                         }}
                                                     >
-                                                        ↗
+                                                        <span style={{ verticalAlign: 'middle' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(quote.text, { ALLOWED_TAGS }) }} />
+                                                        <span style={{ verticalAlign: 'middle', marginLeft: '0.5em' }}>
+                                                            ({formatTimestamp(backdateTimestamp(quote.timestamp_start))})
+                                                        </span>
                                                     </button>
 
-                                                    <button
-                                                        onClick={() => handleFlagClick(
-                                                            quote.text,
-                                                            quoteGroup.video_id,
-                                                            quoteGroup.quotes[0]?.title,
-                                                            quoteGroup.quotes[0]?.channel_source,
-                                                            quote.timestamp_start
-                                                        )}
-                                                        disabled={flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]}
-                                                        style={{
-                                                            backgroundColor: 'transparent',
-                                                            color: 'var(--accent-color)',
-                                                            border: 'none',
-                                                            padding: '0.5rem',
-                                                            cursor: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 'not-allowed' : 'pointer',
-                                                            opacity: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 0.6 : 1,
-                                                            fontSize: '1.25rem',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            transition: 'transform 0.2s'
-                                                        }}
-                                                        onMouseOver={e => {
-                                                            if (!flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]) {
+                                                    <div style={{ 
+                                                        display: 'flex', 
+                                                        gap: '0.5rem',
+                                                        marginLeft: 'auto',
+                                                        flexShrink: 0
+                                                    }}>
+                                                        <button
+                                                            onClick={() => window.open(`https://www.youtube.com/watch?v=${quoteGroup.video_id}&t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`, '_blank')}
+                                                            style={{
+                                                                backgroundColor: 'transparent',
+                                                                color: '#4A90E2',
+                                                                border: 'none',
+                                                                padding: '0.5rem',
+                                                                cursor: 'pointer',
+                                                                fontSize: '1.25rem',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                transition: 'transform 0.2s'
+                                                            }}
+                                                            onMouseOver={e => {
                                                                 e.currentTarget.style.transform = 'scale(1.3)';
-                                                            }
-                                                        }}
-                                                        onMouseOut={e => {
-                                                            e.currentTarget.style.transform = 'scale(1)';
-                                                        }}
-                                                    >
-                                                        {flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? '⏳' : '🚩'}
-                                                    </button>
+                                                            }}
+                                                            onMouseOut={e => {
+                                                                e.currentTarget.style.transform = 'scale(1)';
+                                                            }}
+                                                        >
+                                                            ↗
+                                                        </button>
+
+                                                        <button
+                                                            onClick={() => handleFlagClick(
+                                                                quote.text,
+                                                                quoteGroup.video_id,
+                                                                quoteGroup.quotes[0]?.title,
+                                                                quoteGroup.quotes[0]?.channel_source,
+                                                                quote.timestamp_start
+                                                            )}
+                                                            disabled={flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]}
+                                                            style={{
+                                                                backgroundColor: 'transparent',
+                                                                color: 'var(--accent-color)',
+                                                                border: 'none',
+                                                                padding: '0.5rem',
+                                                                cursor: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 'not-allowed' : 'pointer',
+                                                                opacity: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 0.6 : 1,
+                                                                fontSize: '1.25rem',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                transition: 'transform 0.2s'
+                                                            }}
+                                                            onMouseOver={e => {
+                                                                if (!flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]) {
+                                                                    e.currentTarget.style.transform = 'scale(1.3)';
+                                                                }
+                                                            }}
+                                                            onMouseOut={e => {
+                                                                e.currentTarget.style.transform = 'scale(1)';
+                                                            }}
+                                                        >
+                                                            {flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? '⏳' : '🚩'}
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            ))}
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    <ul className="mobile-quotes-list">
+                        {quotes.map((quoteGroup) => (<li className="mobile-quote-item">
+                            <div className="mobile-quote-video">
+                                <YouTubePlayer 
+                                    key={`${quoteGroup.video_id}-${retryCount}`}
+                                    videoId={quoteGroup.video_id}
+                                    timestamp={activeTimestamp.videoId === quoteGroup.video_id ? activeTimestamp.timestamp : null}
+                                    onTimestampClick={handleTimestampClick}
+                                />
+                                <div className="mobile-quote-video-details">
+                                    <div className="video-title">
+                                        {quoteGroup.quotes[0]?.title || 'N/A'}
                                     </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                                    <div className="video-channel">{quoteGroup.quotes[0]?.channel_source || 'N/A'} • {quoteGroup.quotes[0]?.upload_date
+                                            ? formatDate(quoteGroup.quotes[0].upload_date)
+                                            : 'N/A'}</div>
+                                </div>
+                            </div>
+                            <div className="mobile-quotes">
+                                {quoteGroup.quotes.map((quote) => (
+                                    <div className="mobile-quotes-quote">
+                                        <button className="mobile-quote"
+                                            onClick={() => handleTimestampClick(quoteGroup.video_id, backdateTimestamp(quote.timestamp_start))}
+                                        >
+                                            <span>
+                                                ({formatTimestamp(backdateTimestamp(quote.timestamp_start))})
+                                            </span>
+                                            <span dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(quote.text, { ALLOWED_TAGS }) }} />
+                                        </button>
+
+                                        <div className="mobile-actions">
+                                            <a
+                                                href={`https://www.youtube.com/watch?v=${quoteGroup.video_id}&t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`}
+                                                target='_blank'
+                                                style={{
+                                                    backgroundColor: 'transparent',
+                                                    color: '#4A90E2',
+                                                    border: 'none',
+                                                    padding: '0.5rem',
+                                                    cursor: 'pointer',
+                                                    fontSize: '1.25rem',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    transition: 'transform 0.2s'
+                                                }}
+                                            >
+                                                ↗
+                                            </a>
+
+                                            <button
+                                                onClick={() => handleFlagClick(
+                                                    quote.text,
+                                                    quoteGroup.video_id,
+                                                    quoteGroup.quotes[0]?.title,
+                                                    quoteGroup.quotes[0]?.channel_source,
+                                                    quote.timestamp_start
+                                                )}
+                                                disabled={flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]}
+                                                style={{
+                                                    backgroundColor: 'transparent',
+                                                    color: 'var(--accent-color)',
+                                                    border: 'none',
+                                                    padding: '0.5rem',
+                                                    cursor: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 'not-allowed' : 'pointer',
+                                                    opacity: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 0.6 : 1,
+                                                    fontSize: '1.25rem',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    transition: 'transform 0.2s'
+                                                }}
+                                            >
+                                                {flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? '⏳' : '🚩'}
+                                            </button>
+                                        </div>
+                                    </div>))}
+                            </div>
+                        </li>))}
+                    </ul>
+                </>
             ) : (
                 <div style={{ 
                     textAlign: 'center', 

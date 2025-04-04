@@ -147,6 +147,7 @@ button:disabled {
 
 .input-container {
     display: flex;
+    flex-wrap: wrap;
     justify-content: center;
     align-items: center;
     gap: 0.5rem;
@@ -210,6 +211,7 @@ button:disabled {
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: none;
 }
 
 .quotes-table th {
@@ -316,6 +318,117 @@ button:disabled {
 .quotes-table td a[href*="Video Link"]:hover {
     background-color: rgba(192, 192, 192, 0.2);
     text-decoration: none;
+}
+
+.youtube-container {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    position: relative;
+    background-color: var(--surface-color);
+    overflow: hidden;
+}
+
+.mobile-quotes-list {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+@media screen and (min-width: 900px) {
+    .mobile-quotes-list {
+        display: none;
+    }
+
+    .quotes-table {
+        display: block;
+    }
+
+    .youtube-container {
+        width: 480px;
+    }
+}
+
+.mobile-quote-item {
+    border-radius: 12px;
+    overflow: hidden;
+    background-color: var(--surface-color);
+
+}
+
+.mobile-quote-video {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.mobile-quote-video img {
+    max-width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: contain;
+}
+
+.mobile-quote-video-details {
+    padding: 8px;
+}
+
+.mobile-quote-video-details div {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.video-title {
+    font-size: small;
+}
+
+.video-channel {
+    font-size: x-small;
+}
+
+.video-date {
+    font-size: xx-small;
+}
+
+.mobile-quotes {
+    padding: 0px 8px 8px;
+    max-height: 500px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.mobile-quotes-quote {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.mobile-quotes-quote:last-child {
+    border-bottom: none;
+}
+
+.mobile-quote {
+    display: flex;
+    gap: 6px;
+    flex: 1;
+    border: none;
+    color: #4A90E2;
+    padding: 0;
+    font: inherit;
+    min-width: 0;
+    overflow: visible;
+    text-overflow: ellipsis;
+    position: relative;
+    background: none;
+    text-align: left;
+}
+
+.mobile-actions {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
 }
 
 @font-face {
@@ -569,12 +682,13 @@ button:disabled {
 
 .disclaimer-examples {
     display: flex;
+    flex-wrap: wrap;
     gap: 1rem;
     margin-top: 0.5rem;
 }
 
 .disclaimer-example {
-    flex: 1;
+    flex: 1 1 320px;
     background-color: rgba(192, 192, 192, 0.1);
     padding: 0.75rem;
     border-radius: 8px;
@@ -630,6 +744,7 @@ button:disabled {
 
 .filter-container {
     display: flex;
+    flex-wrap: wrap;
     justify-content: center;
     align-items: center;
     gap: 1rem;
