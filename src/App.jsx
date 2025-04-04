@@ -146,11 +146,12 @@ const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
         return (
             <div
                 style={{ 
-                    width: '480px', 
-                    height: '270px', 
+                    width: '616px', 
+                    height: '346px', 
                     position: 'relative',
                     backgroundColor: 'var(--surface-color)',
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    borderRadius: '8px'
                 }}
             >
                 <img 
@@ -212,8 +213,8 @@ const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
     return (
         <div
             style={{ 
-                width: '480px', 
-                height: '270px',
+                width: '616px', 
+                height: '346px',
                 backgroundColor: 'var(--surface-color)',
                 overflow: 'hidden'
             }}
@@ -454,67 +455,63 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                 <table className="quotes-table">
                     <thead>
                         <tr>
-                            <th style={{ width: '480px', textAlign: 'center' }}>Video</th>
-                            <th style={{ width: '200px', textAlign: 'center' }}>Details</th>
-                            <th style={{ width: 'calc(100% - 680px)', textAlign: 'center' }}>Quotes with Timestamps</th>
+                            <th style={{ width: '720px', textAlign: 'center' }}>Video</th>
+                            <th style={{ width: 'calc(100% - 720px)', textAlign: 'center' }}>Quotes with Timestamps</th>
                         </tr>
                     </thead>
                     <tbody>
                         {quotes.map((quoteGroup) => (
                             <tr key={quoteGroup.video_id || `quote-group-${Math.random()}`} style={{
                                 borderBottom: '2px solid var(--border-color)',
-                                height: quoteGroup.quotes?.length > 6 ? '500px' : 'auto',
+                                height: '450px',
                                 padding: '1rem 0'
                             }}>
                                 <td style={{ 
                                     padding: '1rem',
                                     verticalAlign: 'middle',
                                     height: '100%',
-                                    textAlign: 'center'
+                                    textAlign: 'center',
+                                    width: '720px'
                                 }}>
-                                    <YouTubePlayer 
-                                        key={`${quoteGroup.video_id}-${retryCount}`}
-                                        videoId={quoteGroup.video_id}
-                                        timestamp={activeTimestamp.videoId === quoteGroup.video_id ? activeTimestamp.timestamp : null}
-                                        onTimestampClick={handleTimestampClick}
-                                    />
-                                </td>
-                                <td style={{ 
-                                    verticalAlign: 'middle',
-                                    padding: '1rem',
-                                    textAlign: 'center'
-                                }}>
-                                    <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                                        {quoteGroup.quotes[0]?.title || 'N/A'}
-                                    </div>
                                     <div style={{ 
-                                        borderBottom: '1px solid var(--border-color)',
-                                        margin: '0.5rem 0',
-                                        width: '100%'
-                                    }} />
-                                    <div>{quoteGroup.quotes[0]?.channel_source || 'N/A'}</div>
-                                    <div style={{ marginTop: '0.5rem' }}>
-                                        {quoteGroup.quotes[0]?.upload_date
-                                            ? formatDate(quoteGroup.quotes[0].upload_date)
-                                            : 'N/A'}
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '0.5rem',
+                                        height: '470px',
+                                        justifyContent: 'space-between'
+                                    }}>
+                                        <div style={{ fontWeight: 'bold' }}>
+                                            {quoteGroup.quotes[0]?.title || 'N/A'}
+                                        </div>
+                                        <YouTubePlayer 
+                                            key={`${quoteGroup.video_id}-${retryCount}`}
+                                            videoId={quoteGroup.video_id}
+                                            timestamp={activeTimestamp.videoId === quoteGroup.video_id ? activeTimestamp.timestamp : null}
+                                            onTimestampClick={handleTimestampClick}
+                                        />
+                                        <div>
+                                            {quoteGroup.quotes[0]?.channel_source || 'N/A'} - {quoteGroup.quotes[0]?.upload_date
+                                                ? formatDate(quoteGroup.quotes[0].upload_date)
+                                                : 'N/A'}
+                                        </div>
                                     </div>
                                 </td>
                                 <td style={{
                                     verticalAlign: 'middle',
                                     height: '100%',
                                     padding: '1rem',
-                                    maxHeight: quoteGroup.quotes?.length > 6 ? '500px' : 'none',
+                                    maxHeight: '450px',
                                     overflow: 'visible',
                                     textAlign: 'center'
                                 }}>
                                     <div style={{
                                         width: '100%',
-                                        height: quoteGroup.quotes?.length > 6 ? '500px' : 'auto',
-                                        overflowY: quoteGroup.quotes?.length > 6 ? 'auto' : 'visible',
+                                        height: quoteGroup.quotes?.length > 2 ? '450px' : 'auto',
+                                        overflowY: quoteGroup.quotes?.length > 2 ? 'auto' : 'visible',
                                         padding: '0.5rem 0',
                                         display: 'flex',
                                         flexDirection: 'column',
-                                        justifyContent: quoteGroup.quotes?.length > 6 ? 'flex-start' : 'center',
+                                        justifyContent: quoteGroup.quotes?.length > 2 ? 'flex-start' : 'center',
                                         alignItems: 'flex-start'
                                     }}>
                                         {quoteGroup.quotes?.map((quote, index) => (
@@ -528,7 +525,8 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                                 borderColor: 'var(--border-color)',
                                                 flexShrink: 0, 
                                                 width: '100%',
-                                                overflow: 'visible'
+                                                overflow: 'hidden',
+                                                wordBreak: 'break-word'
                                             }}>
                                                 <button
                                                     onClick={() => handleTimestampClick(quoteGroup.video_id, backdateTimestamp(quote.timestamp_start))}
@@ -542,8 +540,10 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                                         padding: 0,
                                                         font: 'inherit',
                                                         minWidth: 0,
-                                                        overflow: 'visible',
+                                                        overflow: 'hidden',
                                                         textOverflow: 'ellipsis',
+                                                        whiteSpace: 'normal',
+                                                        wordBreak: 'break-word',
                                                         transition: 'transform 0.2s ease',
                                                         position: 'relative',
                                                         zIndex: 1
