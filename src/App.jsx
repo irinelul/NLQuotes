@@ -571,6 +571,44 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                                     flexShrink: 0
                                                 }}>
                                                     <button
+                                                        onClick={() => {
+                                                            // Strip HTML tags from the text
+                                                            const textToCopy = quote.text.replace(/<[^>]*>/g, '');
+                                                            navigator.clipboard.writeText(textToCopy).then(() => {
+                                                                // Show a temporary success indicator
+                                                                const button = event.currentTarget;
+                                                                const originalText = button.innerHTML;
+                                                                button.innerHTML = '✓';
+                                                                button.style.color = '#4CAF50';
+                                                                setTimeout(() => {
+                                                                    button.innerHTML = originalText;
+                                                                    button.style.color = '#4A90E2';
+                                                                }, 1000);
+                                                            });
+                                                        }}
+                                                        style={{
+                                                            backgroundColor: 'transparent',
+                                                            color: '#4A90E2',
+                                                            border: 'none',
+                                                            padding: '0.5rem',
+                                                            cursor: 'pointer',
+                                                            fontSize: '1.25rem',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            transition: 'transform 0.2s'
+                                                        }}
+                                                        onMouseOver={e => {
+                                                            e.currentTarget.style.transform = 'scale(1.3)';
+                                                        }}
+                                                        onMouseOut={e => {
+                                                            e.currentTarget.style.transform = 'scale(1)';
+                                                        }}
+                                                    >
+                                                        📋
+                                                    </button>
+
+                                                    <button
                                                         onClick={() => window.open(`https://www.youtube.com/watch?v=${quoteGroup.video_id}&t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`, '_blank')}
                                                         style={{
                                                             backgroundColor: 'transparent',
