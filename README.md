@@ -19,7 +19,7 @@ Feel free to download them, and create amazing things!
 
 1. **Clone the Repository**
    ```bash
-   git clone https://github.com/your-username/your-repository-name.git
+   git clone https://github.com/irinelul/NLQuotes.git
 1. **Install Git LFS**
    ```bash
    git lfs install
