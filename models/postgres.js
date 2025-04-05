@@ -212,7 +212,7 @@ const quoteModel = {
     let query = `
       SELECT q.video_id, q.title, q.upload_date, q.channel_source,
              json_agg(json_build_object(
-               'text', ts_headline('simple', q.text, websearch_to_tsquery('simple', $1)),
+               'text', ts_headline('simple', q.text, websearch_to_tsquery('simple', $1),'MaxWords=5, MinWords=5, HighlightAll=TRUE'),
                'line_number', q.line_number,
                'timestamp_start', q.timestamp_start,
                'title', q.title,          -- Keep for context within quote object
@@ -294,7 +294,7 @@ const quoteModel = {
     } else {
       query += ` GROUP BY q.video_id, q.title, q.upload_date, q.channel_source`;
     }
-
+    console.log(query);
 // --- Sorting (Applied after grouping) ---
 if (sortOrder === 'default') {
   if (exactPhrase && searchTerm && searchTerm.trim() !== '') {
