@@ -566,6 +566,7 @@ const Quotes = ({ quotes = [], searchTerm }) => {
 
                                                 <div style={{ 
                                                     display: 'flex', 
+                                                    flexDirection: 'column',
                                                     gap: '0.5rem',
                                                     marginLeft: 'auto',
                                                     flexShrink: 0
