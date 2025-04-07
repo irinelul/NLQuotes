@@ -20,6 +20,7 @@ const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
     const [currentTimestamp, setCurrentTimestamp] = useState(timestamp);
     const iframeRef = React.useRef(null);
     const playerRef = React.useRef(null);
+    const [isMobileView, setIsMobileView] = useState(window.innerWidth <= 768);
     
     // Initialize YouTube player when iframe is loaded
     useEffect(() => {
@@ -66,6 +67,16 @@ const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
         };
     }, [isPlaying, videoId]);
 
+    // Effect to handle responsive layout
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobileView(window.innerWidth <= 768);
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     // Handle timestamp changes
     useEffect(() => {
         if (timestamp && !isPlaying) {
@@ -103,14 +114,12 @@ const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
         setIsPlaying(false);
     };
 
-    // We don't need getIframeSrc anymore as we're using the YouTube Player API directly
-
     // Error display
     if (error) {
         return (
             <div style={{ 
-                width: '480px', 
-                height: '270px', 
+                width: isMobileView ? '100%' : '480px', 
+                height: isMobileView ? '250px' : '270px', 
                 backgroundColor: 'var(--surface-color)',
                 display: 'flex',
                 alignItems: 'center',
@@ -146,8 +155,8 @@ const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
         return (
             <div
                 style={{ 
-                    width: '616px', 
-                    height: '346px', 
+                    width: isMobileView ? '100%' : '616px', 
+                    height: isMobileView ? '220px' : '346px', 
                     position: 'relative',
                     backgroundColor: 'var(--surface-color)',
                     overflow: 'hidden',
@@ -184,8 +193,8 @@ const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
                 >
                     <div
                         style={{
-                            width: '60px',
-                            height: '60px',
+                            width: isMobileView ? '50px' : '60px',
+                            height: isMobileView ? '50px' : '60px',
                             borderRadius: '50%',
                             backgroundColor: 'rgba(255,0,0,0.8)',
                             display: 'flex',
@@ -197,9 +206,9 @@ const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
                             style={{
                                 width: '0',
                                 height: '0',
-                                borderTop: '15px solid transparent',
-                                borderBottom: '15px solid transparent',
-                                borderLeft: '24px solid white',
+                                borderTop: isMobileView ? '12px solid transparent' : '15px solid transparent',
+                                borderBottom: isMobileView ? '12px solid transparent' : '15px solid transparent',
+                                borderLeft: isMobileView ? '20px solid white' : '24px solid white',
                                 marginLeft: '5px'
                             }}
                         />
@@ -213,8 +222,8 @@ const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
     return (
         <div
             style={{ 
-                width: '616px', 
-                height: '346px',
+                width: isMobileView ? '100%' : '616px', 
+                height: isMobileView ? '220px' : '346px',
                 backgroundColor: 'var(--surface-color)',
                 overflow: 'hidden'
             }}
@@ -393,6 +402,7 @@ const Quotes = ({ quotes = [], searchTerm }) => {
     const [showEmbeddedVideos] = useState(true);
     const [isViewSwitching, setIsViewSwitching] = useState(false);
     const [retryCount, setRetryCount] = useState(0);
+    const [isMobileView, setIsMobileView] = useState(window.innerWidth <= 768);
 
     // Effect to handle video loading retry
     useEffect(() => {
@@ -404,6 +414,16 @@ const Quotes = ({ quotes = [], searchTerm }) => {
             return () => clearTimeout(timer);
         }
     }, [showEmbeddedVideos, retryCount]);
+
+    // Effect to handle responsive layout
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobileView(window.innerWidth <= 768);
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const handleTimestampClick = (videoId, timestamp) => {
         // If clicking a quote from a different video, stop the current video
@@ -449,231 +469,389 @@ const Quotes = ({ quotes = [], searchTerm }) => {
         }
     };
 
+    // Desktop layout
+    const renderDesktopLayout = () => (
+        <table className="quotes-table">
+            <thead>
+                <tr>
+                    <th style={{ width: '720px', textAlign: 'center' }}>Video</th>
+                    <th style={{ width: 'calc(100% - 720px)', textAlign: 'center' }}>Quotes with Timestamps</th>
+                </tr>
+            </thead>
+            <tbody>
+                {quotes.map((quoteGroup) => (
+                    <tr key={quoteGroup.video_id || `quote-group-${Math.random()}`} style={{
+                        borderBottom: '2px solid var(--border-color)',
+                        height: '450px',
+                        padding: '1rem 0'
+                    }}>
+                        <td style={{ 
+                            padding: '1rem',
+                            verticalAlign: 'middle',
+                            height: '100%',
+                            textAlign: 'center',
+                            width: '720px'
+                        }}>
+                            <div style={{ 
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.5rem',
+                                height: '470px',
+                                justifyContent: 'space-between'
+                            }}>
+                                <div style={{ fontWeight: 'bold' }}>
+                                    {quoteGroup.quotes[0]?.title || 'N/A'}
+                                </div>
+                                <YouTubePlayer 
+                                    key={`${quoteGroup.video_id}-${retryCount}`}
+                                    videoId={quoteGroup.video_id}
+                                    timestamp={activeTimestamp.videoId === quoteGroup.video_id ? activeTimestamp.timestamp : null}
+                                    onTimestampClick={handleTimestampClick}
+                                />
+                                <div>
+                                    {quoteGroup.quotes[0]?.channel_source || 'N/A'} - {quoteGroup.quotes[0]?.upload_date
+                                        ? formatDate(quoteGroup.quotes[0].upload_date)
+                                        : 'N/A'}
+                                </div>
+                            </div>
+                        </td>
+                        <td style={{
+                            verticalAlign: 'middle',
+                            height: '100%',
+                            padding: '1rem',
+                            maxHeight: '450px',
+                            overflow: 'visible',
+                            textAlign: 'center',
+                            position: 'relative'
+                        }}>
+                            <div style={{
+                                width: '100%',
+                                height: quoteGroup.quotes?.length > 2 ? '450px' : 'auto',
+                                overflowY: quoteGroup.quotes?.length > 2 ? 'auto' : 'visible',
+                                padding: '0.5rem 0',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: quoteGroup.quotes?.length > 2 ? 'flex-start' : 'center',
+                                alignItems: 'flex-start',
+                                position: 'relative'
+                            }}>
+                                {quoteGroup.quotes?.map((quote, index) => (
+                                    <div className="quote-item" key={index} style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.75rem',
+                                        marginBottom: '0.75rem',
+                                        padding: '0.75rem 0',
+                                        borderBottom: index < quoteGroup.quotes.length - 1 ? '1px solid var(--border-color)' : 'none',
+                                        borderColor: 'var(--border-color)',
+                                        flexShrink: 0, 
+                                        width: '100%',
+                                        overflow: 'visible',
+                                        wordBreak: 'break-word',
+                                        position: 'relative'
+                                    }}>
+                                        <button
+                                            onClick={() => handleTimestampClick(quoteGroup.video_id, backdateTimestamp(quote.timestamp_start))}
+                                            style={{
+                                                flex: 1,
+                                                textAlign: 'left',
+                                                background: 'none',
+                                                border: 'none',
+                                                color: '#4A90E2',
+                                                cursor: 'pointer',
+                                                padding: 0,
+                                                font: 'inherit',
+                                                minWidth: 0,
+                                                overflow: 'visible',
+                                                textOverflow: 'ellipsis',
+                                                whiteSpace: 'normal',
+                                                wordBreak: 'break-word',
+                                                transition: 'transform 0.2s ease',
+                                                position: 'relative',
+                                                zIndex: 2
+                                            }}
+                                            onMouseOver={e => {
+                                                e.currentTarget.style.transform = 'scale(1.02)';
+                                            }}
+                                            onMouseOut={e => {
+                                                e.currentTarget.style.transform = 'scale(1)';
+                                            }}
+                                        >
+                                            <span style={{ verticalAlign: 'middle' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(quote.text, { ALLOWED_TAGS }) }} />
+                                            <span style={{ verticalAlign: 'middle', marginLeft: '0.5em' }}>
+                                                ({formatTimestamp(backdateTimestamp(quote.timestamp_start))})
+                                            </span>
+                                        </button>
+
+                                        <div style={{ 
+                                            display: 'flex', 
+                                            flexDirection: 'column',
+                                            gap: '0.5rem',
+                                            marginLeft: 'auto',
+                                            flexShrink: 0
+                                        }}>
+                                            <button
+                                                onClick={() => {
+                                                    // Strip HTML tags from the text
+                                                    const textToCopy = quote.text.replace(/<[^>]*>/g, '');
+                                                    navigator.clipboard.writeText(textToCopy).then(() => {
+                                                        // Show a temporary success indicator
+                                                        const button = event.currentTarget;
+                                                        const originalText = button.innerHTML;
+                                                        button.innerHTML = '✓';
+                                                        button.style.color = '#4CAF50';
+                                                        setTimeout(() => {
+                                                            button.innerHTML = originalText;
+                                                            button.style.color = '#4A90E2';
+                                                        }, 1000);
+                                                    });
+                                                }}
+                                                style={{
+                                                    backgroundColor: 'transparent',
+                                                    color: '#4A90E2',
+                                                    border: 'none',
+                                                    padding: '0.5rem',
+                                                    cursor: 'pointer',
+                                                    fontSize: '1.25rem',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    transition: 'transform 0.2s'
+                                                }}
+                                                onMouseOver={e => {
+                                                    e.currentTarget.style.transform = 'scale(1.3)';
+                                                }}
+                                                onMouseOut={e => {
+                                                    e.currentTarget.style.transform = 'scale(1)';
+                                                }}
+                                            >
+                                                📋
+                                            </button>
+
+                                            <button
+                                                onClick={() => window.open(`https://www.youtube.com/watch?v=${quoteGroup.video_id}&t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`, '_blank')}
+                                                style={{
+                                                    backgroundColor: 'transparent',
+                                                    color: '#4A90E2',
+                                                    border: 'none',
+                                                    padding: '0.5rem',
+                                                    cursor: 'pointer',
+                                                    fontSize: '1.25rem',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    transition: 'transform 0.2s'
+                                                }}
+                                                onMouseOver={e => {
+                                                    e.currentTarget.style.transform = 'scale(1.3)';
+                                                }}
+                                                onMouseOut={e => {
+                                                    e.currentTarget.style.transform = 'scale(1)';
+                                                }}
+                                            >
+                                                ↗
+                                            </button>
+
+                                            <button
+                                                onClick={() => handleFlagClick(
+                                                    quote.text,
+                                                    quoteGroup.video_id,
+                                                    quoteGroup.quotes[0]?.title,
+                                                    quoteGroup.quotes[0]?.channel_source,
+                                                    quote.timestamp_start
+                                                )}
+                                                disabled={flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]}
+                                                style={{
+                                                    backgroundColor: 'transparent',
+                                                    color: 'var(--accent-color)',
+                                                    border: 'none',
+                                                    padding: '0.5rem',
+                                                    cursor: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 'not-allowed' : 'pointer',
+                                                    opacity: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 0.6 : 1,
+                                                    fontSize: '1.25rem',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    transition: 'transform 0.2s'
+                                                }}
+                                                onMouseOver={e => {
+                                                    if (!flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]) {
+                                                        e.currentTarget.style.transform = 'scale(1.3)';
+                                                    }
+                                                }}
+                                                onMouseOut={e => {
+                                                    e.currentTarget.style.transform = 'scale(1)';
+                                                }}
+                                            >
+                                                {flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? '⏳' : '🚩'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+    );
+
+    // Mobile layout
+    const renderMobileLayout = () => (
+        <div className="mobile-quotes-container">
+            {quotes.map((quoteGroup) => (
+                <div key={quoteGroup.video_id || `quote-group-${Math.random()}`} className="mobile-quote-group">
+                    <div className="mobile-video-title" style={{ fontWeight: 'bold', padding: '1rem 0.5rem', textAlign: 'center' }}>
+                        {quoteGroup.quotes[0]?.title || 'N/A'}
+                    </div>
+                    
+                    <div className="mobile-video-container" style={{ width: '100%', maxWidth: '480px', margin: '0 auto' }}>
+                        <YouTubePlayer 
+                            key={`${quoteGroup.video_id}-${retryCount}`}
+                            videoId={quoteGroup.video_id}
+                            timestamp={activeTimestamp.videoId === quoteGroup.video_id ? activeTimestamp.timestamp : null}
+                            onTimestampClick={handleTimestampClick}
+                        />
+                    </div>
+                    
+                    <div className="mobile-video-info" style={{ 
+                        textAlign: 'center', 
+                        padding: '0.5rem',
+                        color: 'var(--text-secondary)',
+                        borderBottom: '1px solid var(--border-color)'
+                    }}>
+                        {quoteGroup.quotes[0]?.channel_source || 'N/A'} - {quoteGroup.quotes[0]?.upload_date
+                            ? formatDate(quoteGroup.quotes[0].upload_date)
+                            : 'N/A'}
+                    </div>
+                    
+                    <div className="mobile-quotes-list" style={{
+                        maxHeight: '500px',
+                        overflowY: 'auto',
+                        padding: '0.5rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '1rem'
+                    }}>
+                        {quoteGroup.quotes?.map((quote, index) => (
+                            <div className="mobile-quote-item" key={index} style={{
+                                padding: '0.75rem',
+                                borderBottom: index < quoteGroup.quotes.length - 1 ? '1px solid var(--border-color)' : 'none',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.75rem'
+                            }}>
+                                <button
+                                    onClick={() => handleTimestampClick(quoteGroup.video_id, backdateTimestamp(quote.timestamp_start))}
+                                    style={{
+                                        width: '100%',
+                                        textAlign: 'left',
+                                        background: 'none',
+                                        border: 'none',
+                                        color: '#4A90E2',
+                                        cursor: 'pointer',
+                                        padding: '0.5rem',
+                                        font: 'inherit',
+                                        wordBreak: 'break-word',
+                                        borderRadius: '4px',
+                                        backgroundColor: 'var(--surface-color)',
+                                    }}
+                                >
+                                    <span style={{ verticalAlign: 'middle' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(quote.text, { ALLOWED_TAGS }) }} />
+                                    <span style={{ 
+                                        verticalAlign: 'middle', 
+                                        marginLeft: '0.5em',
+                                        color: 'var(--text-secondary)',
+                                        fontWeight: 'bold'
+                                    }}>
+                                        ({formatTimestamp(backdateTimestamp(quote.timestamp_start))})
+                                    </span>
+                                </button>
+
+                                <div style={{ 
+                                    display: 'flex', 
+                                    justifyContent: 'space-around',
+                                    padding: '0.5rem',
+                                    backgroundColor: 'var(--surface-color)',
+                                    borderRadius: '4px'
+                                }}>
+                                    <button
+                                        onClick={() => {
+                                            const textToCopy = quote.text.replace(/<[^>]*>/g, '');
+                                            navigator.clipboard.writeText(textToCopy).then(() => {
+                                                const button = event.currentTarget;
+                                                const originalText = button.innerHTML;
+                                                button.innerHTML = '✓';
+                                                button.style.color = '#4CAF50';
+                                                setTimeout(() => {
+                                                    button.innerHTML = originalText;
+                                                    button.style.color = '#4A90E2';
+                                                }, 1000);
+                                            });
+                                        }}
+                                        style={{
+                                            backgroundColor: 'transparent',
+                                            color: '#4A90E2',
+                                            border: 'none',
+                                            padding: '0.5rem',
+                                            cursor: 'pointer',
+                                            fontSize: '1.25rem',
+                                        }}
+                                        title="Copy to clipboard"
+                                    >
+                                        📋
+                                    </button>
+
+                                    <button
+                                        onClick={() => window.open(`https://www.youtube.com/watch?v=${quoteGroup.video_id}&t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`, '_blank')}
+                                        style={{
+                                            backgroundColor: 'transparent',
+                                            color: '#4A90E2',
+                                            border: 'none',
+                                            padding: '0.5rem',
+                                            cursor: 'pointer',
+                                            fontSize: '1.25rem',
+                                        }}
+                                        title="Open in YouTube"
+                                    >
+                                        ↗
+                                    </button>
+
+                                    <button
+                                        onClick={() => handleFlagClick(
+                                            quote.text,
+                                            quoteGroup.video_id,
+                                            quoteGroup.quotes[0]?.title,
+                                            quoteGroup.quotes[0]?.channel_source,
+                                            quote.timestamp_start
+                                        )}
+                                        disabled={flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]}
+                                        style={{
+                                            backgroundColor: 'transparent',
+                                            color: 'var(--accent-color)',
+                                            border: 'none',
+                                            padding: '0.5rem',
+                                            cursor: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 'not-allowed' : 'pointer',
+                                            opacity: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 0.6 : 1,
+                                            fontSize: '1.25rem',
+                                        }}
+                                        title="Flag quote"
+                                    >
+                                        {flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? '⏳' : '🚩'}
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+
     return (
         <div>
             {quotes.length > 0 ? (
-                <table className="quotes-table">
-                    <thead>
-                        <tr>
-                            <th style={{ width: '720px', textAlign: 'center' }}>Video</th>
-                            <th style={{ width: 'calc(100% - 720px)', textAlign: 'center' }}>Quotes with Timestamps</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {quotes.map((quoteGroup) => (
-                            <tr key={quoteGroup.video_id || `quote-group-${Math.random()}`} style={{
-                                borderBottom: '2px solid var(--border-color)',
-                                height: '450px',
-                                padding: '1rem 0'
-                            }}>
-                                <td style={{ 
-                                    padding: '1rem',
-                                    verticalAlign: 'middle',
-                                    height: '100%',
-                                    textAlign: 'center',
-                                    width: '720px'
-                                }}>
-                                    <div style={{ 
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: '0.5rem',
-                                        height: '470px',
-                                        justifyContent: 'space-between'
-                                    }}>
-                                        <div style={{ fontWeight: 'bold' }}>
-                                            {quoteGroup.quotes[0]?.title || 'N/A'}
-                                        </div>
-                                        <YouTubePlayer 
-                                            key={`${quoteGroup.video_id}-${retryCount}`}
-                                            videoId={quoteGroup.video_id}
-                                            timestamp={activeTimestamp.videoId === quoteGroup.video_id ? activeTimestamp.timestamp : null}
-                                            onTimestampClick={handleTimestampClick}
-                                        />
-                                        <div>
-                                            {quoteGroup.quotes[0]?.channel_source || 'N/A'} - {quoteGroup.quotes[0]?.upload_date
-                                                ? formatDate(quoteGroup.quotes[0].upload_date)
-                                                : 'N/A'}
-                                        </div>
-                                    </div>
-                                </td>
-                                <td style={{
-                                    verticalAlign: 'middle',
-                                    height: '100%',
-                                    padding: '1rem',
-                                    maxHeight: '450px',
-                                    overflow: 'visible',
-                                    textAlign: 'center',
-                                    position: 'relative'
-                                }}>
-                                    <div style={{
-                                        width: '100%',
-                                        height: quoteGroup.quotes?.length > 2 ? '450px' : 'auto',
-                                        overflowY: quoteGroup.quotes?.length > 2 ? 'auto' : 'visible',
-                                        padding: '0.5rem 0',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        justifyContent: quoteGroup.quotes?.length > 2 ? 'flex-start' : 'center',
-                                        alignItems: 'flex-start',
-                                        position: 'relative'
-                                    }}>
-                                        {quoteGroup.quotes?.map((quote, index) => (
-                                            <div className="quote-item" key={index} style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '0.75rem',
-                                                marginBottom: '0.75rem',
-                                                padding: '0.75rem 0',
-                                                borderBottom: index < quoteGroup.quotes.length - 1 ? '1px solid var(--border-color)' : 'none',
-                                                borderColor: 'var(--border-color)',
-                                                flexShrink: 0, 
-                                                width: '100%',
-                                                overflow: 'visible',
-                                                wordBreak: 'break-word',
-                                                position: 'relative'
-                                            }}>
-                                                <button
-                                                    onClick={() => handleTimestampClick(quoteGroup.video_id, backdateTimestamp(quote.timestamp_start))}
-                                                    style={{
-                                                        flex: 1,
-                                                        textAlign: 'left',
-                                                        background: 'none',
-                                                        border: 'none',
-                                                        color: '#4A90E2',
-                                                        cursor: 'pointer',
-                                                        padding: 0,
-                                                        font: 'inherit',
-                                                        minWidth: 0,
-                                                        overflow: 'visible',
-                                                        textOverflow: 'ellipsis',
-                                                        whiteSpace: 'normal',
-                                                        wordBreak: 'break-word',
-                                                        transition: 'transform 0.2s ease',
-                                                        position: 'relative',
-                                                        zIndex: 2
-                                                    }}
-                                                    onMouseOver={e => {
-                                                        e.currentTarget.style.transform = 'scale(1.02)';
-                                                    }}
-                                                    onMouseOut={e => {
-                                                        e.currentTarget.style.transform = 'scale(1)';
-                                                    }}
-                                                >
-                                                    <span style={{ verticalAlign: 'middle' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(quote.text, { ALLOWED_TAGS }) }} />
-                                                    <span style={{ verticalAlign: 'middle', marginLeft: '0.5em' }}>
-                                                        ({formatTimestamp(backdateTimestamp(quote.timestamp_start))})
-                                                    </span>
-                                                </button>
-
-                                                <div style={{ 
-                                                    display: 'flex', 
-                                                    gap: '0.5rem',
-                                                    marginLeft: 'auto',
-                                                    flexShrink: 0
-                                                }}>
-                                                    <button
-                                                        onClick={() => {
-                                                            // Strip HTML tags from the text
-                                                            const textToCopy = quote.text.replace(/<[^>]*>/g, '');
-                                                            navigator.clipboard.writeText(textToCopy).then(() => {
-                                                                // Show a temporary success indicator
-                                                                const button = event.currentTarget;
-                                                                const originalText = button.innerHTML;
-                                                                button.innerHTML = '✓';
-                                                                button.style.color = '#4CAF50';
-                                                                setTimeout(() => {
-                                                                    button.innerHTML = originalText;
-                                                                    button.style.color = '#4A90E2';
-                                                                }, 1000);
-                                                            });
-                                                        }}
-                                                        style={{
-                                                            backgroundColor: 'transparent',
-                                                            color: '#4A90E2',
-                                                            border: 'none',
-                                                            padding: '0.5rem',
-                                                            cursor: 'pointer',
-                                                            fontSize: '1.25rem',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            transition: 'transform 0.2s'
-                                                        }}
-                                                        onMouseOver={e => {
-                                                            e.currentTarget.style.transform = 'scale(1.3)';
-                                                        }}
-                                                        onMouseOut={e => {
-                                                            e.currentTarget.style.transform = 'scale(1)';
-                                                        }}
-                                                    >
-                                                        📋
-                                                    </button>
-
-                                                    <button
-                                                        onClick={() => window.open(`https://www.youtube.com/watch?v=${quoteGroup.video_id}&t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`, '_blank')}
-                                                        style={{
-                                                            backgroundColor: 'transparent',
-                                                            color: '#4A90E2',
-                                                            border: 'none',
-                                                            padding: '0.5rem',
-                                                            cursor: 'pointer',
-                                                            fontSize: '1.25rem',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            transition: 'transform 0.2s'
-                                                        }}
-                                                        onMouseOver={e => {
-                                                            e.currentTarget.style.transform = 'scale(1.3)';
-                                                        }}
-                                                        onMouseOut={e => {
-                                                            e.currentTarget.style.transform = 'scale(1)';
-                                                        }}
-                                                    >
-                                                        ↗
-                                                    </button>
-
-                                                    <button
-                                                        onClick={() => handleFlagClick(
-                                                            quote.text,
-                                                            quoteGroup.video_id,
-                                                            quoteGroup.quotes[0]?.title,
-                                                            quoteGroup.quotes[0]?.channel_source,
-                                                            quote.timestamp_start
-                                                        )}
-                                                        disabled={flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]}
-                                                        style={{
-                                                            backgroundColor: 'transparent',
-                                                            color: 'var(--accent-color)',
-                                                            border: 'none',
-                                                            padding: '0.5rem',
-                                                            cursor: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 'not-allowed' : 'pointer',
-                                                            opacity: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 0.6 : 1,
-                                                            fontSize: '1.25rem',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            transition: 'transform 0.2s'
-                                                        }}
-                                                        onMouseOver={e => {
-                                                            if (!flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]) {
-                                                                e.currentTarget.style.transform = 'scale(1.3)';
-                                                            }
-                                                        }}
-                                                        onMouseOut={e => {
-                                                            e.currentTarget.style.transform = 'scale(1)';
-                                                        }}
-                                                    >
-                                                        {flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? '⏳' : '🚩'}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                isMobileView ? renderMobileLayout() : renderDesktopLayout()
             ) : (
                 <div style={{ 
                     textAlign: 'center', 
@@ -725,6 +903,364 @@ const App = () => {
     const [selectedGame, setSelectedGame] = useState("all");
     const [activeTimestamp, setActiveTimestamp] = useState({ videoId: null, timestamp: null });
     const [retryCount, setRetryCount] = useState(0);
+    
+    // Add meta viewport tag for responsive design
+    useEffect(() => {
+        // Check if viewport meta tag exists
+        let viewportMeta = document.querySelector('meta[name="viewport"]');
+        
+        // If it doesn't exist, create it
+        if (!viewportMeta) {
+            viewportMeta = document.createElement('meta');
+            viewportMeta.name = 'viewport';
+            document.getElementsByTagName('head')[0].appendChild(viewportMeta);
+        }
+        
+        // Set the content
+        viewportMeta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+        
+        // Add mobile-specific CSS
+        const style = document.createElement('style');
+        style.textContent = `
+            @media (max-width: 768px) {
+                /* Mobile logo styles - significantly increased size */
+                .logo-container {
+                    position: sticky;
+                    top: 0;
+                    background-color: var(--bg-color);
+                    width: 100%;
+                    text-align: center;
+                    padding: 15px 0;
+                    z-index: 100;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }
+                
+                .logo-container img {
+                    height: 80px; /* Substantially increased from 55px */
+                    cursor: pointer;
+                    transition: transform 0.2s ease;
+                }
+                
+                .logo-container img:hover {
+                    transform: scale(1.05);
+                }
+                
+                /* Hide feedback button on mobile */
+                .floating-feedback-button {
+                    display: none;
+                }
+                
+                /* Other mobile styles */
+                .input-container {
+                    flex-direction: column;
+                    width: 90% !important;
+                    gap: 10px;
+                    margin-top: 1rem;
+                }
+                
+                .input-container button {
+                    width: 100%;
+                    margin: 5px 0 !important;
+                }
+                
+                .search-input {
+                    width: 100% !important;
+                }
+                
+                .filter-container {
+                    flex-direction: column;
+                    align-items: center;
+                    width: 90%;
+                    gap: 15px;
+                    margin: 15px auto;
+                }
+                
+                .filter-group {
+                    display: flex;
+                    width: 100%;
+                    justify-content: space-between;
+                    gap: 10px;
+                }
+                
+                .filter-group > * {
+                    flex: 1;
+                }
+                
+                .year-tooltip, .sort-tooltip {
+                    width: 48%;
+                }
+                
+                .year-input, .sort-select {
+                    width: 100%;
+                    padding: 8px;
+                    border-radius: 4px;
+                    border: 1px solid var(--border-color);
+                }
+                
+                .radio-group {
+                    flex-wrap: wrap;
+                    justify-content: center;
+                    width: 100%;
+                    margin: 0 auto;
+                }
+                
+                .radio-button {
+                    margin: 4px;
+                }
+                
+                .game-filter-container {
+                    width: 100%;
+                    display: flex;
+                }
+                
+                .game-tooltip {
+                    flex: 1;
+                }
+                
+                .mobile-quote-group {
+                    margin-bottom: 20px;
+                    border: 1px solid var(--border-color);
+                    border-radius: 8px;
+                    overflow: hidden;
+                }
+                
+                .mobile-quotes-list {
+                    border-top: 1px solid var(--border-color);
+                }
+                
+                .pagination-buttons {
+                    width: 90%;
+                }
+                
+                .footer-message {
+                    width: 90%;
+                    font-size: 0.8rem;
+                    margin: 10px auto;
+                    text-align: center;
+                }
+                
+                /* Horizontal disclaimer layout for mobile */
+                .disclaimer-tips {
+                    display: flex;
+                    flex-direction: row;
+                    flex-wrap: wrap;
+                    justify-content: space-between;
+                    gap: 10px;
+                }
+                
+                .disclaimer-tip {
+                    width: 100%;
+                    margin-bottom: 15px;
+                    display: flex;
+                    flex-direction: column;
+                }
+                
+                @media (min-width: 500px) {
+                    .disclaimer-tip {
+                        width: calc(33.33% - 10px);
+                    }
+                }
+                
+                .disclaimer-tip > span {
+                    margin-bottom: 10px;
+                    font-size: 1.5rem;
+                    text-align: center;
+                }
+                
+                .disclaimer-tip strong {
+                    display: block;
+                    text-align: center;
+                    margin-bottom: 8px;
+                }
+                
+                .disclaimer-examples {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                }
+                
+                .disclaimer-example {
+                    background-color: var(--surface-color);
+                    padding: 10px;
+                    border-radius: 4px;
+                    font-size: 0.9rem;
+                }
+                
+                .disclaimer-example p {
+                    margin: 5px 0;
+                }
+            }
+            
+            /* Desktop styles */
+            @media (min-width: 769px) {
+                .logo-container {
+                    margin-bottom: 2rem;
+                    cursor: pointer;
+                }
+                
+                .logo-container img {
+                    height: 100px; /* Substantially increased from 70px */
+                    transition: transform 0.2s ease;
+                }
+                
+                .logo-container img:hover {
+                    transform: scale(1.05);
+                }
+                
+                .filter-container {
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    gap: 20px;
+                    margin: 20px auto;
+                    max-width: 1000px;
+                }
+                
+                .filter-group {
+                    display: flex;
+                    gap: 10px;
+                    align-items: center;
+                }
+                
+                .year-tooltip, .sort-tooltip {
+                    min-width: 120px;
+                }
+                
+                .year-input, .sort-select {
+                    padding: 8px;
+                    border-radius: 4px;
+                    border: 1px solid var(--border-color);
+                    background-color: var(--surface-color);
+                }
+                
+                .game-filter-container {
+                    min-width: 220px;
+                    display: flex;
+                }
+                
+                .game-tooltip {
+                    flex: 1;
+                }
+                
+                .radio-group {
+                    display: flex;
+                    gap: 15px;
+                    margin: 10px auto;
+                    justify-content: center;
+                }
+                
+                /* Vertical disclaimer layout for desktop */
+                .disclaimer-tips {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 20px;
+                    margin: 20px 0;
+                }
+                
+                .disclaimer-tip {
+                    display: flex;
+                    gap: 15px;
+                    align-items: flex-start;
+                    margin-bottom: 10px;
+                }
+                
+                .disclaimer-tip > span {
+                    font-size: 1.5rem;
+                    flex-shrink: 0;
+                }
+                
+                .disclaimer-tip strong {
+                    display: block;
+                    margin-bottom: 8px;
+                }
+                
+                .disclaimer-examples {
+                    margin-top: 10px;
+                }
+                
+                .disclaimer-example {
+                    background-color: var(--surface-color);
+                    padding: 12px;
+                    border-radius: 6px;
+                    margin-bottom: 10px;
+                }
+                
+                .floating-feedback-button {
+                    position: fixed;
+                    bottom: 20px;
+                    right: 20px;
+                    background-color: var(--accent-color);
+                    color: white;
+                    border: none;
+                    border-radius: 30px;
+                    padding: 10px 20px;
+                    box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+                    cursor: pointer;
+                    z-index: 900;
+                    font-size: 1rem;
+                    font-weight: 500;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    transition: all 0.2s ease;
+                }
+                
+                .floating-feedback-button:hover {
+                    background-color: #e04c4c; /* Slightly different shade for hover */
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+                }
+            }
+            
+            .reset-game-button {
+                background-color: var(--surface-color);
+                border: 1px solid var(--border-color);
+                border-radius: 4px;
+                margin-left: 8px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0 10px;
+                font-size: 18px;
+            }
+            
+            .reset-game-button:hover {
+                background-color: var(--border-color);
+            }
+            
+            /* Shared disclaimer styles */
+            .disclaimer-container {
+                width: 90%;
+                max-width: 1200px;
+                margin: 20px auto;
+                padding: 20px;
+                background-color: var(--surface-color);
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            
+            .disclaimer-title {
+                font-size: 1.2rem;
+                font-weight: bold;
+                margin-bottom: 15px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            
+            .disclaimer-content {
+                font-size: 0.95rem;
+                color: var(--text-secondary);
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Clean up function to remove the style when component unmounts
+        return () => {
+            document.head.removeChild(style);
+        };
+    }, []);
 
     useEffect(() => {
         const fetchGames = async () => {
@@ -1070,26 +1606,28 @@ const App = () => {
             </div>
 
             <div className="filter-container">
-                <div className="year-tooltip">
-                    <input
-                        type="text"
-                        value={selectedYear}
-                        onChange={handleYearChange}
-                        placeholder="Year (YYYY)"
-                        maxLength="4"
-                        className="year-input"
-                    />
-                </div>
-                <div className="sort-tooltip">
-                    <select
-                        value={sortOrder}
-                        onChange={handleSortChange}
-                        className="sort-select"
-                    >
-                        <option value="default">Default Order</option>
-                        <option value="newest">Newest First</option>
-                        <option value="oldest">Oldest First</option>
-                    </select>
+                <div className="filter-group">
+                    <div className="year-tooltip">
+                        <input
+                            type="text"
+                            value={selectedYear}
+                            onChange={handleYearChange}
+                            placeholder="Year (YYYY)"
+                            maxLength="4"
+                            className="year-input"
+                        />
+                    </div>
+                    <div className="sort-tooltip">
+                        <select
+                            value={sortOrder}
+                            onChange={handleSortChange}
+                            className="sort-select"
+                        >
+                            <option value="default">Default Order</option>
+                            <option value="newest">Newest First</option>
+                            <option value="oldest">Oldest First</option>
+                        </select>
+                    </div>
                 </div>
                 <div className="game-filter-container">
                     <div className="game-tooltip">
@@ -1104,7 +1642,9 @@ const App = () => {
                         className="reset-game-button"
                         onClick={() => {
                             setSelectedGame("all");
-                            if (searchTerm) handleSearch();
+                            if (searchTerm.trim()) {
+                                fetchQuotes(page, selectedChannel, selectedYear, sortOrder, strict, "all");
+                            }
                         }}
                     >
                         ↺
@@ -1153,8 +1693,9 @@ const App = () => {
                 Made with passion by a fan • Generously supported by The Librarian • Contributors: Xeneta, samfry13 • <a href="https://github.com/irinelul/NLQuotes" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>GitHub</a>
             </div>
 
+            {/* Improved desktop-only feedback button */}
             <button 
-                className="feedback-button"
+                className="floating-feedback-button"
                 onClick={() => setFeedbackModalOpen(true)}
                 disabled={submittingFeedback}
             >
