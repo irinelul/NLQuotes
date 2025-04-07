@@ -1,15 +1,19 @@
 1001 Spikes
+10 Second Ninja
+140
 20 Minutes Till Dawn
 20 Minutes Till Midnight
 5D Chess with Multiverse Time Travel
 60 Seconds
 60 Seconds! Reatomized
+7 Grand Steps
 Abiotic Factor
 Aces Wild!
 Across the Obelisk
 Action Henk!
 A Difficult Game About Climbing
 Against the Storm
+A Good Snowman is Hard to Build
 AI Dungeon
 AirBuccaneers
 Airport Simulator 2014
@@ -46,6 +50,7 @@ Battlebit Remastered
 Beacon
 Bejeweled
 Beyond: Two Souls
+Big Ambitions
 Big Brain Academy: Brain vs Brain
 Block'hood
 Bloodborne
@@ -59,7 +64,9 @@ Borderlands: The Pre-Sequel
 Braid
 Brawlbusters
 Bridge Project
+Brotato
 Bully!
+Bunker Life
 Bus Driver
 Cadence of Hyrule
 Call of Duty: Black Ops 4
@@ -80,7 +87,6 @@ Chasm!
 Checkmate Showdown
 Check the Wire
 Chess
-CHESS
 Children of Morta
 Choplifter HD
 Chutes and Ladders
@@ -97,9 +103,10 @@ Clubhouse Games: RPG
 Cobalt
 Cobalt Core
 Codenames
+Conan Chop Chop
 Contradiction
 Control
-Cook, Serve, Delicious 3
+"Cook, Serve, Delicious 3"
 Counter-Strike: Global Offensive
 Crookz: The Big Heist!
 Crop Rotation
@@ -107,8 +114,6 @@ Cross Blitz
 Crosswords
 Crusader Kings 2
 Crusader Kings II
-Crusader Kings II: The Old Gods!
-Crusader Kings II： The Old Gods!
 Cryptmaster
 Crystals
 CS:GO
@@ -116,6 +121,7 @@ Cult of the Lamb
 Cuphead
 Curse
 Cursebane
+Cursed to Golf
 Curse of the Dead Gods
 D4: Dark Dreams Don't Die
 Dadcraft
@@ -123,6 +129,7 @@ Dale and Dawson Stationery Supplies
 Dark and Darker
 Darkest Dungeon
 Darkest Dungeon 2
+Darkest Dungeon II
 Darkest Dungeon: The Color of Madness
 Darksiders 2
 Dark Souls
@@ -130,6 +137,7 @@ Dark Souls 2
 Dark Souls 3
 Dark Souls III
 Dark Souls: Prepare to Die Edition
+Dave the Diver
 Day Z
 Dead by Daylight
 Dead Cells
@@ -138,6 +146,7 @@ Deadly Premonition 2
 Dead Man's Draw!
 Deathloop
 Death Roads: Tournament
+Death Roads： Tournament
 Death Stranding
 DECEIT
 Decipher
@@ -178,11 +187,13 @@ Dungeon Clawler
 Dungeon Hearts
 Dungeons and Deckbuilders
 Dungeons and Degenerate Gamblers
+Dungeons of Aether
 Elden Ring
 Electronic Super Joy!
 Ember Knights
 Emberward
 EndlessDungeon
+ENDLESS Dungeon
 En Garde
 Enter the Gungeon
 Escape First 3
@@ -194,6 +205,7 @@ Europa Universalis IV
 Evan's Remains
 Evolve Alpha
 Exit The Gungeon
+F1
 F1 23
 Fabular
 Factorio
@@ -220,7 +232,7 @@ For The King II
 Fortnite
 Forza Horizon 4 Eliminator
 Foul Play!
-Fractal:Make Blooms, Not War
+"Fractal:Make Blooms, Not War"
 Friends vs Friends
 Frog Detective 2
 Frostpunk
@@ -237,6 +249,7 @@ Garage
 Gartic Phone
 Gauntlet
 GeoGuessr
+GeoGuessr Duels
 Getting Over It
 Gigantic
 Gish
@@ -245,6 +258,7 @@ God Of War
 Gods Will Be Watching
 Going Under
 Golden Goblet
+Golfie
 Golf With Your Friends
 Gordian Quest
 Grasp
@@ -304,6 +318,7 @@ Jackbox
 Jack Lumber
 Jeopardy
 Jumplight Odyssey
+Just King
 Katana Zero
 Keep Driving
 Kerbal Space Program
@@ -327,6 +342,7 @@ Lies of P
 Life Goes On!
 Little Dungeon Stories
 London 2012
+Longvinter
 Long War 2
 Loop Hero
 Lost
@@ -335,6 +351,7 @@ Luck Be A Landlord
 Lucky Hero
 Lunar Flight
 Mad Experiments: Escape Room
+Magic Duels
 Magicite
 Magicka: Wizard Wars
 Man of Medan
@@ -345,6 +362,7 @@ Mario Maker 2
 Mario Party Superstars
 Mark of the Ninja
 Marvel: Midnight Suns
+Marvel： Midnight Suns
 Marvel Snap
 Massage
 Mass Effect
@@ -378,6 +396,7 @@ Nickelodeon All-Star Brawl
 Ninja Gaiden
 Nintendo Switch Sports
 Nintendo World Championships: NES Edition
+Nitro Stream Racing
 Noitu Love 2: Devolution
 NOT_A_GAME
 Not For Broadcast
@@ -387,6 +406,7 @@ Offspring Fling
 Offworld Trading Company
 OlliOlli!
 Olympians
+Omega Strikers
 One Step From Eden
 Only Up
 OnlyUp
@@ -411,10 +431,13 @@ Patterns!
 Pawn Shop
 Payday The Heist
 PC Building Simulator
+Peepo Island
 Peglin
+PGA
 PGA 2K23
 PGA Tour 2k21
 PGA Tour 2K23
+Phantom Brigade
 Pixelry!
 Planet Coaster
 PlateUp
@@ -484,6 +507,7 @@ Selfless Heroes
 Shadows of Doubt
 Shellshock Live
 Shogun Showdown
+Shotgun King
 Silent Hill 2
 Sir Brante
 Skribbl.io
@@ -499,6 +523,7 @@ Solium Infernum
 Sorry!
 Soulstone Survivors
 Soundodger+
+Space Crew
 Space Run Galaxy
 Spelunky!
 Spelunky 2
@@ -506,6 +531,7 @@ Spider-Man Training Simulator
 Splinter Cell: Blacklist
 Sporcle
 SpyParty
+Squabble
 Stampede: Racing Royale
 Starbound
 Stardew Valley
@@ -514,6 +540,7 @@ Starvaders
 Star Wars: Shadows of the Empire
 State Lines
 Steamworld Dig!
+Steelrising
 Stilt Fella
 Stoneshard
 Storage Warfare
@@ -526,6 +553,7 @@ Struggling
 Subnautica
 Subpar Pool
 Suika Game
+Sultan's Game
 Summer Trip Cruise
 Super Animal Royale
 Super Auto Pets
@@ -533,6 +561,7 @@ Super Buckyball
 Super Hexagon
 Super House of Dead Ninjas!
 Super Mario 64
+Super Mario 64 Races
 Super Mario Bros
 Super Mario Maker 2
 Super Mario Party
@@ -574,15 +603,18 @@ The Binding of Isaac: Penance
 The Binding of Isaac: Pittance
 The Binding of Isaac: Rebirth
 The Binding of Isaac: Repentance
+The Binding of Isaac： Repentance
 The Casting of Frank Stone
 The Cave
 The Coin Game
 The Crusades
 The Culling
 The Culling!
+The Devil In Me
 The Escaper
 The Escapists 2
 The Executive
+The Finals
 The Game of Sisyphus
 The Golf Club 2019
 The Good Life
@@ -591,11 +623,14 @@ The Lamplighters League
 The Legend of Bum-bo
 The Northernlion Live Super Show!
 The Ouroboros King
+The Outer Worlds
 The Password Game
 The Political Machine 2012
 The Political Machine 2016
+The Quarry
 The Quiet Man
 The Room 4
+The Roundtable Podcast
 The Shapeshifting Detective
 The Swapper
 The Tenants
@@ -612,6 +647,7 @@ Tokyo 2020
 Tony Hawk's Pro Skater 1+2
 Top Spin 2K25
 To The Moon!
+Touch Type Tale
 Towerborne
 Trackmania
 Trackmania TOTD
@@ -644,6 +680,7 @@ Voidigo
 Volcano House
 Volume!
 Vostok Inc.
+V Rising
 VVVVVV
 Wantless: Solace at World's End
 Warhammer 40k: Regicide
@@ -651,6 +688,7 @@ WarioWare
 Warzone
 West of Loathing
 We Were Here Together
+We Who Are About To Die
 Whatcha
 WikiArena
 Wildfrost
@@ -671,6 +709,8 @@ XCOM: Enemy Within
 XCOM:Long War
 XCOM: Retribution
 Yes, Your Grace
+Your Doodles Are Bugged
+You Suck At Parking
 Zafehouse Diaries
 Zombie Cow Milking
 Zombie Night Terror
