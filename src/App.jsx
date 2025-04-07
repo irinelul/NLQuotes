@@ -1089,6 +1089,12 @@ const App = () => {
                 .disclaimer-example p {
                     margin: 5px 0;
                 }
+
+                /* Mobile-specific styles for bold tags */
+                .mobile-quote-item button span b {
+                    color: #FF0000 !important;
+                    font-weight: bold !important;
+                }
             }
             
             /* Desktop styles */
@@ -1252,6 +1258,18 @@ const App = () => {
             .disclaimer-content {
                 font-size: 0.95rem;
                 color: var(--text-secondary);
+            }
+            
+            /* Global styles for search term highlighting */
+            b {
+                color: #FF0000 !important;
+                font-weight: bold !important;
+            }
+            
+            /* Quote item styling */
+            .quote-item button,
+            .mobile-quote-item button {
+                color: #4A90E2 !important;
             }
         `;
         document.head.appendChild(style);
