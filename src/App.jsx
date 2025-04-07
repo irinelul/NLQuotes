@@ -557,7 +557,6 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                                 textAlign: 'left',
                                                 background: 'none',
                                                 border: 'none',
-                                                color: '#4A90E2',
                                                 cursor: 'pointer',
                                                 padding: 0,
                                                 font: 'inherit',
@@ -568,7 +567,8 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                                 wordBreak: 'break-word',
                                                 transition: 'transform 0.2s ease',
                                                 position: 'relative',
-                                                zIndex: 2
+                                                zIndex: 2,
+                                                color: '#4A90E2'
                                             }}
                                             onMouseOver={e => {
                                                 e.currentTarget.style.transform = 'scale(1.02)';
@@ -578,7 +578,12 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                             }}
                                         >
                                             <span style={{ verticalAlign: 'middle' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(quote.text, { ALLOWED_TAGS }) }} />
-                                            <span style={{ verticalAlign: 'middle', marginLeft: '0.5em' }}>
+                                            <span style={{ 
+                                                display: 'inline', 
+                                                verticalAlign: 'middle', 
+                                                color: 'var(--text-secondary)',
+                                                fontWeight: 'bold'
+                                            }}>
                                                 ({formatTimestamp(backdateTimestamp(quote.timestamp_start))})
                                             </span>
                                         </button>
@@ -739,7 +744,10 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                 borderBottom: index < quoteGroup.quotes.length - 1 ? '1px solid var(--border-color)' : 'none',
                                 display: 'flex',
                                 flexDirection: 'column',
-                                gap: '0.75rem'
+                                gap: '0.75rem',
+                                backgroundColor: 'var(--surface-color)',
+                                borderRadius: '4px',
+                                marginBottom: '0.5rem'
                             }}>
                                 <button
                                     onClick={() => handleTimestampClick(quoteGroup.video_id, backdateTimestamp(quote.timestamp_start))}
@@ -755,12 +763,14 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                         wordBreak: 'break-word',
                                         borderRadius: '4px',
                                         backgroundColor: 'var(--surface-color)',
+                                        fontSize: '1rem',
+                                        lineHeight: 1.4
                                     }}
                                 >
-                                    <span style={{ verticalAlign: 'middle' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(quote.text, { ALLOWED_TAGS }) }} />
+                                    <span style={{ display: 'inline', verticalAlign: 'middle' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(quote.text, { ALLOWED_TAGS }) }} />
                                     <span style={{ 
+                                        display: 'inline', 
                                         verticalAlign: 'middle', 
-                                        marginLeft: '0.5em',
                                         color: 'var(--text-secondary)',
                                         fontWeight: 'bold'
                                     }}>
@@ -922,6 +932,26 @@ const App = () => {
         // Add mobile-specific CSS
         const style = document.createElement('style');
         style.textContent = `
+            /* Global styles for search term highlighting */
+            b {
+                color: var(--accent-color) !important;
+                font-weight: bold !important;
+            }
+            
+            /* Quote item styling */
+            .quote-item button,
+            .mobile-quote-item button {
+                color: #4A90E2 !important;
+            }
+            
+            /* Reset timestamp styling */
+            .quote-item button span:last-child,
+            .mobile-quote-item button span:last-child {
+                color: var(--text-secondary) !important;
+                font-weight: bold;
+                margin-left: 0.5em;
+            }
+            
             @media (max-width: 768px) {
                 /* Mobile logo styles - significantly increased size */
                 .logo-container {
@@ -1088,6 +1118,38 @@ const App = () => {
                 
                 .disclaimer-example p {
                     margin: 5px 0;
+                }
+
+                .mobile-quote-item button {
+                    width: '100%',
+                    textAlign: 'left',
+                    background: 'none',
+                    border: 'none',
+                    color: '#4A90E2',
+                    cursor: 'pointer',
+                    padding: '0.5rem',
+                    font: 'inherit',
+                    wordBreak: 'break-word',
+                    borderRadius: '4px',
+                    backgroundColor: 'var(--surface-color)',
+                    fontSize: '1rem',
+                    lineHeight: 1.4
+                }
+
+                .mobile-quote-item button span {
+                    display: 'inline',
+                    verticalAlign: 'middle'
+                }
+
+                .mobile-quote-item button span b {
+                    color: 'var(--accent-color)',
+                    fontWeight: 'bold'
+                }
+
+                .mobile-quote-item button span:last-child {
+                    color: 'var(--text-secondary)',
+                    fontWeight: 'bold',
+                    marginLeft: '0.5em'
                 }
             }
             
