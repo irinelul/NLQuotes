@@ -380,12 +380,14 @@ app.get('/api/random', async (req, res) => {
     }
 });
 
-app.get('/api/games', async (req, res) => {
+app.get('/api/games', (req, res) => {
     try {
-        if (!cachedGameList) {
-            // If cache is empty for some reason, try to reload it
-            await loadGameTitles();
-        }
+        // Set cache headers - cache for 1 hour on client side
+        res.set({
+            'Cache-Control': 'public, max-age=3600',
+            'ETag': `"${cachedGameList.length}"` // Simple ETag based on number of games
+        });
+        
         res.json({ games: cachedGameList });
     } catch (error) {
         console.error('Error serving game titles:', error);
