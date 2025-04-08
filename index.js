@@ -148,14 +148,30 @@ app.use((req, res, next) => {
 });
 
 // Add console logs at the start of the file to check routes loading
-console.log('Starting server with API routes:');
-console.log('- /api (main search endpoint)');
-console.log('- /api/db-status (database status endpoint)');
-console.log('- /api/random (random quotes endpoint)');
-console.log('- /api/games (games list endpoint)');
-console.log('- /api/flag (flagging endpoint)');
-console.log('- /health (health check endpoint)');
-console.log('- /stats (stats endpoint)');
+
+// Cache for game titles
+let cachedGameList = null;
+
+// Load game titles into cache on startup
+async function loadGameTitles() {
+    try {
+        const games = await fs.promises.readFile('game_titles.txt', 'utf8');
+        cachedGameList = games.split('\n')
+            .map(game => game.trim())
+            .filter(game => game !== '');
+        console.log(`Loaded ${cachedGameList.length} game titles into cache`);
+    } catch (error) {
+        console.error('Error loading game titles into cache:', error);
+        cachedGameList = []; // Initialize as empty array if file read fails
+    }
+}
+
+// Load game titles immediately
+loadGameTitles().then(() => {
+    console.log('Game titles cache initialized');
+}).catch(err => {
+    console.error('Failed to initialize game titles cache:', err);
+});
 
 app.get('/api', async (req, res) => {
     // Input validation and sanitization
@@ -366,13 +382,13 @@ app.get('/api/random', async (req, res) => {
 
 app.get('/api/games', async (req, res) => {
     try {
-        const games = await fs.promises.readFile('game_titles.txt', 'utf8');
-        const gameList = games.split('\n')
-            .map(game => game.trim())
-            .filter(game => game !== '');
-        res.json({ games: gameList });
+        if (!cachedGameList) {
+            // If cache is empty for some reason, try to reload it
+            await loadGameTitles();
+        }
+        res.json({ games: cachedGameList });
     } catch (error) {
-        console.error('Error reading game titles:', error);
+        console.error('Error serving game titles:', error);
         res.status(500).json({ error: 'Failed to fetch game titles' });
     }
 });
@@ -492,24 +508,14 @@ app.use(errorHandler);
 
 // Create server with optimized settings
 const server = app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📊 Try accessing /test to verify the server is working`);
-    console.log(`📊 Database status endpoint: /api/db-status`);
-    
-    // Log all registered routes for debugging
-    console.log('\n🛣️ Registered Routes:');
-    app._router.stack.forEach(middleware => {
-        if(middleware.route) { // routes registered directly on the app
-            console.log(`${middleware.route.stack[0].method.toUpperCase()} ${middleware.route.path}`);
-        } else if(middleware.name === 'router') { // router middleware
-            middleware.handle.stack.forEach(handler => {
-                if(handler.route) {
-                    const method = handler.route.stack[0].method.toUpperCase();
-                    console.log(`${method} ${middleware.regexp} -> ${handler.route.path}`);
-                }
-            });
-        }
-    });
+    console.log(`Server running on port ${PORT}`);
+    console.log('Available endpoints:');
+    console.log('- /api (search)');
+    console.log('- /api/random (random quotes)');
+    console.log('- /api/games (game list)');
+    console.log('- /api/flag (flag quotes)');
+    console.log('- /health (health check)');
+    console.log('- /stats (statistics)');
 });
 
 // Configure server timeouts
