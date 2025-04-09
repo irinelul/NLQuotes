@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import query from './services/quotes';
 import React from 'react';
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { format } from 'date-fns';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Disclaimer from './components/Disclaimer';
 import SearchableDropdown from './components/SearchableDropdown';
 import { pauseOtherPlayers } from './services/youtubeApiLoader';
@@ -10,57 +9,10 @@ import DOMPurify from 'dompurify';
 import { YouTubePlayer } from './components/YoutubePlayer';
 import { FlagModal } from './components/Modals/FlagModal';
 import { FeedbackModal } from './components/Modals/FeedbackModal';
-
-const backdateTimestamp = (timestamp) => {
-    return Math.max(0, Math.floor(timestamp) - 1);
-}
+import { backdateTimestamp, formatDate, formatTimestamp } from './services/dateHelpers';
 
 // `b` is returned from ts_headline when a match is found
 const ALLOWED_TAGS = ['b'];
-
-const useQuery = () => {
-    return new URLSearchParams(useLocation().search);
-};
-
-const formatDate = (date) => {
-    if (!date) return 'N/A';
-
-    // If it's already a Date object
-    if (date instanceof Date) {
-        return format(date, 'dd MMMM yyyy');
-    }
-
-    // If it's a string in YYYYMMDD format
-    if (typeof date === 'string' && date.length === 8) {
-        const dateObj = new Date(
-            date.slice(0, 4),  // Year
-            date.slice(4, 6) - 1, // Month (0-indexed)
-            date.slice(6, 8) // Day
-        );
-        return format(dateObj, 'dd MMMM yyyy');
-    }
-
-    // If it's an ISO string or other date string
-    try {
-        const dateObj = new Date(date);
-        return format(dateObj, 'dd MMMM yyyy');
-    } catch (e) {
-        return 'Invalid Date';
-    }
-};
-
-const formatTimestamp = (seconds) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const remainingSeconds = Math.floor(seconds % 60);
-
-    const pad = (num) => num.toString().padStart(2, '0');
-
-    if (hours > 0) {
-        return `${pad(hours)}:${pad(minutes)}:${pad(remainingSeconds)}`;
-    }
-    return `${pad(minutes)}:${pad(remainingSeconds)}`;
-};
 
 const Quotes = ({ quotes = [], searchTerm }) => {
     const [flagging, setFlagging] = useState({});
