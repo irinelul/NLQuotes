@@ -1165,7 +1165,7 @@ const App = () => {
                     style={{
                         opacity: loading ? 0.7 : 1,
                         transform: 'none',
-                        transition: 'none',
+                        transition: 'background-color 0.2s ease',
                         backgroundColor: 'grey',
                         color: 'white',
                         border: 'none',
@@ -1173,6 +1173,16 @@ const App = () => {
                         padding: '8px 16px',
                         cursor: loading ? 'not-allowed' : 'pointer',
                         fontSize: '1rem'
+                    }}
+                    onMouseOver={e => {
+                        if (!loading) {
+                            e.currentTarget.style.backgroundColor = '#a8a8a8';
+                        }
+                    }}
+                    onMouseOut={e => {
+                        if (!loading) {
+                            e.currentTarget.style.backgroundColor = 'grey';
+                        }
                     }}
                 >
                     {loading ? 'Loading...' : 'Random Quotes'}
@@ -1196,7 +1206,13 @@ const App = () => {
                         cursor: 'pointer',
                         fontSize: '1rem',
                         transform: 'none',
-                        transition: 'none'
+                        transition: 'background-color 0.2s ease'
+                    }}
+                    onMouseOver={e => {
+                        e.currentTarget.style.backgroundColor = '#a8a8a8';
+                    }}
+                    onMouseOut={e => {
+                        e.currentTarget.style.backgroundColor = 'grey';
                     }}
                 >
                     Search
@@ -1223,7 +1239,13 @@ const App = () => {
                         cursor: 'pointer',
                         fontSize: '1rem',
                         transform: 'none',
-                        transition: 'none'
+                        transition: 'background-color 0.2s ease'
+                    }}
+                    onMouseOver={e => {
+                        e.currentTarget.style.backgroundColor = '#a8a8a8';
+                    }}
+                    onMouseOut={e => {
+                        e.currentTarget.style.backgroundColor = 'grey';
                     }}
                 >
                     Reset Search
