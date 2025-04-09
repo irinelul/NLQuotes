@@ -1,0 +1,76 @@
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.75);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+.modalContent {
+    background-color: var(--surface-color);
+    padding: 2rem;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    box-sizing: border-box;
+
+    & h3 {
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+        font-size: 1.25rem;
+    }
+
+    & p {
+        color: var(--text-secondary);
+        margin-bottom: 1rem;
+    }
+
+    & textarea {
+        width: 100%;
+        min-height: 120px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        background-color: var(--background-color);
+        border: 2px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-size: 0.95rem;
+        letter-spacing: 0.3px;
+        resize: vertical;
+        transition: all 0.2s ease;
+        line-height: 1.5;
+        box-sizing: border-box;
+        max-width: 100%;
+
+        &:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(192, 192, 192, 0.2);
+        }
+    }
+}
+
+.modalButtons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.25rem;
+
+    & button:first-child {
+        background-color: var(--secondary-color);
+    }
+
+    & button:last-child {
+        background-color: var(--accent-color);
+
+        &:hover:not(:disabled) {
+            background-color: #FF6B6B;
+        }
+    }
+}

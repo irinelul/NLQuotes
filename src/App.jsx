@@ -8,47 +8,8 @@ import SearchableDropdown from './components/SearchableDropdown';
 import { pauseOtherPlayers } from './services/youtubeApiLoader';
 import DOMPurify from 'dompurify';
 import { YouTubePlayer } from './components/YoutubePlayer';
-
-// Using the player registry from youtubeApiLoader for managing multiple players
-
-const FlagModal = ({ isOpen, onClose, onSubmit, quote }) => {
-    const [reason, setReason] = useState('');
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        onSubmit(reason);
-        setReason('');
-    };
-
-    if (!isOpen) return null;
-
-    return (
-        <div className="modal-overlay">
-            <div className="modal-content">
-                <h3>Flag Quote</h3>
-                <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                    Please provide a reason for flagging this quote:
-                </p>
-                <form onSubmit={handleSubmit}>
-                    <textarea
-                        value={reason}
-                        onChange={(e) => setReason(e.target.value)}
-                        placeholder="Enter your reason here..."
-                        required
-                    />
-                    <div className="modal-buttons">
-                        <button type="button" onClick={onClose}>
-                            Cancel
-                        </button>
-                        <button type="submit">
-                            Submit
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-};
+import { FlagModal } from './components/Modals/FlagModal';
+import { FeedbackModal } from './components/Modals/FeedbackModal';
 
 const backdateTimestamp = (timestamp) => {
     return Math.max(0, Math.floor(timestamp) - 1);
@@ -56,45 +17,6 @@ const backdateTimestamp = (timestamp) => {
 
 // `b` is returned from ts_headline when a match is found
 const ALLOWED_TAGS = ['b'];
-
-const FeedbackModal = ({ isOpen, onClose, onSubmit }) => {
-    const [feedback, setFeedback] = useState('');
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        onSubmit(feedback);
-        setFeedback('');
-    };
-
-    if (!isOpen) return null;
-
-    return (
-        <div className="modal-overlay">
-            <div className="modal-content">
-                <h3>Send Feedback</h3>
-                <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                    Share your thoughts about the website or suggest improvements:
-                </p>
-                <form onSubmit={handleSubmit}>
-                    <textarea
-                        value={feedback}
-                        onChange={(e) => setFeedback(e.target.value)}
-                        placeholder="Enter your feedback here..."
-                        required
-                    />
-                    <div className="modal-buttons">
-                        <button type="button" onClick={onClose}>
-                            Cancel
-                        </button>
-                        <button type="submit">
-                            Submit
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-};
 
 const useQuery = () => {
     return new URLSearchParams(useLocation().search);
