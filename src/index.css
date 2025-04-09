@@ -53,6 +53,7 @@ body {
     from {
         transform: rotate(0deg);
     }
+
     to {
         transform: rotate(360deg);
     }
@@ -235,7 +236,7 @@ button:disabled {
     vertical-align: top;
 }
 
-.quotes-table td:first-child > div {
+.quotes-table td:first-child>div {
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -252,11 +253,11 @@ button:disabled {
     padding: 0;
 }
 
-.quotes-table td:last-child > div {
+.quotes-table td:last-child>div {
     padding: 1rem;
 }
 
-.quotes-table td:last-child > div > div {
+.quotes-table td:last-child>div>div {
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -265,7 +266,7 @@ button:disabled {
     border-bottom: 1px solid var(--border-color);
 }
 
-.quotes-table td:last-child > div > div:last-child {
+.quotes-table td:last-child>div>div:last-child {
     border-bottom: none;
 }
 
@@ -429,79 +430,6 @@ button:disabled {
     transition: all 0.2s ease;
 }
 
-/* Modal styles */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.75);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-    backdrop-filter: blur(4px);
-}
-
-.modal-content {
-    background-color: var(--surface-color);
-    padding: 2rem;
-    border-radius: 12px;
-    width: 90%;
-    max-width: 500px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-    box-sizing: border-box;
-}
-
-.modal-content h3 {
-    color: var(--text-primary);
-    margin-bottom: 1rem;
-    font-size: 1.25rem;
-}
-
-.modal-content textarea {
-    width: 100%;
-    min-height: 120px;
-    padding: 1rem;
-    margin-bottom: 1.5rem;
-    background-color: var(--background-color);
-    border: 2px solid var(--border-color);
-    border-radius: 8px;
-    color: var(--text-primary);
-    font-size: 0.95rem;
-    letter-spacing: 0.3px;
-    resize: vertical;
-    transition: all 0.2s ease;
-    line-height: 1.5;
-    box-sizing: border-box;
-    max-width: 100%;
-}
-
-.modal-content textarea:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(192, 192, 192, 0.2);
-}
-
-.modal-buttons {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.25rem;
-}
-
-.modal-buttons button:first-child {
-    background-color: var(--secondary-color);
-}
-
-.modal-buttons button:last-child {
-    background-color: var(--accent-color);
-}
-
-.modal-buttons button:last-child:hover:not(:disabled) {
-    background-color: #FF6B6B;
-}
-
 /* Radio button container */
 .radio-container {
     background-color: var(--surface-color);
@@ -516,7 +444,8 @@ button:disabled {
 }
 
 .radio-container .radio-group {
-    margin: 0.5rem 0;  /* Reduced margin since we have container padding */
+    margin: 0.5rem 0;
+    /* Reduced margin since we have container padding */
 }
 
 .radio-container .radio-group:first-child {
@@ -709,12 +638,15 @@ button:disabled {
     transform: translateY(0);
 }
 
-.year-tooltip, .sort-tooltip, .channel-tooltip {
+.year-tooltip,
+.sort-tooltip,
+.channel-tooltip {
     position: relative;
     display: inline-flex;
 }
 
-.year-tooltip::before, .sort-tooltip::before {
+.year-tooltip::before,
+.sort-tooltip::before {
     content: "Filter by video upload year";
     position: absolute;
     bottom: 100%;
@@ -758,7 +690,9 @@ button:disabled {
     transition: opacity 0.2s ease;
 }
 
-.year-tooltip:hover::before, .sort-tooltip:hover::before, .channel-tooltip:hover::before {
+.year-tooltip:hover::before,
+.sort-tooltip:hover::before,
+.channel-tooltip:hover::before {
     opacity: 1;
 }
 
@@ -960,6 +894,7 @@ button:disabled {
         opacity: 0;
         transform: translateY(-10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -1055,7 +990,7 @@ button:disabled {
 }
 
 /* Override the spin animation for the completed status */
-.migration-complete + .db-status .db-status-indicator,
+.migration-complete+.db-status .db-status-indicator,
 .db-status-indicator:contains('✅') {
     animation: none;
 }
@@ -1092,6 +1027,7 @@ button:disabled {
     from {
         transform: rotate(0deg);
     }
+
     to {
         transform: rotate(360deg);
     }
@@ -1184,9 +1120,11 @@ button:disabled {
     0% {
         opacity: 0.8;
     }
+
     50% {
         opacity: 1;
     }
+
     100% {
         opacity: 0.8;
     }
@@ -1196,9 +1134,11 @@ button:disabled {
     0% {
         box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7);
     }
+
     70% {
         box-shadow: 0 0 0 10px rgba(244, 67, 54, 0);
     }
+
     100% {
         box-shadow: 0 0 0 0 rgba(244, 67, 54, 0);
     }
@@ -1208,5 +1148,3 @@ button:disabled {
     color: #FF0000 !important;
     font-weight: bold !important;
 }
-   
-  
