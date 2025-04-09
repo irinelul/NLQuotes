@@ -1156,7 +1156,14 @@ const App = () => {
                 setPage(1);
                 navigate('/');
             }}>
-                <img src="/NLogo.png" alt="Northernlion Logo" />
+                <img 
+                    src="/NLogo.webp" 
+                    alt="Northernlion Logo"
+                    onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = "/NLogo.png";
+                    }}
+                />
             </div>
             <div className="input-container">
                 <button
@@ -1164,8 +1171,25 @@ const App = () => {
                     disabled={loading}
                     style={{
                         opacity: loading ? 0.7 : 1,
-                        transform: loading ? 'scale(0.98)' : 'scale(1)',
-                        transition: 'all 0.2s ease'
+                        transform: 'none',
+                        transition: 'background-color 0.2s ease',
+                        backgroundColor: 'grey',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        padding: '8px 16px',
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        fontSize: '1rem'
+                    }}
+                    onMouseOver={e => {
+                        if (!loading) {
+                            e.currentTarget.style.backgroundColor = '#a8a8a8';
+                        }
+                    }}
+                    onMouseOut={e => {
+                        if (!loading) {
+                            e.currentTarget.style.backgroundColor = 'grey';
+                        }
                     }}
                 >
                     {loading ? 'Loading...' : 'Random Quotes'}
@@ -1178,7 +1202,28 @@ const App = () => {
                     placeholder="Search quotes..."
                     className="search-input"
                 />
-                <button onClick={handleSearch}>Search</button>
+                <button 
+                    onClick={handleSearch}
+                    style={{
+                        backgroundColor: 'grey',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        padding: '8px 16px',
+                        cursor: 'pointer',
+                        fontSize: '1rem',
+                        transform: 'none',
+                        transition: 'background-color 0.2s ease'
+                    }}
+                    onMouseOver={e => {
+                        e.currentTarget.style.backgroundColor = '#a8a8a8';
+                    }}
+                    onMouseOut={e => {
+                        e.currentTarget.style.backgroundColor = 'grey';
+                    }}
+                >
+                    Search
+                </button>
                 <button
                     onClick={() => {
                         setSearchTerm('');
@@ -1191,7 +1236,24 @@ const App = () => {
                         setSelectedGame('all');
                         navigate('/');
                     }}
-                    style={{ marginLeft: '0.5rem' }}
+                    style={{ 
+                        marginLeft: '0.5rem',
+                        backgroundColor: 'grey',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        padding: '8px 16px',
+                        cursor: 'pointer',
+                        fontSize: '1rem',
+                        transform: 'none',
+                        transition: 'background-color 0.2s ease'
+                    }}
+                    onMouseOver={e => {
+                        e.currentTarget.style.backgroundColor = '#a8a8a8';
+                    }}
+                    onMouseOut={e => {
+                        e.currentTarget.style.backgroundColor = 'grey';
+                    }}
                 >
                     Reset Search
                 </button>
@@ -1289,6 +1351,21 @@ const App = () => {
                             if (searchTerm.trim()) {
                                 fetchQuotes(page, selectedChannel, selectedYear, sortOrder, strict, "all");
                             }
+                        }}
+                        style={{
+                            backgroundColor: 'var(--surface-color)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: '4px',
+                            marginLeft: '8px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '0 10px',
+                            fontSize: '18px',
+                            position: 'relative',
+                            transform: 'none',
+                            transition: 'none'
                         }}
                     >
                         ↺
