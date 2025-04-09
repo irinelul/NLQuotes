@@ -23,6 +23,16 @@ const SearchableDropdown = ({ options = [], value, onChange, placeholder }) => {
         option && typeof option === 'string' && option.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    const arrowStyle = {
+        position: 'absolute',
+        right: '10px',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        color: 'var(--text-secondary)',
+        fontSize: '12px',
+        pointerEvents: 'none'
+    };
+
     return (
         <div className="searchable-dropdown" ref={dropdownRef}>
             <div 
@@ -39,7 +49,7 @@ const SearchableDropdown = ({ options = [], value, onChange, placeholder }) => {
                     placeholder={value === "all" ? placeholder : value}
                     className="dropdown-input"
                 />
-                <span className="dropdown-arrow">▼</span>
+                <span className="dropdown-arrow" style={arrowStyle}>▼</span>
             </div>
             {isOpen && (
                 <div className="dropdown-options">

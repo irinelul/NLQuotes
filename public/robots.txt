@@ -1,0 +1,14 @@
+# Allow all crawlers
+User-agent: *
+Allow: /
+
+# Disallow admin and API endpoints
+Disallow: /api/
+Disallow: /admin/
+Disallow: /private/
+
+# Sitemap location (uncomment and update when you have a sitemap)
+# Sitemap: https://your-domain.com/sitemap.xml
+
+# Crawl-delay to prevent server overload
+Crawl-delay: 10 

@@ -340,10 +340,13 @@ button:disabled {
 }
 
 .logo-container img {
-    height: 5em;
+    height: 125px;
+    width: 156.25px;
     padding: 1em;
     will-change: filter;
     transition: all 0.3s ease;
+    object-fit: contain;
+    aspect-ratio: 1.25;
 }
 
 .logo-container img:hover {
