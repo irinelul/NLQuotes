@@ -1,392 +1,18 @@
 import { useState, useEffect } from 'react';
 import query from './services/quotes';
 import React from 'react';
-import { useNavigate, useSearchParams,useLocation  } from 'react-router-dom';
-import { format } from 'date-fns';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Disclaimer from './components/Disclaimer';
 import SearchableDropdown from './components/SearchableDropdown';
-import BetaDisclaimer from './components/BetaDisclaimer';
-import { ensureApiReady, registerPlayer, unregisterPlayer, pauseOtherPlayers } from './services/youtubeApiLoader';
+import { pauseOtherPlayers } from './services/youtubeApiLoader';
 import DOMPurify from 'dompurify';
-
-const URL = 'https://www.youtube.com/watch?v=';
-
-// Using the player registry from youtubeApiLoader for managing multiple players
-
-// Simpler approach with minimal DOM manipulation
-const YouTubePlayer = ({ videoId, timestamp, onTimestampClick }) => {
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [error, setError] = useState(null);
-    const [currentTimestamp, setCurrentTimestamp] = useState(timestamp);
-    const iframeRef = React.useRef(null);
-    const playerRef = React.useRef(null);
-    const [isMobileView, setIsMobileView] = useState(window.innerWidth <= 768);
-    
-    // Initialize YouTube player when iframe is loaded
-    useEffect(() => {
-        if (isPlaying && iframeRef.current) {
-            ensureApiReady().then(() => {
-                const player = new window.YT.Player(iframeRef.current, {
-                    videoId,
-                    playerVars: {
-                        autoplay: 1,
-                        start: Math.max(1, Math.floor(currentTimestamp) - 1),
-                        enablejsapi: 1,
-                        origin: window.location.origin
-                    },
-                    events: {
-                        onReady: (event) => {
-                            playerRef.current = event.target;
-                            registerPlayer(event.target);
-                            event.target.playVideo();
-                            pauseOtherPlayers(event.target);
-                        },
-                        onStateChange: (event) => {
-                            if (event.data === window.YT.PlayerState.PLAYING) {
-                                pauseOtherPlayers(event.target);
-                            }
-                        },
-                        onError: () => {
-                            setError('Failed to load video');
-                            setIsPlaying(false);
-                        }
-                    }
-                });
-            }).catch(err => {
-                console.error('Error initializing YouTube player:', err);
-                setError('Failed to initialize video player');
-                setIsPlaying(false);
-            });
-        }
-
-        return () => {
-            if (playerRef.current) {
-                unregisterPlayer(playerRef.current);
-                playerRef.current = null;
-            }
-        };
-    }, [isPlaying, videoId]);
-
-    // Effect to handle responsive layout
-    useEffect(() => {
-        const handleResize = () => {
-            setIsMobileView(window.innerWidth <= 768);
-        };
-
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
-
-    // Handle timestamp changes
-    useEffect(() => {
-        if (timestamp && !isPlaying) {
-            setCurrentTimestamp(timestamp);
-            setIsPlaying(true);
-            console.log(`Auto-playing video ${videoId} at timestamp ${timestamp}`);
-        } else if (timestamp && playerRef.current) {
-            setCurrentTimestamp(timestamp);
-            const seconds = Math.max(1, Math.floor(timestamp) - 1);
-            try {
-                // Always reload the video when timestamp changes
-                playerRef.current.loadVideoById({
-                    videoId: videoId,
-                    startSeconds: seconds
-                });
-                playerRef.current.playVideo();
-                pauseOtherPlayers(playerRef.current);
-                console.log(`Loading video ${videoId} at timestamp ${seconds}`);
-            } catch (err) {
-                console.error('Error loading video:', err);
-            }
-        }
-    }, [timestamp, videoId, isPlaying]);
-    
-    // Handle play button click - load video with iframe
-    const handlePlayClick = () => {
-        console.log(`Play button clicked for ${videoId}`);
-        setCurrentTimestamp(timestamp || 0);
-        setIsPlaying(true);
-    };
-    
-    // Handle errors with iframe loading
-    const handleIframeError = () => {
-        setError('Failed to load video');
-        setIsPlaying(false);
-    };
-
-    // Error display
-    if (error) {
-        return (
-            <div style={{ 
-                width: isMobileView ? '100%' : '480px', 
-                height: isMobileView ? '250px' : '270px', 
-                backgroundColor: 'var(--surface-color)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--text-secondary)',
-                flexDirection: 'column',
-                gap: '10px',
-                padding: '1rem'
-            }}>
-                <div>{error}</div>
-                <button 
-                    onClick={() => {
-                        setError(null);
-                        handlePlayClick();
-                    }}
-                    style={{
-                        padding: '5px 10px',
-                        background: 'var(--accent-color)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                    }}
-                >
-                    Retry
-                </button>
-            </div>
-        );
-    }
-
-    // Video thumbnail (when not playing)
-    if (!isPlaying) {
-        return (
-            <div
-                style={{ 
-                    width: isMobileView ? '100%' : '616px', 
-                    height: isMobileView ? '220px' : '346px', 
-                    position: 'relative',
-                    backgroundColor: 'var(--surface-color)',
-                    overflow: 'hidden',
-                    borderRadius: '8px'
-                }}
-            >
-                <img 
-                    src={`https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`}
-                    alt="Video thumbnail"
-                    loading="lazy"
-                    style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover'
-                    }}
-                    onError={(e) => {
-                        e.target.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-                    }}
-                />
-                <div
-                    style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        backgroundColor: 'rgba(0,0,0,0.2)'
-                    }}
-                    onClick={handlePlayClick}
-                >
-                    <div
-                        style={{
-                            width: isMobileView ? '50px' : '60px',
-                            height: isMobileView ? '50px' : '60px',
-                            borderRadius: '50%',
-                            backgroundColor: 'rgba(255,0,0,0.8)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                        }}
-                    >
-                        <div
-                            style={{
-                                width: '0',
-                                height: '0',
-                                borderTop: isMobileView ? '12px solid transparent' : '15px solid transparent',
-                                borderBottom: isMobileView ? '12px solid transparent' : '15px solid transparent',
-                                borderLeft: isMobileView ? '20px solid white' : '24px solid white',
-                                marginLeft: '5px'
-                            }}
-                        />
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    // Direct iframe embed - most reliable approach
-    return (
-        <div
-            style={{ 
-                width: isMobileView ? '100%' : '616px', 
-                height: isMobileView ? '220px' : '346px',
-                backgroundColor: 'var(--surface-color)',
-                overflow: 'hidden'
-            }}
-            data-video-id={videoId}
-        >
-            <div
-                ref={iframeRef}
-                style={{
-                    width: '100%',
-                    height: '100%',
-                    border: 'none',
-                    display: isPlaying ? 'block' : 'none'
-                }}
-                setIsPlaying={setIsPlaying}
-            ></div>
-            {!isPlaying && (
-                <img 
-                    src={`https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`}
-                    alt="Video thumbnail"
-                    loading="lazy"
-                    style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        display: isPlaying ? 'none' : 'block'
-                    }}
-                    onError={(e) => {
-                        e.target.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-                    }}
-                />
-            )}
-        </div>
-    );
-};
-
-const FlagModal = ({ isOpen, onClose, onSubmit, quote }) => {
-    const [reason, setReason] = useState('');
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        onSubmit(reason);
-        setReason('');
-    };
-
-    if (!isOpen) return null;
-
-    return (
-        <div className="modal-overlay">
-            <div className="modal-content">
-                <h3>Flag Quote</h3>
-                <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                    Please provide a reason for flagging this quote:
-                </p>
-                <form onSubmit={handleSubmit}>
-                    <textarea
-                        value={reason}
-                        onChange={(e) => setReason(e.target.value)}
-                        placeholder="Enter your reason here..."
-                        required
-                    />
-                    <div className="modal-buttons">
-                        <button type="button" onClick={onClose}>
-                            Cancel
-                        </button>
-                        <button type="submit">
-                            Submit
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-};
-
-const backdateTimestamp = (timestamp) => {
-    return Math.max(0, Math.floor(timestamp) - 1);
-}
+import { YouTubePlayer } from './components/YoutubePlayer';
+import { FlagModal } from './components/Modals/FlagModal';
+import { FeedbackModal } from './components/Modals/FeedbackModal';
+import { backdateTimestamp, formatDate, formatTimestamp } from './services/dateHelpers';
 
 // `b` is returned from ts_headline when a match is found
 const ALLOWED_TAGS = ['b'];
-
-const FeedbackModal = ({ isOpen, onClose, onSubmit }) => {
-    const [feedback, setFeedback] = useState('');
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        onSubmit(feedback);
-        setFeedback('');
-    };
-
-    if (!isOpen) return null;
-
-    return (
-        <div className="modal-overlay">
-            <div className="modal-content">
-                <h3>Send Feedback</h3>
-                <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                    Share your thoughts about the website or suggest improvements:
-                </p>
-                <form onSubmit={handleSubmit}>
-                    <textarea
-                        value={feedback}
-                        onChange={(e) => setFeedback(e.target.value)}
-                        placeholder="Enter your feedback here..."
-                        required
-                    />
-                    <div className="modal-buttons">
-                        <button type="button" onClick={onClose}>
-                            Cancel
-                        </button>
-                        <button type="submit">
-                            Submit
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-};
-
-const useQuery = () => {
-    return new URLSearchParams(useLocation().search);
-};
-
-const formatDate = (date) => {
-    if (!date) return 'N/A';
-    
-    // If it's already a Date object
-    if (date instanceof Date) {
-        return format(date, 'dd MMMM yyyy');
-    }
-    
-    // If it's a string in YYYYMMDD format
-    if (typeof date === 'string' && date.length === 8) {
-        const dateObj = new Date(
-            date.slice(0, 4),  // Year
-            date.slice(4, 6) - 1, // Month (0-indexed)
-            date.slice(6, 8) // Day
-        );
-        return format(dateObj, 'dd MMMM yyyy');
-    }
-    
-    // If it's an ISO string or other date string
-    try {
-        const dateObj = new Date(date);
-        return format(dateObj, 'dd MMMM yyyy');
-    } catch (e) {
-        return 'Invalid Date';
-    }
-};
-
-const formatTimestamp = (seconds) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const remainingSeconds = Math.floor(seconds % 60);
-    
-    const pad = (num) => num.toString().padStart(2, '0');
-    
-    if (hours > 0) {
-        return `${pad(hours)}:${pad(minutes)}:${pad(remainingSeconds)}`;
-    }
-    return `${pad(minutes)}:${pad(remainingSeconds)}`;
-};
 
 const Quotes = ({ quotes = [], searchTerm }) => {
     const [flagging, setFlagging] = useState({});
@@ -431,7 +57,7 @@ const Quotes = ({ quotes = [], searchTerm }) => {
             // Use pauseOtherPlayers from our registry
             pauseOtherPlayers(null); // Passing null to pause all players
         }
-        
+
         // Always set the active timestamp which will trigger video loading
         setActiveTimestamp({ videoId, timestamp });
     };
@@ -485,14 +111,14 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                         height: '450px',
                         padding: '1rem 0'
                     }}>
-                        <td style={{ 
+                        <td style={{
                             padding: '1rem',
                             verticalAlign: 'middle',
                             height: '100%',
                             textAlign: 'center',
                             width: '720px'
                         }}>
-                            <div style={{ 
+                            <div style={{
                                 display: 'flex',
                                 flexDirection: 'column',
                                 gap: '0.5rem',
@@ -502,7 +128,7 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                 <div style={{ fontWeight: 'bold' }}>
                                     {quoteGroup.quotes[0]?.title || 'N/A'}
                                 </div>
-                                <YouTubePlayer 
+                                <YouTubePlayer
                                     key={`${quoteGroup.video_id}-${retryCount}`}
                                     videoId={quoteGroup.video_id}
                                     timestamp={activeTimestamp.videoId === quoteGroup.video_id ? activeTimestamp.timestamp : null}
@@ -544,7 +170,7 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                         padding: '0.75rem 0',
                                         borderBottom: index < quoteGroup.quotes.length - 1 ? '1px solid var(--border-color)' : 'none',
                                         borderColor: 'var(--border-color)',
-                                        flexShrink: 0, 
+                                        flexShrink: 0,
                                         width: '100%',
                                         overflow: 'visible',
                                         wordBreak: 'break-word',
@@ -583,8 +209,8 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                             </span>
                                         </button>
 
-                                        <div style={{ 
-                                            display: 'flex', 
+                                        <div style={{
+                                            display: 'flex',
                                             flexDirection: 'column',
                                             gap: '0.5rem',
                                             marginLeft: 'auto',
@@ -704,18 +330,18 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                     <div className="mobile-video-title" style={{ fontWeight: 'bold', padding: '1rem 0.5rem', textAlign: 'center' }}>
                         {quoteGroup.quotes[0]?.title || 'N/A'}
                     </div>
-                    
+
                     <div className="mobile-video-container" style={{ width: '100%', maxWidth: '480px', margin: '0 auto' }}>
-                        <YouTubePlayer 
+                        <YouTubePlayer
                             key={`${quoteGroup.video_id}-${retryCount}`}
                             videoId={quoteGroup.video_id}
                             timestamp={activeTimestamp.videoId === quoteGroup.video_id ? activeTimestamp.timestamp : null}
                             onTimestampClick={handleTimestampClick}
                         />
                     </div>
-                    
-                    <div className="mobile-video-info" style={{ 
-                        textAlign: 'center', 
+
+                    <div className="mobile-video-info" style={{
+                        textAlign: 'center',
                         padding: '0.5rem',
                         color: 'var(--text-secondary)',
                         borderBottom: '1px solid var(--border-color)'
@@ -724,7 +350,7 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                             ? formatDate(quoteGroup.quotes[0].upload_date)
                             : 'N/A'}
                     </div>
-                    
+
                     <div className="mobile-quotes-list" style={{
                         maxHeight: '500px',
                         overflowY: 'auto',
@@ -758,8 +384,8 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                     }}
                                 >
                                     <span style={{ verticalAlign: 'middle' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(quote.text, { ALLOWED_TAGS }) }} />
-                                    <span style={{ 
-                                        verticalAlign: 'middle', 
+                                    <span style={{
+                                        verticalAlign: 'middle',
                                         marginLeft: '0.5em',
                                         color: 'var(--text-secondary)',
                                         fontWeight: 'bold'
@@ -768,8 +394,8 @@ const Quotes = ({ quotes = [], searchTerm }) => {
                                     </span>
                                 </button>
 
-                                <div style={{ 
-                                    display: 'flex', 
+                                <div style={{
+                                    display: 'flex',
                                     justifyContent: 'space-around',
                                     padding: '0.5rem',
                                     backgroundColor: 'var(--surface-color)',
@@ -853,8 +479,8 @@ const Quotes = ({ quotes = [], searchTerm }) => {
             {quotes.length > 0 ? (
                 isMobileView ? renderMobileLayout() : renderDesktopLayout()
             ) : (
-                <div style={{ 
-                    textAlign: 'center', 
+                <div style={{
+                    textAlign: 'center',
                     color: 'var(--text-secondary)',
                     padding: '2rem',
                     fontSize: '1.1rem'
@@ -903,22 +529,22 @@ const App = () => {
     const [selectedGame, setSelectedGame] = useState("all");
     const [activeTimestamp, setActiveTimestamp] = useState({ videoId: null, timestamp: null });
     const [retryCount, setRetryCount] = useState(0);
-    
+
     // Add meta viewport tag for responsive design
     useEffect(() => {
         // Check if viewport meta tag exists
         let viewportMeta = document.querySelector('meta[name="viewport"]');
-        
+
         // If it doesn't exist, create it
         if (!viewportMeta) {
             viewportMeta = document.createElement('meta');
             viewportMeta.name = 'viewport';
             document.getElementsByTagName('head')[0].appendChild(viewportMeta);
         }
-        
+
         // Set the content
         viewportMeta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
-        
+
         // Add mobile-specific CSS
         const style = document.createElement('style');
         style.textContent = `
@@ -1273,7 +899,7 @@ const App = () => {
             }
         `;
         document.head.appendChild(style);
-        
+
         // Clean up function to remove the style when component unmounts
         return () => {
             document.head.removeChild(style);
@@ -1289,10 +915,10 @@ const App = () => {
                     '/games',
                     '/app/api/games'
                 ];
-                
+
                 let gamesData = null;
                 let failureMessages = [];
-                
+
                 // Try each path until one works
                 for (const path of pathsToTry) {
                     try {
@@ -1305,7 +931,7 @@ const App = () => {
                                 'Expires': '0'
                             }
                         });
-                        
+
                         // Check if we got a valid response
                         if (response.ok) {
                             const data = await response.json();
@@ -1328,7 +954,7 @@ const App = () => {
                         failureMessages.push(errorMsg);
                     }
                 }
-                
+
                 // If we got data from any of the paths, use it
                 if (gamesData && gamesData.games) {
                     setGames(gamesData.games);
@@ -1418,11 +1044,11 @@ const App = () => {
             console.log('Fetching random quotes...');
             const response = await query.getRandomQuotes();
             console.log('Random quotes response:', response);
-            
+
             if (!response || !response.quotes) {
                 throw new Error('Invalid response format from server');
             }
-            
+
             setQuotes(response.quotes);
             setTotalPages(1);
             setPage(1);
@@ -1515,10 +1141,10 @@ const App = () => {
     };
 
     return (
-        <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center', 
+        <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
             marginTop: '2rem',
             width: '100%',
             height: '100%',
@@ -1533,7 +1159,7 @@ const App = () => {
                 <img src="/NLogo.png" alt="Northernlion Logo" />
             </div>
             <div className="input-container">
-                <button 
+                <button
                     onClick={handleRandomQuotes}
                     disabled={loading}
                     style={{
@@ -1553,7 +1179,7 @@ const App = () => {
                     className="search-input"
                 />
                 <button onClick={handleSearch}>Search</button>
-                <button 
+                <button
                     onClick={() => {
                         setSearchTerm('');
                         setQuotes([]);
@@ -1656,7 +1282,7 @@ const App = () => {
                             placeholder="Select a game"
                         />
                     </div>
-                    <button 
+                    <button
                         className="reset-game-button"
                         onClick={() => {
                             setSelectedGame("all");
@@ -1675,8 +1301,8 @@ const App = () => {
             {loading && <div>Loading...</div>}
             {hasSearched && (
                 <>
-                    <div style={{ 
-                        textAlign: 'center', 
+                    <div style={{
+                        textAlign: 'center',
                         color: 'var(--text-secondary)',
                         marginBottom: '1rem',
                         fontSize: '1.1rem'
@@ -1686,11 +1312,11 @@ const App = () => {
                     <Quotes quotes={quotes} searchTerm={searchTerm} />
                 </>
             )}
-            
+
             {quotes.length > 0 && (
                 <div className="pagination-buttons">
-                    <button 
-                        onClick={() => handlePageChange(page - 1)} 
+                    <button
+                        onClick={() => handlePageChange(page - 1)}
                         disabled={page === 1}
                     >
                         Previous
@@ -1698,21 +1324,21 @@ const App = () => {
                     <span className="pagination-info">
                         Page {page} of {totalPages || 1}
                     </span>
-                    <button 
-                        onClick={() => handlePageChange(page + 1)} 
+                    <button
+                        onClick={() => handlePageChange(page + 1)}
                         disabled={page >= totalPages || totalPages === 0}
                     >
                         Next
                     </button>
                 </div>
             )}
-            
+
             <div className="footer-message">
                 Made with passion by a fan • Generously supported by The Librarian • Contributors: Xeneta, samfry13 • <a href="https://github.com/irinelul/NLQuotes" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>GitHub</a>
             </div>
 
             {/* Improved desktop-only feedback button */}
-            <button 
+            <button
                 className="floating-feedback-button"
                 onClick={() => setFeedbackModalOpen(true)}
                 disabled={submittingFeedback}
