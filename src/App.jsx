@@ -1156,7 +1156,14 @@ const App = () => {
                 setPage(1);
                 navigate('/');
             }}>
-                <img src="/NLogo.png" alt="Northernlion Logo" />
+                <img 
+                    src="/NLogo.webp" 
+                    alt="Northernlion Logo"
+                    onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = "/NLogo.png";
+                    }}
+                />
             </div>
             <div className="input-container">
                 <button
