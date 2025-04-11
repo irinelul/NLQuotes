@@ -75,10 +75,6 @@ const makeApiRequest = async (endpoint, method = 'get', params = null, data = nu
                     });
                     console.log(`API call succeeded with: ${fullPath}`);
                     return response;
-                } else if (method === 'post') {
-                    const response = await axios.post(fullPath, data, axiosConfig);
-                    console.log(`API call succeeded with: ${fullPath}`);
-                    return response;
                 }
             } catch (error) {
                 const errorInfo = {
@@ -99,12 +95,6 @@ const makeApiRequest = async (endpoint, method = 'get', params = null, data = nu
         }
     }
     
-    // If we reach here, all attempts failed
-    console.log('All API paths failed - entering migration mode');
-    console.log('Collected errors:', errors);
-    isMigrationMode = true;
-    
-    throw new Error('Connection error. API temporarily unavailable.');
 };
 
 const getAll = async (searchTerm, page, strict, selectedValue, selectedMode, year, sortOrder, gameName) => {
@@ -142,11 +132,6 @@ const getAll = async (searchTerm, page, strict, selectedValue, selectedMode, yea
 
 const getStats = async () => {
     try {
-        if (isMigrationMode) {
-            await delay(300);
-            throw new Error('Stats unavailable during database migration');
-        }
-        
         const response = await makeApiRequest('/stats', 'get');
         return response.data;
     } catch (error) {
