@@ -43,16 +43,7 @@ let isMigrationMode = false; // Migration complete - set to false to enable sear
 
 // Helper to try API calls with different path prefixes and base URLs
 const makeApiRequest = async (endpoint, method = 'get', params = null, data = null) => {
-    // If we already know we're in migration mode, fail faster
-    if (isMigrationMode) {
-        await delay(300); // Add a small delay to simulate a request
-        throw new Error('API unavailable during database migration');
-    }
-    
-    // Errors to collect
     const errors = [];
-    
-    // Try each base URL
     for (const baseUrl of possibleBaseUrls) {
         // Try each path prefix
         for (const prefix of pathPrefixes) {
@@ -157,9 +148,6 @@ const flagQuote = async (quoteData) => {
 
 const getRandomQuotes = async () => {
     try {
-
-        
-        // Use the correct API endpoint path
         const response = await makeApiRequest('/api/random', 'get');
         if (!response.data || !response.data.quotes) {
             throw new Error('Invalid response format from random quotes endpoint');
