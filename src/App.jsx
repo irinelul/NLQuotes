@@ -12,6 +12,8 @@ import { ChannelRadioButton } from './components/ChannelRadioButton';
 import './App.css';
 import { Filters } from './components/Filters';
 import { useFetchGames } from './hooks/useFetchGames';
+import { Footer } from './components/Footer';
+import { PaginationButtons } from './components/PaginationButtons';
 
 // `b` is returned from ts_headline when a match is found
 const ALLOWED_TAGS = ['b'];
@@ -839,7 +841,8 @@ const App = () => {
                 fetchQuotes={fetchQuotes}
                 page={page}
                 selectedChannel={selectedChannel}
-                strict={strict} />
+                strict={strict} 
+            />
 
             {!hasSearched && <Disclaimer />}
 
@@ -859,28 +862,14 @@ const App = () => {
             )}
 
             {quotes.length > 0 && (
-                <div className="pagination-buttons">
-                    <button
-                        onClick={() => handlePageChange(page - 1)}
-                        disabled={page === 1}
-                    >
-                        Previous
-                    </button>
-                    <span className="pagination-info">
-                        Page {page} of {totalPages || 1}
-                    </span>
-                    <button
-                        onClick={() => handlePageChange(page + 1)}
-                        disabled={page >= totalPages || totalPages === 0}
-                    >
-                        Next
-                    </button>
-                </div>
+                <PaginationButtons
+                    page={page}
+                    totalPages={totalPages}
+                    handlePageChange={handlePageChange}
+                />
             )}
 
-            <div className="footer-message">
-                Made with passion by a fan • Generously supported by The Librarian • Contributors: Xeneta, samfry13 • <a href="https://github.com/irinelul/NLQuotes" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>GitHub</a>
-            </div>
+            <Footer />
 
             {/* Improved desktop-only feedback button */}
             <button
