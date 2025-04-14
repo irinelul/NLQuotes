@@ -9,6 +9,7 @@ import { YouTubePlayer } from './components/YoutubePlayer';
 import { FlagModal } from './components/Modals/FlagModal';
 import { FeedbackModal } from './components/Modals/FeedbackModal';
 import { backdateTimestamp, formatDate, formatTimestamp } from './services/dateHelpers';
+import { ChannelRadioButton } from './components/ChannelRadioButton';
 
 // `b` is returned from ts_headline when a match is found
 const ALLOWED_TAGS = ['b'];
@@ -505,7 +506,7 @@ const App = () => {
     const [totalPages, setTotalPages] = useState(0);
     const [totalQuotes, setTotalQuotes] = useState(0);
     const navigate = useNavigate();
-    const [selectedChannel, setselectedChannel] = useState("all");
+    const [selectedChannel, setSelectedChannel] = useState("all");
     const [selectedYear, setSelectedYear] = useState("");
     const [sortOrder, setSortOrder] = useState("default");
     const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
@@ -957,12 +958,11 @@ const App = () => {
         fetchGames();
     }, []);
 
-    const handleChannelChange = (e) => {
-        const value = e.target.value;
-        setselectedChannel(value);
+    const handleChannelChange = (channelId) => {
+        setSelectedChannel(channelId);
         setPage(1);
         if (searchTerm.trim()) {
-            fetchQuotes(1, value, selectedYear, sortOrder, strict, selectedGame);
+            fetchQuotes(1, channelId, selectedYear, sortOrder, strict, selectedGame);
         }
     };
 
@@ -1200,7 +1200,7 @@ const App = () => {
                         setPage(1);
                         setSelectedYear('');
                         setSortOrder('default');
-                        setselectedChannel('all');
+                        setSelectedChannel('all');
                         setSelectedGame('all');
                         navigate('/');
                     }}
@@ -1230,53 +1230,24 @@ const App = () => {
             {error && <div className="error-message">{error}</div>}
 
             <div className="radio-group channel-tooltip">
-                <div
-                    className={`radio-button ${selectedChannel === "all" ? 'selected' : ''}`}
-                    onClick={() => handleChannelChange({ target: { value: "all" } })}
-                >
-                    <input
-                        type="radio"
-                        id="all"
-                        value="all"
-                        checked={selectedChannel === "all"}
-                        onChange={handleChannelChange}
-                    />
-                    <label htmlFor="all" className="radio-label">
-                        All Sources
-                    </label>
-                </div>
-
-                <div
-                    className={`radio-button ${selectedChannel === "Librarian" ? 'selected' : ''}`}
-                    onClick={() => handleChannelChange({ target: { value: "Librarian" } })}
-                >
-                    <input
-                        type="radio"
-                        id="librarian"
-                        value="Librarian"
-                        checked={selectedChannel === "Librarian"}
-                        onChange={handleChannelChange}
-                    />
-                    <label htmlFor="librarian" className="radio-label">
-                        Librarian
-                    </label>
-                </div>
-
-                <div
-                    className={`radio-button ${selectedChannel === "Northernlion" ? 'selected' : ''}`}
-                    onClick={() => handleChannelChange({ target: { value: "Northernlion" } })}
-                >
-                    <input
-                        type="radio"
-                        id="northernlion"
-                        value="Northernlion"
-                        checked={selectedChannel === "Northernlion"}
-                        onChange={handleChannelChange}
-                    />
-                    <label htmlFor="northernlion" className="radio-label">
-                        Northernlion
-                    </label>
-                </div>
+                <ChannelRadioButton
+                    selectedChannel={selectedChannel}
+                    handleChannelChange={handleChannelChange}
+                    id="all"
+                    name="All Sources"
+                />
+                <ChannelRadioButton
+                    selectedChannel={selectedChannel}
+                    handleChannelChange={handleChannelChange}
+                    id="librarian"
+                    name="Librarian"
+                />
+                <ChannelRadioButton
+                    selectedChannel={selectedChannel}
+                    handleChannelChange={handleChannelChange}
+                    id="northernlion"
+                    name="Northernlion"
+                />
             </div>
 
             <div className="filter-container">
