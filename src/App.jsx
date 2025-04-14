@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import query from './services/quotes';
 import { useNavigate } from 'react-router-dom';
 import Disclaimer from './components/Disclaimer';
-import SearchableDropdown from './components/SearchableDropdown';
 import { pauseOtherPlayers } from './services/youtubeApiLoader';
 import DOMPurify from 'dompurify';
 import { YouTubePlayer } from './components/YoutubePlayer';
@@ -11,6 +10,7 @@ import { FeedbackModal } from './components/Modals/FeedbackModal';
 import { backdateTimestamp, formatDate, formatTimestamp } from './services/dateHelpers';
 import { ChannelRadioButton } from './components/ChannelRadioButton';
 import './App.css';
+import { Filters } from './components/Filters';
 
 // `b` is returned from ts_headline when a match is found
 const ALLOWED_TAGS = ['b'];
@@ -890,68 +890,21 @@ const App = () => {
                     name="Northernlion"
                 />
             </div>
-
-            <div className="filter-container">
-                <div className="filter-group">
-                    <div className="year-tooltip">
-                        <input
-                            type="text"
-                            value={selectedYear}
-                            onChange={handleYearChange}
-                            placeholder="Year (YYYY)"
-                            maxLength="4"
-                            className="year-input"
-                        />
-                    </div>
-                    <div className="sort-tooltip">
-                        <select
-                            value={sortOrder}
-                            onChange={handleSortChange}
-                            className="sort-select"
-                        >
-                            <option value="default">Default Order</option>
-                            <option value="newest">Newest First</option>
-                            <option value="oldest">Oldest First</option>
-                        </select>
-                    </div>
-                </div>
-                <div className="game-filter-container">
-                    <div className="game-tooltip">
-                        <SearchableDropdown
-                            options={games}
-                            value={selectedGame}
-                            onChange={handleGameChange}
-                            placeholder="Select a game"
-                        />
-                    </div>
-                    <button
-                        className="reset-game-button"
-                        onClick={() => {
-                            setSelectedGame("all");
-                            if (searchTerm.trim()) {
-                                fetchQuotes(page, selectedChannel, selectedYear, sortOrder, strict, "all");
-                            }
-                        }}
-                        style={{
-                            backgroundColor: 'var(--surface-color)',
-                            border: '1px solid var(--border-color)',
-                            borderRadius: '4px',
-                            marginLeft: '8px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            padding: '0 10px',
-                            fontSize: '18px',
-                            position: 'relative',
-                            transform: 'none',
-                            transition: 'none'
-                        }}
-                    >
-                        ↺
-                    </button>
-                </div>
-            </div>
+            
+            <Filters 
+                selectedYear={selectedYear}
+                handleYearChange={handleYearChange}
+                sortOrder={sortOrder}
+                handleSortChange={handleSortChange}
+                selectedGame={selectedGame}
+                setSelectedGame={setSelectedGame}
+                handleGameChange={handleGameChange}
+                games={games}
+                searchTerm={searchTerm}
+                fetchQuotes={fetchQuotes}
+                page={page}
+                selectedChannel={selectedChannel}
+                strict={strict} />
 
             {!hasSearched && <Disclaimer />}
 
