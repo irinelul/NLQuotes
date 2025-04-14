@@ -7,6 +7,8 @@ import axios from 'axios';
 import fs from 'fs';
 import rateLimit from 'express-rate-limit';
 import slowDown from 'express-slow-down';
+import pkg from 'pg';
+const { Pool } = pkg;
 
 // Load environment variables
 dotenv.config();
@@ -155,14 +157,12 @@ let cachedGameList = null;
 // Load game titles into cache on startup
 async function loadGameTitles() {
     try {
-        const games = await fs.promises.readFile('game_titles.txt', 'utf8');
-        cachedGameList = games.split('\n')
-            .map(game => game.trim())
-            .filter(game => game !== '');
+        const result = await quoteModel.getGameList();
+        cachedGameList = result;
         console.log(`Loaded ${cachedGameList.length} game titles into cache`);
     } catch (error) {
         console.error('Error loading game titles into cache:', error);
-        cachedGameList = []; // Initialize as empty array if file read fails
+        cachedGameList = []; // Initialize as empty array if query fails
     }
 }
 

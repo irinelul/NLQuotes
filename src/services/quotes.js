@@ -43,16 +43,7 @@ let isMigrationMode = false; // Migration complete - set to false to enable sear
 
 // Helper to try API calls with different path prefixes and base URLs
 const makeApiRequest = async (endpoint, method = 'get', params = null, data = null) => {
-    // If we already know we're in migration mode, fail faster
-    if (isMigrationMode) {
-        await delay(300); // Add a small delay to simulate a request
-        throw new Error('API unavailable during database migration');
-    }
-    
-    // Errors to collect
     const errors = [];
-    
-    // Try each base URL
     for (const baseUrl of possibleBaseUrls) {
         // Try each path prefix
         for (const prefix of pathPrefixes) {
@@ -75,10 +66,6 @@ const makeApiRequest = async (endpoint, method = 'get', params = null, data = nu
                     });
                     console.log(`API call succeeded with: ${fullPath}`);
                     return response;
-                } else if (method === 'post') {
-                    const response = await axios.post(fullPath, data, axiosConfig);
-                    console.log(`API call succeeded with: ${fullPath}`);
-                    return response;
                 }
             } catch (error) {
                 const errorInfo = {
@@ -99,12 +86,6 @@ const makeApiRequest = async (endpoint, method = 'get', params = null, data = nu
         }
     }
     
-    // If we reach here, all attempts failed
-    console.log('All API paths failed - entering migration mode');
-    console.log('Collected errors:', errors);
-    isMigrationMode = true;
-    
-    throw new Error('Connection error. API temporarily unavailable.');
 };
 
 const getAll = async (searchTerm, page, strict, selectedValue, selectedMode, year, sortOrder, gameName) => {
@@ -142,11 +123,6 @@ const getAll = async (searchTerm, page, strict, selectedValue, selectedMode, yea
 
 const getStats = async () => {
     try {
-        if (isMigrationMode) {
-            await delay(300);
-            throw new Error('Stats unavailable during database migration');
-        }
-        
         const response = await makeApiRequest('/stats', 'get');
         return response.data;
     } catch (error) {
@@ -172,9 +148,6 @@ const flagQuote = async (quoteData) => {
 
 const getRandomQuotes = async () => {
     try {
-
-        
-        // Use the correct API endpoint path
         const response = await makeApiRequest('/api/random', 'get');
         if (!response.data || !response.data.quotes) {
             throw new Error('Invalid response format from random quotes endpoint');
