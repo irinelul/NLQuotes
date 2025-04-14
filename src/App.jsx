@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import query from './services/quotes';
-import React from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Disclaimer from './components/Disclaimer';
 import SearchableDropdown from './components/SearchableDropdown';
 import { pauseOtherPlayers } from './services/youtubeApiLoader';
@@ -26,7 +25,6 @@ const Quotes = ({ quotes = [], searchTerm }) => {
     });
     const [activeTimestamp, setActiveTimestamp] = useState({ videoId: null, timestamp: null });
     const [showEmbeddedVideos] = useState(true);
-    const [isViewSwitching, setIsViewSwitching] = useState(false);
     const [retryCount, setRetryCount] = useState(0);
     const [isMobileView, setIsMobileView] = useState(window.innerWidth <= 768);
 
@@ -35,7 +33,6 @@ const Quotes = ({ quotes = [], searchTerm }) => {
         if (showEmbeddedVideos && retryCount < 1) {
             const timer = setTimeout(() => {
                 setRetryCount(prev => prev + 1);
-                setIsViewSwitching(false); // Reset the loading state after retry
             }, 500);
             return () => clearTimeout(timer);
         }
@@ -498,27 +495,15 @@ const Quotes = ({ quotes = [], searchTerm }) => {
     );
 };
 
-// Add a fallback function for when API calls fail during migration
-const useEmptyQuotesFallback = () => {
-    return {
-        data: [],
-        total: 0,
-        totalQuotes: 0
-    };
-};
-
 const App = () => {
     const [quotes, setQuotes] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [page, setPage] = useState(1);
-    const [strict, setStrict] = useState(false);
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
-    const [stats, setStats] = useState([]);
     const [totalPages, setTotalPages] = useState(0);
     const [totalQuotes, setTotalQuotes] = useState(0);
-    const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
     const [selectedChannel, setselectedChannel] = useState("all");
     const [selectedYear, setSelectedYear] = useState("");
@@ -527,9 +512,8 @@ const App = () => {
     const [submittingFeedback, setSubmittingFeedback] = useState(false);
     const [games, setGames] = useState([]);
     const [selectedGame, setSelectedGame] = useState("all");
-    const [activeTimestamp, setActiveTimestamp] = useState({ videoId: null, timestamp: null });
-    const [retryCount, setRetryCount] = useState(0);
-
+    
+    const strict = false;
     // Add meta viewport tag for responsive design
     useEffect(() => {
         // Check if viewport meta tag exists
@@ -1002,12 +986,6 @@ const App = () => {
         }
     };
 
-    const handleSearchModeChange = (e) => {
-        const value = e.target.checked;
-        setStrict(value);
-        setPage(1);
-    };
-
     const handleSearch = (e) => {
         e.preventDefault();
         if (searchTerm.trim().length > 2) {
@@ -1105,16 +1083,6 @@ const App = () => {
             }
         }
     };
-
-    useEffect(() => {
-        const urlSearchTerm = searchParams.get('search') || '';
-        const urlPage = parseInt(searchParams.get('page')) || 1;
-        const urlStrict = searchParams.get('strict') === 'true';
-
-        setSearchTerm(urlSearchTerm);
-        setPage(urlPage);
-        setStrict(urlStrict);
-    }, [searchParams]);
 
     const numberFormatter = new Intl.NumberFormat('en-US');
 
