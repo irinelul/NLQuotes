@@ -116,6 +116,27 @@ const quoteModel = {
   // Database health check exposed to API
   checkHealth: checkDatabaseHealth,
   
+  // Get list of unique games
+  async getGameList() {
+    try {
+      const client = await pool.connect();
+      try {
+        const result = await client.query(`
+          SELECT DISTINCT game_name 
+          FROM game_mapping 
+          WHERE game_name IS NOT NULL 
+          ORDER BY game_name ASC
+        `);
+        return result.rows.map(row => row.game_name);
+      } finally {
+        client.release();
+      }
+    } catch (error) {
+      console.error('Error fetching game list:', error);
+      return [];
+    }
+  },
+  
   // Search quotes with pagination using PostgreSQL FTS
   async search({ searchTerm, searchPath, gameName, selectedValue, year, sortOrder, page = 1, limit = 10, exactPhrase = false }) {
     // Validate and sanitize inputs
