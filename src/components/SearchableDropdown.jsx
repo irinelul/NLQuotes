@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
-const SearchableDropdown = ({ options = [], value, onChange, placeholder }) => {
+export const SearchableDropdown = ({ options = [], value, onChange, placeholder }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const dropdownRef = useRef(null);
@@ -81,5 +81,3 @@ const SearchableDropdown = ({ options = [], value, onChange, placeholder }) => {
         </div>
     );
 };
-
-export default SearchableDropdown; 

@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react';
 import query from './services/quotes';
-import React from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Disclaimer from './components/Disclaimer';
-import SearchableDropdown from './components/SearchableDropdown';
 import { pauseOtherPlayers } from './services/youtubeApiLoader';
 import DOMPurify from 'dompurify';
 import { YouTubePlayer } from './components/YoutubePlayer';
 import { FlagModal } from './components/Modals/FlagModal';
 import { FeedbackModal } from './components/Modals/FeedbackModal';
 import { backdateTimestamp, formatDate, formatTimestamp } from './services/dateHelpers';
+import { ChannelRadioButton } from './components/ChannelRadioButton';
+import './App.css';
+import { Filters } from './components/Filters';
+import { useFetchGames } from './hooks/useFetchGames';
+import { Footer } from './components/Footer';
+import { PaginationButtons } from './components/PaginationButtons';
 
 // `b` is returned from ts_headline when a match is found
 const ALLOWED_TAGS = ['b'];
@@ -26,7 +30,6 @@ const Quotes = ({ quotes = [], searchTerm }) => {
     });
     const [activeTimestamp, setActiveTimestamp] = useState({ videoId: null, timestamp: null });
     const [showEmbeddedVideos] = useState(true);
-    const [isViewSwitching, setIsViewSwitching] = useState(false);
     const [retryCount, setRetryCount] = useState(0);
     const [isMobileView, setIsMobileView] = useState(window.innerWidth <= 768);
 
@@ -35,7 +38,6 @@ const Quotes = ({ quotes = [], searchTerm }) => {
         if (showEmbeddedVideos && retryCount < 1) {
             const timer = setTimeout(() => {
                 setRetryCount(prev => prev + 1);
-                setIsViewSwitching(false); // Reset the loading state after retry
             }, 500);
             return () => clearTimeout(timer);
         }
@@ -498,38 +500,24 @@ const Quotes = ({ quotes = [], searchTerm }) => {
     );
 };
 
-// Add a fallback function for when API calls fail during migration
-const useEmptyQuotesFallback = () => {
-    return {
-        data: [],
-        total: 0,
-        totalQuotes: 0
-    };
-};
-
 const App = () => {
     const [quotes, setQuotes] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [page, setPage] = useState(1);
-    const [strict, setStrict] = useState(false);
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
-    const [stats, setStats] = useState([]);
     const [totalPages, setTotalPages] = useState(0);
     const [totalQuotes, setTotalQuotes] = useState(0);
-    const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
-    const [selectedChannel, setselectedChannel] = useState("all");
+    const [selectedChannel, setSelectedChannel] = useState("all");
     const [selectedYear, setSelectedYear] = useState("");
     const [sortOrder, setSortOrder] = useState("default");
     const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
     const [submittingFeedback, setSubmittingFeedback] = useState(false);
-    const [games, setGames] = useState([]);
     const [selectedGame, setSelectedGame] = useState("all");
-    const [activeTimestamp, setActiveTimestamp] = useState({ videoId: null, timestamp: null });
-    const [retryCount, setRetryCount] = useState(0);
-
+    
+    const strict = false;
     // Add meta viewport tag for responsive design
     useEffect(() => {
         // Check if viewport meta tag exists
@@ -544,441 +532,15 @@ const App = () => {
 
         // Set the content
         viewportMeta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
-
-        // Add mobile-specific CSS
-        const style = document.createElement('style');
-        style.textContent = `
-            @media (max-width: 768px) {
-                /* Mobile logo styles - significantly increased size */
-                .logo-container {
-                    position: sticky;
-                    top: 0;
-                    background-color: var(--bg-color);
-                    width: 100%;
-                    text-align: center;
-                    padding: 15px 0;
-                    z-index: 100;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                }
-                
-                .logo-container img {
-                    height: 80px; /* Substantially increased from 55px */
-                    cursor: pointer;
-                    transition: transform 0.2s ease;
-                }
-                
-                .logo-container img:hover {
-                    transform: scale(1.05);
-                }
-                
-                /* Hide feedback button on mobile */
-                .floating-feedback-button {
-                    display: none;
-                }
-                
-                /* Other mobile styles */
-                .input-container {
-                    flex-direction: column;
-                    width: 90% !important;
-                    gap: 10px;
-                    margin-top: 1rem;
-                }
-                
-                .input-container button {
-                    width: 100%;
-                    margin: 5px 0 !important;
-                }
-                
-                .search-input {
-                    width: 100% !important;
-                }
-                
-                .filter-container {
-                    flex-direction: column;
-                    align-items: center;
-                    width: 90%;
-                    gap: 15px;
-                    margin: 15px auto;
-                }
-                
-                .filter-group {
-                    display: flex;
-                    width: 100%;
-                    justify-content: space-between;
-                    gap: 10px;
-                }
-                
-                .filter-group > * {
-                    flex: 1;
-                }
-                
-                .year-tooltip, .sort-tooltip {
-                    width: 48%;
-                }
-                
-                .year-input, .sort-select {
-                    width: 100%;
-                    padding: 8px;
-                    border-radius: 4px;
-                    border: 1px solid var(--border-color);
-                }
-                
-                .radio-group {
-                    flex-wrap: wrap;
-                    justify-content: center;
-                    width: 100%;
-                    margin: 0 auto;
-                }
-                
-                .radio-button {
-                    margin: 4px;
-                }
-                
-                .game-filter-container {
-                    width: 100%;
-                    display: flex;
-                }
-                
-                .game-tooltip {
-                    flex: 1;
-                }
-                
-                .mobile-quote-group {
-                    margin-bottom: 20px;
-                    border: 1px solid var(--border-color);
-                    border-radius: 8px;
-                    overflow: hidden;
-                }
-                
-                .mobile-quotes-list {
-                    border-top: 1px solid var(--border-color);
-                }
-                
-                .pagination-buttons {
-                    width: 90%;
-                }
-                
-                .footer-message {
-                    width: 90%;
-                    font-size: 0.8rem;
-                    margin: 10px auto;
-                    text-align: center;
-                }
-                
-                /* Horizontal disclaimer layout for mobile */
-                .disclaimer-tips {
-                    display: flex;
-                    flex-direction: row;
-                    flex-wrap: wrap;
-                    justify-content: space-between;
-                    gap: 10px;
-                }
-                
-                .disclaimer-tip {
-                    width: 100%;
-                    margin-bottom: 15px;
-                    display: flex;
-                    flex-direction: column;
-                }
-                
-                @media (min-width: 500px) {
-                    .disclaimer-tip {
-                        width: calc(33.33% - 10px);
-                    }
-                }
-                
-                .disclaimer-tip > span {
-                    margin-bottom: 10px;
-                    font-size: 1.5rem;
-                    text-align: center;
-                }
-                
-                .disclaimer-tip strong {
-                    display: block;
-                    text-align: center;
-                    margin-bottom: 8px;
-                }
-                
-                .disclaimer-examples {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 10px;
-                }
-                
-                .disclaimer-example {
-                    background-color: var(--surface-color);
-                    padding: 10px;
-                    border-radius: 4px;
-                    font-size: 0.9rem;
-                }
-                
-                .disclaimer-example p {
-                    margin: 5px 0;
-                }
-
-                /* Mobile-specific styles for bold tags */
-                .mobile-quote-item button span b {
-                    color: #FF0000 !important;
-                    font-weight: bold !important;
-                }
-            }
-            
-            /* Desktop styles */
-            @media (min-width: 769px) {
-                .logo-container {
-                    margin-bottom: 2rem;
-                    cursor: pointer;
-                }
-                
-                .logo-container img {
-                    height: 100px; /* Substantially increased from 70px */
-                    transition: transform 0.2s ease;
-                }
-                
-                .logo-container img:hover {
-                    transform: scale(1.05);
-                }
-                
-                .filter-container {
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    gap: 20px;
-                    margin: 20px auto;
-                    max-width: 1000px;
-                }
-                
-                .filter-group {
-                    display: flex;
-                    gap: 10px;
-                    align-items: center;
-                }
-                
-                .year-tooltip, .sort-tooltip {
-                    min-width: 120px;
-                }
-                
-                .year-input, .sort-select {
-                    padding: 8px;
-                    border-radius: 4px;
-                    border: 1px solid var(--border-color);
-                    background-color: var(--surface-color);
-                }
-                
-                .game-filter-container {
-                    min-width: 220px;
-                    display: flex;
-                }
-                
-                .game-tooltip {
-                    flex: 1;
-                }
-                
-                .radio-group {
-                    display: flex;
-                    gap: 15px;
-                    margin: 10px auto;
-                    justify-content: center;
-                }
-                
-                /* Vertical disclaimer layout for desktop */
-                .disclaimer-tips {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 20px;
-                    margin: 20px 0;
-                }
-                
-                .disclaimer-tip {
-                    display: flex;
-                    gap: 15px;
-                    align-items: flex-start;
-                    margin-bottom: 10px;
-                }
-                
-                .disclaimer-tip > span {
-                    font-size: 1.5rem;
-                    flex-shrink: 0;
-                }
-                
-                .disclaimer-tip strong {
-                    display: block;
-                    margin-bottom: 8px;
-                }
-                
-                .disclaimer-examples {
-                    margin-top: 10px;
-                }
-                
-                .disclaimer-example {
-                    background-color: var(--surface-color);
-                    padding: 12px;
-                    border-radius: 6px;
-                    margin-bottom: 10px;
-                }
-                
-                .floating-feedback-button {
-                    position: fixed;
-                    bottom: 20px;
-                    right: 20px;
-                    background-color: var(--accent-color);
-                    color: white;
-                    border: none;
-                    border-radius: 30px;
-                    padding: 10px 20px;
-                    box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-                    cursor: pointer;
-                    z-index: 900;
-                    font-size: 1rem;
-                    font-weight: 500;
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    transition: all 0.2s ease;
-                }
-                
-                .floating-feedback-button:hover {
-                    background-color: #e04c4c; /* Slightly different shade for hover */
-                    transform: translateY(-2px);
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-                }
-            }
-            
-            .reset-game-button {
-                background-color: var(--surface-color);
-                border: 1px solid var(--border-color);
-                border-radius: 4px;
-                margin-left: 8px;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 0 10px;
-                font-size: 18px;
-            }
-            
-            .reset-game-button:hover {
-                background-color: var(--border-color);
-            }
-            
-            /* Shared disclaimer styles */
-            .disclaimer-container {
-                width: 90%;
-                max-width: 1200px;
-                margin: 20px auto;
-                padding: 20px;
-                background-color: var(--surface-color);
-                border-radius: 8px;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            }
-            
-            .disclaimer-title {
-                font-size: 1.2rem;
-                font-weight: bold;
-                margin-bottom: 15px;
-                display: flex;
-                align-items: center;
-                gap: 10px;
-            }
-            
-            .disclaimer-content {
-                font-size: 0.95rem;
-                color: var(--text-secondary);
-            }
-            
-            /* Global styles for search term highlighting */
-            b {
-                color: #FF0000 !important;
-                font-weight: bold !important;
-            }
-            
-            /* Quote item styling */
-            .quote-item button,
-            .mobile-quote-item button {
-                color: #4A90E2 !important;
-            }
-        `;
-        document.head.appendChild(style);
-
-        // Clean up function to remove the style when component unmounts
-        return () => {
-            document.head.removeChild(style);
-        };
     }, []);
 
-    useEffect(() => {
-        const fetchGames = async () => {
-            try {
-                // Try multiple path configurations to handle potential Render.com path issues
-                const pathsToTry = [
-                    '/api/games',
-                    '/games',
-                    '/app/api/games'
-                ];
+    const games = useFetchGames();
 
-                let gamesData = null;
-                let failureMessages = [];
-
-                // Try each path until one works
-                for (const path of pathsToTry) {
-                    try {
-                        console.log(`Trying to fetch games from: ${path}`);
-                        const response = await fetch(path, {
-                            cache: 'no-store', // Disable caching
-                            headers: {
-                                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                                'Pragma': 'no-cache',
-                                'Expires': '0'
-                            }
-                        });
-
-                        // Check if we got a valid response
-                        if (response.ok) {
-                            const data = await response.json();
-                            if (data && data.games && Array.isArray(data.games)) {
-                                gamesData = data;
-                                console.log(`Successfully fetched games from ${path}`);
-                                break;
-                            } else {
-                                console.log(`Response from ${path} didn't contain valid games data`);
-                                failureMessages.push(`Invalid data from ${path}`);
-                            }
-                        } else {
-                            const errorMsg = `Failed to fetch games from ${path}: ${response.status}`;
-                            console.log(errorMsg);
-                            failureMessages.push(errorMsg);
-                        }
-                    } catch (pathError) {
-                        const errorMsg = `Error fetching games from ${path}: ${pathError.message}`;
-                        console.log(errorMsg);
-                        failureMessages.push(errorMsg);
-                    }
-                }
-
-                // If we got data from any of the paths, use it
-                if (gamesData && gamesData.games) {
-                    setGames(gamesData.games);
-                } else {
-                    // When no paths worked, set empty array but log detailed error info
-                    console.error('All paths failed. Details:', failureMessages.join('; '));
-                    console.log('Database connection issue detected - using empty games array');
-                    setGames([]);
-                }
-            } catch (error) {
-                console.error('Error fetching games:', error);
-                // Set empty array as fallback
-                setGames([]);
-            }
-        };
-        fetchGames();
-    }, []);
-
-    const handleChannelChange = (e) => {
-        const value = e.target.value;
-        setselectedChannel(value);
+    const handleChannelChange = (channelId) => {
+        setSelectedChannel(channelId);
         setPage(1);
         if (searchTerm.trim()) {
-            fetchQuotes(1, value, selectedYear, sortOrder, strict, selectedGame);
+            fetchQuotes(1, channelId, selectedYear, sortOrder, strict, selectedGame);
         }
     };
 
@@ -1000,12 +562,6 @@ const App = () => {
         if (searchTerm.trim()) {
             fetchQuotes(1, selectedChannel, selectedYear, value, strict, selectedGame);
         }
-    };
-
-    const handleSearchModeChange = (e) => {
-        const value = e.target.checked;
-        setStrict(value);
-        setPage(1);
     };
 
     const handleSearch = (e) => {
@@ -1105,16 +661,6 @@ const App = () => {
             }
         }
     };
-
-    useEffect(() => {
-        const urlSearchTerm = searchParams.get('search') || '';
-        const urlPage = parseInt(searchParams.get('page')) || 1;
-        const urlStrict = searchParams.get('strict') === 'true';
-
-        setSearchTerm(urlSearchTerm);
-        setPage(urlPage);
-        setStrict(urlStrict);
-    }, [searchParams]);
 
     const numberFormatter = new Intl.NumberFormat('en-US');
 
@@ -1232,7 +778,7 @@ const App = () => {
                         setPage(1);
                         setSelectedYear('');
                         setSortOrder('default');
-                        setselectedChannel('all');
+                        setSelectedChannel('all');
                         setSelectedGame('all');
                         navigate('/');
                     }}
@@ -1262,116 +808,41 @@ const App = () => {
             {error && <div className="error-message">{error}</div>}
 
             <div className="radio-group channel-tooltip">
-                <div
-                    className={`radio-button ${selectedChannel === "all" ? 'selected' : ''}`}
-                    onClick={() => handleChannelChange({ target: { value: "all" } })}
-                >
-                    <input
-                        type="radio"
-                        id="all"
-                        value="all"
-                        checked={selectedChannel === "all"}
-                        onChange={handleChannelChange}
-                    />
-                    <label htmlFor="all" className="radio-label">
-                        All Sources
-                    </label>
-                </div>
-
-                <div
-                    className={`radio-button ${selectedChannel === "Librarian" ? 'selected' : ''}`}
-                    onClick={() => handleChannelChange({ target: { value: "Librarian" } })}
-                >
-                    <input
-                        type="radio"
-                        id="librarian"
-                        value="Librarian"
-                        checked={selectedChannel === "Librarian"}
-                        onChange={handleChannelChange}
-                    />
-                    <label htmlFor="librarian" className="radio-label">
-                        Librarian
-                    </label>
-                </div>
-
-                <div
-                    className={`radio-button ${selectedChannel === "Northernlion" ? 'selected' : ''}`}
-                    onClick={() => handleChannelChange({ target: { value: "Northernlion" } })}
-                >
-                    <input
-                        type="radio"
-                        id="northernlion"
-                        value="Northernlion"
-                        checked={selectedChannel === "Northernlion"}
-                        onChange={handleChannelChange}
-                    />
-                    <label htmlFor="northernlion" className="radio-label">
-                        Northernlion
-                    </label>
-                </div>
+                <ChannelRadioButton
+                    selectedChannel={selectedChannel}
+                    handleChannelChange={handleChannelChange}
+                    id="all"
+                    name="All Sources"
+                />
+                <ChannelRadioButton
+                    selectedChannel={selectedChannel}
+                    handleChannelChange={handleChannelChange}
+                    id="librarian"
+                    name="Librarian"
+                />
+                <ChannelRadioButton
+                    selectedChannel={selectedChannel}
+                    handleChannelChange={handleChannelChange}
+                    id="northernlion"
+                    name="Northernlion"
+                />
             </div>
-
-            <div className="filter-container">
-                <div className="filter-group">
-                    <div className="year-tooltip">
-                        <input
-                            type="text"
-                            value={selectedYear}
-                            onChange={handleYearChange}
-                            placeholder="Year (YYYY)"
-                            maxLength="4"
-                            className="year-input"
-                        />
-                    </div>
-                    <div className="sort-tooltip">
-                        <select
-                            value={sortOrder}
-                            onChange={handleSortChange}
-                            className="sort-select"
-                        >
-                            <option value="default">Default Order</option>
-                            <option value="newest">Newest First</option>
-                            <option value="oldest">Oldest First</option>
-                        </select>
-                    </div>
-                </div>
-                <div className="game-filter-container">
-                    <div className="game-tooltip">
-                        <SearchableDropdown
-                            options={games}
-                            value={selectedGame}
-                            onChange={handleGameChange}
-                            placeholder="Select a game"
-                        />
-                    </div>
-                    <button
-                        className="reset-game-button"
-                        onClick={() => {
-                            setSelectedGame("all");
-                            if (searchTerm.trim()) {
-                                fetchQuotes(page, selectedChannel, selectedYear, sortOrder, strict, "all");
-                            }
-                        }}
-                        style={{
-                            backgroundColor: 'var(--surface-color)',
-                            border: '1px solid var(--border-color)',
-                            borderRadius: '4px',
-                            marginLeft: '8px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            padding: '0 10px',
-                            fontSize: '18px',
-                            position: 'relative',
-                            transform: 'none',
-                            transition: 'none'
-                        }}
-                    >
-                        ↺
-                    </button>
-                </div>
-            </div>
+            
+            <Filters 
+                selectedYear={selectedYear}
+                handleYearChange={handleYearChange}
+                sortOrder={sortOrder}
+                handleSortChange={handleSortChange}
+                selectedGame={selectedGame}
+                setSelectedGame={setSelectedGame}
+                handleGameChange={handleGameChange}
+                games={games}
+                searchTerm={searchTerm}
+                fetchQuotes={fetchQuotes}
+                page={page}
+                selectedChannel={selectedChannel}
+                strict={strict} 
+            />
 
             {!hasSearched && <Disclaimer />}
 
@@ -1391,28 +862,14 @@ const App = () => {
             )}
 
             {quotes.length > 0 && (
-                <div className="pagination-buttons">
-                    <button
-                        onClick={() => handlePageChange(page - 1)}
-                        disabled={page === 1}
-                    >
-                        Previous
-                    </button>
-                    <span className="pagination-info">
-                        Page {page} of {totalPages || 1}
-                    </span>
-                    <button
-                        onClick={() => handlePageChange(page + 1)}
-                        disabled={page >= totalPages || totalPages === 0}
-                    >
-                        Next
-                    </button>
-                </div>
+                <PaginationButtons
+                    page={page}
+                    totalPages={totalPages}
+                    handlePageChange={handlePageChange}
+                />
             )}
 
-            <div className="footer-message">
-                Made with passion by a fan • Generously supported by The Librarian • Contributors: Xeneta, samfry13 • <a href="https://github.com/irinelul/NLQuotes" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>GitHub</a>
-            </div>
+            <Footer />
 
             {/* Improved desktop-only feedback button */}
             <button
