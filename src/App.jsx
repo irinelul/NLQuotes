@@ -620,6 +620,18 @@ const App = () => {
         }
     };
 
+    const handleResetSearch = () => {
+        setSearchTerm('');
+            setQuotes([]);
+            setHasSearched(false);
+            setPage(1);
+            setSelectedYear('');
+            setSortOrder('default');
+            setSelectedChannel('all');
+            setSelectedGame('all');
+            navigate('/');
+    }
+
     const handleGameChange = (e) => {
         const value = e.target.value;
         setSelectedGame(value);
@@ -696,14 +708,7 @@ const App = () => {
     };
 
     return (
-        <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            marginTop: '2rem',
-            width: '100%',
-            height: '100%',
-        }}>
+        <div className='main-container'>
             <div className="logo-container" onClick={handleLogoClick}>
                 <img 
                     src="/NLogo.webp" 
@@ -720,25 +725,7 @@ const App = () => {
                     disabled={loading}
                     style={{
                         opacity: loading ? 0.7 : 1,
-                        transform: 'none',
-                        transition: 'background-color 0.2s ease',
-                        backgroundColor: 'grey',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        padding: '8px 16px',
                         cursor: loading ? 'not-allowed' : 'pointer',
-                        fontSize: '1rem'
-                    }}
-                    onMouseOver={e => {
-                        if (!loading) {
-                            e.currentTarget.style.backgroundColor = '#a8a8a8';
-                        }
-                    }}
-                    onMouseOut={e => {
-                        if (!loading) {
-                            e.currentTarget.style.backgroundColor = 'grey';
-                        }
                     }}
                 >
                     {loading ? 'Loading...' : 'Random Quotes'}
@@ -752,58 +739,12 @@ const App = () => {
                     className="search-input"
                     style={{ boxSizing: "border-box" }}
                 />
-                <button 
-                    onClick={handleSearch}
-                    style={{
-                        backgroundColor: 'grey',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        padding: '8px 16px',
-                        cursor: 'pointer',
-                        fontSize: '1rem',
-                        transform: 'none',
-                        transition: 'background-color 0.2s ease'
-                    }}
-                    onMouseOver={e => {
-                        e.currentTarget.style.backgroundColor = '#a8a8a8';
-                    }}
-                    onMouseOut={e => {
-                        e.currentTarget.style.backgroundColor = 'grey';
-                    }}
-                >
+                <button onClick={handleSearch}>
                     Search
                 </button>
                 <button
-                    onClick={() => {
-                        setSearchTerm('');
-                        setQuotes([]);
-                        setHasSearched(false);
-                        setPage(1);
-                        setSelectedYear('');
-                        setSortOrder('default');
-                        setSelectedChannel('all');
-                        setSelectedGame('all');
-                        navigate('/');
-                    }}
-                    style={{ 
-                        marginLeft: '0.5rem',
-                        backgroundColor: 'grey',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        padding: '8px 16px',
-                        cursor: 'pointer',
-                        fontSize: '1rem',
-                        transform: 'none',
-                        transition: 'background-color 0.2s ease'
-                    }}
-                    onMouseOver={e => {
-                        e.currentTarget.style.backgroundColor = '#a8a8a8';
-                    }}
-                    onMouseOut={e => {
-                        e.currentTarget.style.backgroundColor = 'grey';
-                    }}
+                    onClick={handleResetSearch}
+                    style={{ marginLeft: '0.5rem' }}
                 >
                     Reset Search
                 </button>
@@ -853,12 +794,7 @@ const App = () => {
             {loading && <div>Loading...</div>}
             {hasSearched && (
                 <>
-                    <div style={{
-                        textAlign: 'center',
-                        color: 'var(--text-secondary)',
-                        marginBottom: '1rem',
-                        fontSize: '1.1rem'
-                    }}>
+                    <div className="total-quotes">
                         Total quotes found: {numberFormatter.format(totalQuotes)}
                     </div>
                     <Quotes quotes={quotes} searchTerm={searchTerm} />
