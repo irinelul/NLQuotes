@@ -12,8 +12,9 @@ export const ChannelRadioButton = ({ selectedChannel, handleChannelChange, id, n
                 value={id}
                 checked={isSelected}
                 onChange={handleChannelChange}
+                style={{ cursor: "pointer" }}
             />
-            <label htmlFor={id} className="radio-label">
+            <label htmlFor={id} className="radio-label" style={{ cursor: "pointer" }}>
                 {name}
             </label>
         </div>
