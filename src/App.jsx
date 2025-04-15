@@ -686,6 +686,15 @@ const App = () => {
         }
     };
 
+    const handleLogoClick = () => {
+        window.scrollTo(0, 0);
+        setSearchTerm("");
+        setQuotes([]);
+        setHasSearched(false);
+        setPage(1);
+        navigate("/");
+    };
+
     return (
         <div style={{
             display: 'flex',
@@ -695,13 +704,7 @@ const App = () => {
             width: '100%',
             height: '100%',
         }}>
-            <div className="logo-container" onClick={() => {
-                setSearchTerm('');
-                setQuotes([]);
-                setHasSearched(false);
-                setPage(1);
-                navigate('/');
-            }}>
+            <div className="logo-container" onClick={handleLogoClick}>
                 <img 
                     src="/NLogo.webp" 
                     alt="Northernlion Logo"
