@@ -747,6 +747,7 @@ const App = () => {
                     onKeyDown={handleKeyPress}
                     placeholder="Search quotes..."
                     className="search-input"
+                    style={{ boxSizing: "border-box" }}
                 />
                 <button 
                     onClick={handleSearch}
