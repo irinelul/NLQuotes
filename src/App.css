@@ -347,3 +347,19 @@ b {
 .mobile-quote-item button {
   color: #4A90E2 !important;
 }
+
+.total-quotes {
+    text-align: center;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.main-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 2rem;
+    width: 100%;
+    height: 100%;
+}
