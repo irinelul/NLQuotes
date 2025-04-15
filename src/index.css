@@ -163,23 +163,22 @@ button:disabled {
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: var(--primary-color);
-    color: #000000;
+    background-color: grey;
+    color: white;
     border: none;
-    padding: 0.5rem 1.25rem;
-    border-radius: 8px;
+    padding: 8px 16px;
+    border-radius: 4px;
     cursor: pointer;
     font-weight: 500;
-    transition: all 0.2s ease;
     font-size: 1rem;
     letter-spacing: 0.3px;
+    transform: none;
+    transition: background-color 0.2s ease;
 }
 
 .input-container button:hover:not(:disabled) {
-    background-color: #E0E0E0;
-    transform: translateY(-1px);
+    background-color: var(--hover-color);
     box-shadow: 0 4px 12px rgba(192, 192, 192, 0.3);
-    border: 1px solid #A0A0A0;
 }
 
 .search-input {
