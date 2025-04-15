@@ -195,11 +195,12 @@ const quoteModel = {
     }
 
     if (selectedValue && selectedValue !== 'all') { // Assuming selectedValue is channel_source
-      // Whitelist approach for channel_source
-      const validChannels = ['Librarian', 'Northernlion']; // Add all your valid channels
-      if (validChannels.includes(selectedValue)) {
-        whereClauses.push(`q.channel_source = $${paramIndex}`);
-        params.push(selectedValue);
+      // Whitelist approach for channel_source with case-insensitive comparison
+      const validChannels = ['librarian', 'northernlion']; // Using lowercase for consistency
+      const lowerSelectedValue = selectedValue.toLowerCase();
+      if (validChannels.includes(lowerSelectedValue)) {
+        whereClauses.push(`LOWER(q.channel_source) = $${paramIndex}`);
+        params.push(lowerSelectedValue);
         paramIndex++;
       }
     }
