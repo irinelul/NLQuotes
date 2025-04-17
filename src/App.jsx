@@ -155,6 +155,16 @@ const App = () => {
         }
     };
 
+    const handleGameReset = () => {
+        updateState({ 
+            selectedGame: 'all',
+            page: 1
+        });
+        if (state.searchTerm.trim()) {
+            fetchQuotes(1, state.selectedChannel, state.selectedYear, state.sortOrder, strict, 'all');
+        }
+    };
+
     const fetchQuotes = async (pageNum = state.page, channel = state.selectedChannel, year = state.selectedYear, sort = state.sortOrder, strictMode = strict, game = state.selectedGame) => {
         if (state.searchTerm.trim()) {
             setLoading(true);
@@ -294,6 +304,7 @@ const App = () => {
                 handleSortChange={handleSortChange}
                 selectedGame={state.selectedGame}
                 handleGameChange={handleGameChange}
+                handleGameReset={handleGameReset}
                 games={games}
                 searchTerm={state.searchTerm}
                 fetchQuotes={fetchQuotes}
@@ -303,7 +314,7 @@ const App = () => {
             />
 
             {!state.hasSearched && <Disclaimer />}
-
+                    
             {loading && <div>Loading...</div>}
             {state.hasSearched && (
                 <>

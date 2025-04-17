@@ -5,8 +5,8 @@ export const Filters = ({
   sortOrder,
   handleSortChange,
   selectedGame,
-  setSelectedGame,
   handleGameChange,
+  handleGameReset,
   games,
   searchTerm,
   fetchQuotes,
@@ -49,12 +49,7 @@ export const Filters = ({
         </div>
         <button
             className="reset-game-button"
-            onClick={() => {
-                setSelectedGame("all");
-                if (searchTerm.trim()) {
-                    fetchQuotes(page, selectedChannel, selectedYear, sortOrder, strict, "all");
-                }
-            }}
+            onClick={handleGameReset}
             style={{
                 backgroundColor: 'var(--surface-color)',
                 border: '1px solid var(--border-color)',
