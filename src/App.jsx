@@ -224,10 +224,8 @@ const App = () => {
 
     const handleLogoClick = () => {
         window.scrollTo(0, 0);
-        updateState({ searchTerm: "" });
+        resetState();
         setQuotes([]);
-        updateState({ hasSearched: false });
-        updateState({ page: 1 });
         navigate("/");
     };
 
