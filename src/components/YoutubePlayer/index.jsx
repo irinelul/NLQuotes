@@ -18,7 +18,7 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                     videoId,
                     playerVars: {
                         autoplay: 1,
-                        start: Math.max(1, Math.floor(currentTimestamp) - 1),
+                        start: currentTimestamp,
                         enablejsapi: 1,
                         origin: window.location.origin
                     },
@@ -57,22 +57,21 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
 
     // Handle timestamp changes
     useEffect(() => {
-        if (timestamp && !isPlaying) {
+        if (timestamp !== null && !isPlaying) {
             setCurrentTimestamp(timestamp);
             setIsPlaying(true);
             console.log(`Auto-playing video ${videoId} at timestamp ${timestamp}`);
-        } else if (timestamp && playerRef.current) {
+        } else if (timestamp !== null && playerRef.current) {
             setCurrentTimestamp(timestamp);
-            const seconds = Math.max(1, Math.floor(timestamp) - 1);
             try {
                 // Always reload the video when timestamp changes
                 playerRef.current.loadVideoById({
                     videoId: videoId,
-                    startSeconds: seconds
+                    startSeconds: timestamp
                 });
                 playerRef.current.playVideo();
                 pauseOtherPlayers(playerRef.current);
-                console.log(`Loading video ${videoId} at timestamp ${seconds}`);
+                console.log(`Loading video ${videoId} at timestamp ${timestamp}`);
             } catch (err) {
                 console.error('Error loading video:', err);
             }
@@ -82,7 +81,7 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
     // Handle play button click - load video with iframe
     const handlePlayClick = () => {
         console.log(`Play button clicked for ${videoId}`);
-        setCurrentTimestamp(timestamp || 0);
+        setCurrentTimestamp(timestamp);
         setIsPlaying(true);
     };
 

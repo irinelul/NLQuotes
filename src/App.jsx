@@ -10,24 +10,18 @@ import { useFetchGames } from './hooks/useFetchGames';
 import { Footer } from './components/Footer';
 import { PaginationButtons } from './components/PaginationButtons';
 import { Quotes } from './components/Quotes';
-
+import { useSearchState } from './hooks/useSearchState';
 
 const App = () => {
+    const { state, updateState, resetState } = useSearchState();
     const [quotes, setQuotes] = useState([]);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [page, setPage] = useState(1);
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [hasSearched, setHasSearched] = useState(false);
     const [totalPages, setTotalPages] = useState(0);
     const [totalQuotes, setTotalQuotes] = useState(0);
     const navigate = useNavigate();
-    const [selectedChannel, setSelectedChannel] = useState("all");
-    const [selectedYear, setSelectedYear] = useState("");
-    const [sortOrder, setSortOrder] = useState("default");
     const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
     const [submittingFeedback, setSubmittingFeedback] = useState(false);
-    const [selectedGame, setSelectedGame] = useState("all");
     
     const strict = false;
     // Add meta viewport tag for responsive design
@@ -48,39 +42,50 @@ const App = () => {
 
     const games = useFetchGames();
 
+    // Initial load from URL parameters
+    useEffect(() => {
+        if (state.searchTerm) {
+            fetchQuotes(state.page, state.selectedChannel, state.selectedYear, state.sortOrder, strict, state.selectedGame);
+        }
+    }, []); // Empty dependency array to run only once on mount
+
     const handleChannelChange = (channelId) => {
-        setSelectedChannel(channelId);
-        setPage(1);
-        if (searchTerm.trim()) {
-            fetchQuotes(1, channelId, selectedYear, sortOrder, strict, selectedGame);
+        updateState({ 
+            selectedChannel: channelId,
+            page: 1
+        });
+        if (state.searchTerm.trim()) {
+            fetchQuotes(1, channelId, state.selectedYear, state.sortOrder, strict, state.selectedGame);
         }
     };
 
     const handleYearChange = (e) => {
         const value = e.target.value;
-        setSelectedYear(value);
+        updateState({ selectedYear: value });
         if (value.length === 4) {
-            setPage(1);
-            if (searchTerm.trim()) {
-                fetchQuotes(1, selectedChannel, value, sortOrder, strict, selectedGame);
+            updateState({ page: 1 });
+            if (state.searchTerm.trim()) {
+                fetchQuotes(1, state.selectedChannel, value, state.sortOrder, strict, state.selectedGame);
             }
         }
     };
 
     const handleSortChange = (e) => {
         const value = e.target.value;
-        setSortOrder(value);
-        setPage(1);
-        if (searchTerm.trim()) {
-            fetchQuotes(1, selectedChannel, selectedYear, value, strict, selectedGame);
+        updateState({ 
+            sortOrder: value,
+            page: 1
+        });
+        if (state.searchTerm.trim()) {
+            fetchQuotes(1, state.selectedChannel, state.selectedYear, value, strict, state.selectedGame);
         }
     };
 
     const handleSearch = (e) => {
         e.preventDefault();
-        if (searchTerm.trim().length > 2) {
-            setPage(1);
-            fetchQuotes(1, selectedChannel, selectedYear, sortOrder, strict, selectedGame);
+        if (state.searchTerm.trim().length > 2) {
+            updateState({ page: 1 });
+            fetchQuotes(1, state.selectedChannel, state.selectedYear, state.sortOrder, strict, state.selectedGame);
         } else {
             setError('Please enter at least 3 characters to search');
             setTimeout(() => setError(null), 3000);
@@ -88,15 +93,15 @@ const App = () => {
     };
 
     const handlePageChange = (newPage) => {
-        setPage(newPage);
-        fetchQuotes(newPage, selectedChannel, selectedYear, sortOrder, strict, selectedGame);
+        updateState({ page: newPage });
+        fetchQuotes(newPage, state.selectedChannel, state.selectedYear, state.sortOrder, strict, state.selectedGame);
     };
 
     const handleKeyPress = (event) => {
         if (event.key === 'Enter' && !loading) {
-            if (searchTerm.trim().length > 2) {
-                setPage(1);
-                fetchQuotes(1, selectedChannel, selectedYear, sortOrder, strict, selectedGame);
+            if (state.searchTerm.trim().length > 2) {
+                updateState({ page: 1 });
+                fetchQuotes(1, state.selectedChannel, state.selectedYear, state.sortOrder, strict, state.selectedGame);
             } else {
                 setError('Please enter at least 3 characters to search');
                 setTimeout(() => setError(null), 3000);
@@ -107,7 +112,7 @@ const App = () => {
     const handleRandomQuotes = async () => {
         setLoading(true);
         setError(null);
-        setHasSearched(true);
+        updateState({ hasSearched: true });
         try {
             console.log('Fetching random quotes...');
             const response = await query.getRandomQuotes();
@@ -119,7 +124,7 @@ const App = () => {
 
             setQuotes(response.quotes);
             setTotalPages(1);
-            setPage(1);
+            updateState({ page: 1 });
             setTotalQuotes(response.quotes.length);
         } catch (error) {
             console.error('Error fetching random quotes:', error);
@@ -133,35 +138,42 @@ const App = () => {
     };
 
     const handleResetSearch = () => {
-        setSearchTerm('');
-            setQuotes([]);
-            setHasSearched(false);
-            setPage(1);
-            setSelectedYear('');
-            setSortOrder('default');
-            setSelectedChannel('all');
-            setSelectedGame('all');
-            navigate('/');
-    }
+        resetState();
+        setQuotes([]);
+        updateState({ hasSearched: false });
+        navigate('/');
+    };
 
     const handleGameChange = (e) => {
         const value = e.target.value;
-        setSelectedGame(value);
-        setPage(1);
-        if (searchTerm.trim()) {
-            fetchQuotes(1, selectedChannel, selectedYear, sortOrder, strict, value);
+        updateState({ 
+            selectedGame: value,
+            page: 1
+        });
+        if (state.searchTerm.trim()) {
+            fetchQuotes(1, state.selectedChannel, state.selectedYear, state.sortOrder, strict, value);
         }
     };
 
-    const fetchQuotes = async (pageNum = page, channel = selectedChannel, year = selectedYear, sort = sortOrder, strictMode = strict, game = selectedGame) => {
-        if (searchTerm.trim()) {
+    const handleGameReset = () => {
+        updateState({ 
+            selectedGame: 'all',
+            page: 1
+        });
+        if (state.searchTerm.trim()) {
+            fetchQuotes(1, state.selectedChannel, state.selectedYear, state.sortOrder, strict, 'all');
+        }
+    };
+
+    const fetchQuotes = async (pageNum = state.page, channel = state.selectedChannel, year = state.selectedYear, sort = state.sortOrder, strictMode = strict, game = state.selectedGame) => {
+        if (state.searchTerm.trim()) {
             setLoading(true);
             setError(null);
-            setHasSearched(true);
+            updateState({ hasSearched: true });
             setQuotes([]);
             try {
                 const response = await query.getAll(
-                    searchTerm,
+                    state.searchTerm,
                     pageNum,
                     strictMode,
                     channel,
@@ -212,10 +224,8 @@ const App = () => {
 
     const handleLogoClick = () => {
         window.scrollTo(0, 0);
-        setSearchTerm("");
+        resetState();
         setQuotes([]);
-        setHasSearched(false);
-        setPage(1);
         navigate("/");
     };
 
@@ -244,8 +254,8 @@ const App = () => {
                 </button>
                 <input
                     type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    value={state.searchTerm}
+                    onChange={(e) => updateState({ searchTerm: e.target.value })}
                     onKeyDown={handleKeyPress}
                     placeholder="Search quotes..."
                     className="search-input"
@@ -266,19 +276,19 @@ const App = () => {
 
             <div className="radio-group channel-tooltip">
                 <ChannelRadioButton
-                    selectedChannel={selectedChannel}
+                    selectedChannel={state.selectedChannel}
                     handleChannelChange={handleChannelChange}
                     id="all"
                     name="All Sources"
                 />
                 <ChannelRadioButton
-                    selectedChannel={selectedChannel}
+                    selectedChannel={state.selectedChannel}
                     handleChannelChange={handleChannelChange}
                     id="librarian"
                     name="Librarian"
                 />
                 <ChannelRadioButton
-                    selectedChannel={selectedChannel}
+                    selectedChannel={state.selectedChannel}
                     handleChannelChange={handleChannelChange}
                     id="northernlion"
                     name="Northernlion"
@@ -286,36 +296,36 @@ const App = () => {
             </div>
             
             <Filters 
-                selectedYear={selectedYear}
+                selectedYear={state.selectedYear}
                 handleYearChange={handleYearChange}
-                sortOrder={sortOrder}
+                sortOrder={state.sortOrder}
                 handleSortChange={handleSortChange}
-                selectedGame={selectedGame}
-                setSelectedGame={setSelectedGame}
+                selectedGame={state.selectedGame}
                 handleGameChange={handleGameChange}
+                handleGameReset={handleGameReset}
                 games={games}
-                searchTerm={searchTerm}
+                searchTerm={state.searchTerm}
                 fetchQuotes={fetchQuotes}
-                page={page}
-                selectedChannel={selectedChannel}
+                page={state.page}
+                selectedChannel={state.selectedChannel}
                 strict={strict} 
             />
 
-            {!hasSearched && <Disclaimer />}
-
+            {!state.hasSearched && <Disclaimer />}
+                    
             {loading && <div>Loading...</div>}
-            {hasSearched && (
+            {state.hasSearched && (
                 <>
                     <div className="total-quotes">
                         Total quotes found: {numberFormatter.format(totalQuotes)}
                     </div>
-                    <Quotes quotes={quotes} searchTerm={searchTerm} />
+                    <Quotes quotes={quotes} searchTerm={state.searchTerm} />
                 </>
             )}
 
             {quotes.length > 0 && (
                 <PaginationButtons
-                    page={page}
+                    page={state.page}
                     totalPages={totalPages}
                     handlePageChange={handlePageChange}
                 />
