@@ -9,7 +9,7 @@ import query from '../services/quotes';
 // `b` is returned from ts_headline when a match is found
 const ALLOWED_TAGS = ['b'];
 
-export const Quotes = ({ quotes = [], searchTerm }) => {
+export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
   const [flagging, setFlagging] = useState({});
   const [modalState, setModalState] = useState({
       isOpen: false,
@@ -278,7 +278,9 @@ export const Quotes = ({ quotes = [], searchTerm }) => {
                                                   const videoUrl = `https://youtu.be/${quoteGroup.video_id}?t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`;
                                                   const pageUrl = window.location.href;
                                                   const cleanSearchTerm = searchTerm.replace(/"/g, '');
-                                                  const tweetText = `I found ${quotes.length} Northernlion quotes mentioning "${cleanSearchTerm}". ${videoUrl}\n\nSee them all here! ${pageUrl}`;
+                                                  const tweetText = totalQuotes === 1 
+                                                      ? `The only Northernlion quote mentioning "${cleanSearchTerm}": ${videoUrl}\n\nFound on: ${pageUrl}`
+                                                      : `Just one of ${totalQuotes} Northernlion quotes mentioning "${cleanSearchTerm}": ${videoUrl}\n\nSee them all here! ${pageUrl}`;
                                                   window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`, '_blank');
                                               }}
                                               style={{
@@ -475,7 +477,9 @@ export const Quotes = ({ quotes = [], searchTerm }) => {
                                           const videoUrl = `https://youtu.be/${quoteGroup.video_id}?t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`;
                                           const pageUrl = window.location.href;
                                           const cleanSearchTerm = searchTerm.replace(/"/g, '');
-                                          const tweetText = `I found ${quotes.length} Northernlion quotes mentioning "${cleanSearchTerm}". ${videoUrl}\n\nSee them all here! ${pageUrl}`;
+                                          const tweetText = totalQuotes === 1 
+                                              ? `The only Northernlion quote mentioning "${cleanSearchTerm}": ${videoUrl}\n\nFound on: ${pageUrl}`
+                                              : `Just one of ${totalQuotes} Northernlion quotes mentioning "${cleanSearchTerm}": ${videoUrl}\n\nSee them all here! ${pageUrl}`;
                                           window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`, '_blank');
                                       }}
                                       style={{
