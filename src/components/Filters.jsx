@@ -8,11 +8,6 @@ export const Filters = ({
   handleGameChange,
   handleGameReset,
   games,
-  searchTerm,
-  fetchQuotes,
-  page,
-  selectedChannel,
-  strict
 }) => (
   <div className="filter-container">
     <div className="filter-group">
