@@ -275,9 +275,10 @@ export const Quotes = ({ quotes = [], searchTerm }) => {
 
                                           <button
                                               onClick={() => {
-                                                  const videoUrl = `https://www.youtube.com/watch?v=${quoteGroup.video_id}&t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`;
+                                                  const videoUrl = `https://youtu.be/${quoteGroup.video_id}?t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`;
                                                   const pageUrl = window.location.href;
-                                                  const tweetText = `I found a Northernlion quote about "${searchTerm}". Check it out! ${videoUrl}\n\nFound on: ${pageUrl}`;
+                                                  const cleanSearchTerm = searchTerm.replace(/"/g, '');
+                                                  const tweetText = `I found ${quotes.length} Northernlion quotes mentioning "${cleanSearchTerm}". ${videoUrl}\n\nSee them all here! ${pageUrl}`;
                                                   window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`, '_blank');
                                               }}
                                               style={{
@@ -471,9 +472,10 @@ export const Quotes = ({ quotes = [], searchTerm }) => {
 
                                   <button
                                       onClick={() => {
-                                          const videoUrl = `https://www.youtube.com/watch?v=${quoteGroup.video_id}&t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`;
+                                          const videoUrl = `https://youtu.be/${quoteGroup.video_id}?t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`;
                                           const pageUrl = window.location.href;
-                                          const tweetText = `I found a Northernlion quote about "${searchTerm}". Check it out! ${videoUrl}\n\nFound on: ${pageUrl}`;
+                                          const cleanSearchTerm = searchTerm.replace(/"/g, '');
+                                          const tweetText = `I found ${quotes.length} Northernlion quotes mentioning "${cleanSearchTerm}". ${videoUrl}\n\nSee them all here! ${pageUrl}`;
                                           window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`, '_blank');
                                       }}
                                       style={{
