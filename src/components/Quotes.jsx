@@ -243,6 +243,7 @@ export const Quotes = ({ quotes = [], searchTerm }) => {
                                               onMouseOut={e => {
                                                   e.currentTarget.style.transform = 'scale(1)';
                                               }}
+                                              title="Copy quote to clipboard"
                                           >
                                               📋
                                           </button>
@@ -267,8 +268,39 @@ export const Quotes = ({ quotes = [], searchTerm }) => {
                                               onMouseOut={e => {
                                                   e.currentTarget.style.transform = 'scale(1)';
                                               }}
+                                              title="Open quote in YouTube"
                                           >
                                               ↗
+                                          </button>
+
+                                          <button
+                                              onClick={() => {
+                                                  const videoUrl = `https://www.youtube.com/watch?v=${quoteGroup.video_id}&t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`;
+                                                  const pageUrl = window.location.href;
+                                                  const tweetText = `I found a Northernlion quote about "${searchTerm}". Check it out! ${videoUrl}\n\nFound on: ${pageUrl}`;
+                                                  window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`, '_blank');
+                                              }}
+                                              style={{
+                                                  backgroundColor: 'transparent',
+                                                  color: '#4A90E2',
+                                                  border: 'none',
+                                                  padding: '0.5rem',
+                                                  cursor: 'pointer',
+                                                  fontSize: '1.25rem',
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  justifyContent: 'center',
+                                                  transition: 'transform 0.2s'
+                                              }}
+                                              onMouseOver={e => {
+                                                  e.currentTarget.style.transform = 'scale(1.3)';
+                                              }}
+                                              onMouseOut={e => {
+                                                  e.currentTarget.style.transform = 'scale(1)';
+                                              }}
+                                              title="Share quote on X"
+                                          >
+                                              𝕏
                                           </button>
 
                                           <button
@@ -301,6 +333,7 @@ export const Quotes = ({ quotes = [], searchTerm }) => {
                                               onMouseOut={e => {
                                                   e.currentTarget.style.transform = 'scale(1)';
                                               }}
+                                              title="Flag quote as invalid"
                                           >
                                               {flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? '⏳' : '🚩'}
                                           </button>
@@ -416,7 +449,7 @@ export const Quotes = ({ quotes = [], searchTerm }) => {
                                           cursor: 'pointer',
                                           fontSize: '1.25rem',
                                       }}
-                                      title="Copy to clipboard"
+                                      title="Copy quote to clipboard"
                                   >
                                       📋
                                   </button>
@@ -431,9 +464,39 @@ export const Quotes = ({ quotes = [], searchTerm }) => {
                                           cursor: 'pointer',
                                           fontSize: '1.25rem',
                                       }}
-                                      title="Open in YouTube"
+                                      title="Open quote in YouTube"
                                   >
                                       ↗
+                                  </button>
+
+                                  <button
+                                      onClick={() => {
+                                          const videoUrl = `https://www.youtube.com/watch?v=${quoteGroup.video_id}&t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`;
+                                          const pageUrl = window.location.href;
+                                          const tweetText = `I found a Northernlion quote about "${searchTerm}". Check it out! ${videoUrl}\n\nFound on: ${pageUrl}`;
+                                          window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`, '_blank');
+                                      }}
+                                      style={{
+                                          backgroundColor: 'transparent',
+                                          color: '#4A90E2',
+                                          border: 'none',
+                                          padding: '0.5rem',
+                                          cursor: 'pointer',
+                                          fontSize: '1.25rem',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          transition: 'transform 0.2s'
+                                      }}
+                                      onMouseOver={e => {
+                                          e.currentTarget.style.transform = 'scale(1.3)';
+                                      }}
+                                      onMouseOut={e => {
+                                          e.currentTarget.style.transform = 'scale(1)';
+                                      }}
+                                      title="Share quote on X"
+                                  >
+                                      𝕏
                                   </button>
 
                                   <button
@@ -454,7 +517,7 @@ export const Quotes = ({ quotes = [], searchTerm }) => {
                                           opacity: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 0.6 : 1,
                                           fontSize: '1.25rem',
                                       }}
-                                      title="Flag quote"
+                                      title="Flag quote as invalid"
                                   >
                                       {flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? '⏳' : '🚩'}
                                   </button>
