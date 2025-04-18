@@ -277,7 +277,8 @@ export const Quotes = ({ quotes = [], searchTerm }) => {
                                               onClick={() => {
                                                   const videoUrl = `https://www.youtube.com/watch?v=${quoteGroup.video_id}&t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`;
                                                   const pageUrl = window.location.href;
-                                                  const tweetText = `I found a Northernlion quote about "${searchTerm}". Check it out! ${videoUrl}\n\nFound on: ${pageUrl}`;
+                                                  const cleanSearchTerm = searchTerm.replace(/"/g, '');
+                                                  const tweetText = `I found ${quotes.length} Northernlion quotes talking about "${cleanSearchTerm}". ${videoUrl}\n\nCheck all of them out here! ${pageUrl}`;
                                                   window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`, '_blank');
                                               }}
                                               style={{
@@ -473,7 +474,8 @@ export const Quotes = ({ quotes = [], searchTerm }) => {
                                       onClick={() => {
                                           const videoUrl = `https://www.youtube.com/watch?v=${quoteGroup.video_id}&t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`;
                                           const pageUrl = window.location.href;
-                                          const tweetText = `I found a Northernlion quote about "${searchTerm}". Check it out! ${videoUrl}\n\nFound on: ${pageUrl}`;
+                                          const cleanSearchTerm = searchTerm.replace(/"/g, '');
+                                          const tweetText = `I found ${quotes.length} Northernlion quotes about "${cleanSearchTerm}". Check them out! ${videoUrl}\n\nFound on: ${pageUrl}`;
                                           window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`, '_blank');
                                       }}
                                       style={{
