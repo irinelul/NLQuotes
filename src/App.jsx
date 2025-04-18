@@ -319,7 +319,7 @@ const App = () => {
                     <div className="total-quotes">
                         Total quotes found: {numberFormatter.format(totalQuotes)}
                     </div>
-                    <Quotes quotes={quotes} searchTerm={state.searchTerm} />
+                    <Quotes quotes={quotes} searchTerm={state.searchTerm} totalQuotes={totalQuotes} />
                 </>
             )}
 
