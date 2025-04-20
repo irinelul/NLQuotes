@@ -69,10 +69,6 @@
         border-top: 1px solid var(--border-color);
     }
 
-    .pagination-buttons {
-        width: 90%;
-    }
-
     .footer-message {
         width: 90%;
         font-size: 0.8rem;
