@@ -388,50 +388,6 @@ button:disabled {
     position: relative;
 }
 
-.radio-button {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    padding: 0.5rem 1.25rem;
-    border-radius: 8px;
-    transition: all 0.2s ease;
-    background-color: var(--surface-color);
-    border: 2px solid var(--border-color);
-    min-width: 120px;
-    justify-content: center;
-}
-
-.radio-button:hover {
-    border-color: var(--primary-color);
-    transform: translateY(-1px);
-    background-color: rgba(192, 192, 192, 0.1);
-}
-
-.radio-button.selected {
-    background-color: rgba(192, 192, 192, 0.2);
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(192, 192, 192, 0.3);
-    transform: translateY(-1px);
-}
-
-.radio-button.selected .radio-label {
-    color: var(--primary-color);
-    font-weight: 600;
-    text-shadow: 0 0 8px rgba(192, 192, 192, 0.3);
-}
-
-.radio-button input[type="radio"] {
-    display: none;
-}
-
-.radio-label {
-    font-size: 0.95rem;
-    color: var(--text-primary);
-    font-weight: 500;
-    letter-spacing: 0.3px;
-    transition: all 0.2s ease;
-}
-
 /* Radio button container */
 .radio-container {
     background-color: var(--surface-color);

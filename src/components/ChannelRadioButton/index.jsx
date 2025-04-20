@@ -1,9 +1,10 @@
+import styles from './ChannelRadioButton.module.css';
 
-export const ChannelRadioButton = ({ selectedChannel, handleChannelChange, id, name}) => {
+export const ChannelRadioButton = ({ selectedChannel, handleChannelChange, id, name }) => {
     const isSelected = selectedChannel === id;
-    return(
+    return (
         <div
-            className={`radio-button ${isSelected ? 'selected' : ''}`}
+            className={styles.radioButton}
             onClick={() => handleChannelChange(id)}
         >
             <input
@@ -12,10 +13,10 @@ export const ChannelRadioButton = ({ selectedChannel, handleChannelChange, id, n
                 value={id}
                 checked={isSelected}
                 onChange={handleChannelChange}
-                style={{ cursor: "pointer" }}
             />
-            <label htmlFor={id} className="radio-label" style={{ cursor: "pointer" }}>
+            <label htmlFor={id} className={styles.radioLabel}>
                 {name}
             </label>
         </div>
-  )}
+    )
+}
