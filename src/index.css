@@ -412,72 +412,6 @@ button:disabled {
     border-bottom: 1px solid var(--border-color);
 }
 
-.year-input {
-    padding: 0.5rem 1rem;
-    border: 2px solid var(--border-color);
-    border-radius: 8px;
-    background-color: var(--surface-color);
-    color: var(--text-primary);
-    font-size: 1rem;
-    transition: all 0.2s ease;
-    letter-spacing: 0.3px;
-    height: 40px;
-    width: 160px;
-    text-align: center;
-    box-sizing: border-box;
-}
-
-.year-input:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(192, 192, 192, 0.2);
-}
-
-.year-input::placeholder {
-    color: var(--text-secondary);
-    text-align: center;
-}
-
-.filter-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 1rem;
-    margin: 0 0 1rem 0;
-    width: 100%;
-    max-width: 800px;
-    margin-left: auto;
-    margin-right: auto;
-    padding-top: 1rem;
-}
-
-.sort-select {
-    padding: 0.5rem 1rem;
-    border: 2px solid var(--border-color);
-    border-radius: 8px;
-    background-color: var(--surface-color);
-    color: var(--text-primary);
-    font-size: 1rem;
-    transition: all 0.2s ease;
-    letter-spacing: 0.3px;
-    height: 40px;
-    width: 160px;
-    cursor: pointer;
-    box-sizing: border-box;
-}
-
-.sort-select:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(192, 192, 192, 0.2);
-}
-
-.sort-select option {
-    background-color: var(--surface-color);
-    color: var(--text-primary);
-    padding: 0.5rem;
-}
-
 .feedback-button {
     position: fixed;
     top: 1rem;
@@ -577,43 +511,6 @@ button:disabled {
     opacity: 1;
 }
 
-.game-select {
-    padding: 0.5rem 1rem;
-    border: 2px solid var(--border-color);
-    border-radius: 8px;
-    background-color: var(--surface-color);
-    color: var(--text-primary);
-    font-size: 1rem;
-    transition: all 0.2s ease;
-    letter-spacing: 0.3px;
-    height: 40px;
-    min-width: 200px;
-    cursor: pointer;
-    appearance: none;
-    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E");
-    background-repeat: no-repeat;
-    background-position: right 0.7rem top 50%;
-    background-size: 0.65rem auto;
-}
-
-.game-select:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(192, 192, 192, 0.2);
-}
-
-.game-select option {
-    background-color: var(--surface-color);
-    color: var(--text-primary);
-    padding: 0.5rem;
-}
-
-.game-filter-container {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
 .game-tooltip {
     position: relative;
     display: inline-flex;
@@ -641,51 +538,6 @@ button:disabled {
 }
 
 .game-tooltip:hover::before {
-    opacity: 1;
-}
-
-.reset-game-button {
-    background: none;
-    border: none;
-    color: var(--text-secondary);
-    font-size: 1.2rem;
-    cursor: pointer;
-    padding: 0.25rem;
-    border-radius: 4px;
-    transition: all 0.2s ease;
-    position: relative;
-}
-
-.reset-game-button:hover:not(:disabled) {
-    color: var(--text-primary);
-    background-color: rgba(192, 192, 192, 0.1);
-    border: 2px solid var(--border-color);
-    transform: translateY(-1px);
-    box-shadow: none;
-    background-color: rgba(192, 192, 192, 0.1);
-}
-
-.reset-game-button::before {
-    content: "Reset game filter";
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 0.5rem 1rem;
-    background-color: var(--surface-color);
-    border: 2px solid var(--border-color);
-    border-radius: 8px;
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-    white-space: nowrap;
-    margin-top: 0.5rem;
-    z-index: 1000;
-    opacity: 0;
-    transition: opacity 0.2s ease;
-    pointer-events: none;
-}
-
-.reset-game-button:hover::before {
     opacity: 1;
 }
 
