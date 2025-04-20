@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import styles from './SearchableDropdown.module.css';
 
 export const SearchableDropdown = ({ options = [], value, onChange, placeholder }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -18,25 +19,15 @@ export const SearchableDropdown = ({ options = [], value, onChange, placeholder 
 
     // Ensure options is always an array
     const safeOptions = Array.isArray(options) ? options : [];
-    
+
     const filteredOptions = safeOptions.filter(option =>
         option && typeof option === 'string' && option.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const arrowStyle = {
-        position: 'absolute',
-        right: '10px',
-        top: '50%',
-        transform: 'translateY(-50%)',
-        color: 'var(--text-secondary)',
-        fontSize: '12px',
-        pointerEvents: 'none'
-    };
-
     return (
-        <div className="searchable-dropdown" ref={dropdownRef}>
-            <div 
-                className="dropdown-header" 
+        <div className={styles.searchableDropdown} ref={dropdownRef}>
+            <div
+                className={styles.dropdownHeader}
                 onClick={() => setIsOpen(!isOpen)}
             >
                 <input
@@ -47,14 +38,14 @@ export const SearchableDropdown = ({ options = [], value, onChange, placeholder 
                         setIsOpen(true);
                     }}
                     placeholder={value === "all" ? placeholder : value}
-                    className="dropdown-input"
+                    className={styles.dropdownInput}
                 />
-                <span className="dropdown-arrow" style={arrowStyle}>▼</span>
+                <span className={styles.dropdownArrow}>▼</span>
             </div>
             {isOpen && (
-                <div className="dropdown-options">
+                <div className={styles.dropdownOptions}>
                     <div
-                        className="dropdown-option"
+                        className={styles.dropdownOption}
                         onClick={() => {
                             onChange({ target: { value: "all" } });
                             setSearchTerm('');
@@ -66,7 +57,7 @@ export const SearchableDropdown = ({ options = [], value, onChange, placeholder 
                     {filteredOptions.map((option, index) => (
                         <div
                             key={index}
-                            className="dropdown-option"
+                            className={styles.dropdownOption}
                             onClick={() => {
                                 onChange({ target: { value: option } });
                                 setSearchTerm('');
