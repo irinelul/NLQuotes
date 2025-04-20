@@ -144,6 +144,11 @@ const quoteModel = {
     page = Math.max(1, parseInt(page) || 1);
     limit = Math.min(50, Math.max(1, parseInt(limit) || 10)); // Cap at 50 items
     
+    // Validate search term length
+    if (searchTerm && searchTerm.trim().length < 3) {
+      return { data: [], total: 0, totalQuotes: 0 };
+    }
+
     const offset = (page - 1) * limit;
     const params = [];
     let paramIndex = 1;
