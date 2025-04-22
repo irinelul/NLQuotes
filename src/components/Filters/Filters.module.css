@@ -1,0 +1,125 @@
+.container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin: 0 0 1rem 0;
+    width: 100%;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-top: 1rem;
+
+    @media (max-width: 768px) {
+        flex-direction: column;
+    }
+}
+
+.group {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+
+    @media (max-width: 768px) {
+        width: 100%;
+        justify-content: space-between;
+
+        &>* {
+            flex: 1;
+        }
+    }
+}
+
+.yearInput,
+.sortSelect {
+    padding: 0.5rem 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--surface-color);
+    color: var(--text-primary);
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    letter-spacing: 0.3px;
+    height: 40px;
+    width: 160px;
+    box-sizing: border-box;
+
+    &:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(192, 192, 192, 0.2);
+    }
+}
+
+.yearInput {
+    text-align: center;
+
+    &::placeholder {
+        color: var(--text-secondary);
+        text-align: center;
+    }
+}
+
+.sortSelect option {
+    background-color: var(--surface-color);
+    color: var(--text-primary);
+    padding: 0.5rem;
+}
+
+.gameContainer {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    @media (max-width: 768px) {
+        width: 100%;
+    }
+}
+
+.resetGameButton {
+    background-color: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    margin-left: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 10px;
+    font-size: 18px;
+    position: relative;
+    color: var(--text-secondary);
+
+    &:hover {
+        color: var(--text-primary);
+        background-color: rgba(192, 192, 192, 0.1);
+        border: 2px solid var(--border-color);
+        transform: translateY(-1px);
+        box-shadow: none;
+        background-color: rgba(192, 192, 192, 0.1);
+
+        &::before {
+            opacity: 1;
+        }
+    }
+
+    &::before {
+        content: "Reset game filter";
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 0.5rem 1rem;
+        background-color: var(--surface-color);
+        border: 2px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        white-space: nowrap;
+        margin-top: 0.5rem;
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        pointer-events: none;
+    }
+}

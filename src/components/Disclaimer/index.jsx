@@ -1,35 +1,35 @@
-import React from 'react';
+import styles from './Disclaimer.module.css';
 
-const Disclaimer: React.FC = () => {
+const Disclaimer = () => {
   return (
-    <div className="disclaimer-container">
-      <div className="disclaimer-title">
+    <div className={styles.container}>
+      <div className={styles.title}>
         <span>💡</span> Search Tips & Disclaimer
       </div>
-      <div className="disclaimer-content">
+      <div className={styles.content}>
         <p>
-          Our tool uses AI transcription to search through videos. Due to the nature of speech recognition, 
+          Our tool uses AI transcription to search through videos. Due to the nature of speech recognition,
           some words might be transcribed differently than expected. Here are some tips to improve your search:
         </p>
-        
-        <div className="disclaimer-tips">
-          <div className="disclaimer-tip">
+
+        <div className={styles.tips}>
+          <div className={styles.tip}>
             <span>⚡</span>
             <div>
               <strong>Flexible vs. Exact Searching</strong>
-              <div className="disclaimer-examples">
-                <div className="disclaimer-example">
-                  <p style={{ color: 'var(--accent-color)', fontWeight: 'bold' }}>Flexible Search (Default):</p>
+              <div className={styles.examples}>
+                <div className={styles.example}>
+                  <p className={styles.exampleTitle}>Flexible Search (Default):</p>
                   <p>Just type your keywords and find matches anywhere in the text:</p>
-                  <div style={{ marginLeft: '1rem' }}>
+                  <div className={styles.exampleDescription}>
                     <p>🔍 Mahdi vacation → Finds: "Mahdi is on vacation", "vacation with Mahdi"</p>
                     <p>🔍 egg pog → Finds: "egg pog moment", "pog egg", "egg pogging"</p>
                   </div>
                 </div>
-                <div className="disclaimer-example">
-                  <p style={{ color: 'var(--accent-color)', fontWeight: 'bold' }}>Exact Phrase Search:</p>
+                <div className={styles.example}>
+                  <p className={styles.exampleTitle}>Exact Phrase Search:</p>
                   <p>Use double quotes for precise matches:</p>
-                  <div style={{ marginLeft: '1rem' }}>
+                  <div className={styles.exampleDescription}>
                     <p>🔍 "Mahdi vacation" → Only finds: "Mahdi vacation" (exact phrase)</p>
                     <p>🔍 "egg pog" → Only finds: "egg pog" (exact phrase)</p>
                   </div>
@@ -38,36 +38,36 @@ const Disclaimer: React.FC = () => {
             </div>
           </div>
 
-          <div className="disclaimer-tip">
+          <div className={styles.tip}>
             <span>💡</span>
             <div>
               <strong>Be Flexible with Your Search Terms</strong>
               <p>Try different variations and focus on common words or phrases rather than specific names. You don't need to remember the entire quote - just search for the exact words you remember from within the quote.</p>
             </div>
           </div>
-          
-          <div className="disclaimer-tip">
+
+          <div className={styles.tip}>
             <span>📝</span>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div className={styles.tipTitle}>
                 <strong>Use Shorter Phrases or Keywords</strong>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                <span>
                   Search fewer words each time when you don't get results
                 </span>
               </div>
-              <div className="disclaimer-examples">
-                <div className="disclaimer-example">
+              <div className={styles.examples}>
+                <div className={styles.example}>
                   <p>Instead of: "Maushold family of three"</p>
                   <p>Try: "family of three"</p>
                 </div>
-                <div className="disclaimer-example">
+                <div className={styles.example}>
                   <p>Instead of: "mahdi is on vacation"</p>
                   <p>Try: "is on vacation"</p>
                 </div>
-                <div className="disclaimer-example">
+                <div className={styles.example}>
                   <p>Instead of: "long complex phrase"</p>
                   <p>Try: "complex phrase"</p>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.5rem' }}>
+                  <p>
                     If no results → Try: "phrase"
                   </p>
                 </div>
@@ -75,7 +75,7 @@ const Disclaimer: React.FC = () => {
             </div>
           </div>
 
-          <div className="disclaimer-tip">
+          <div className={styles.tip}>
             <span>🚩</span>
             <div>
               <strong>Help Improve the Database</strong>
