@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import query from './services/quotes';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Routes, Route } from 'react-router-dom';
 import Disclaimer from './components/Disclaimer';
 import { FeedbackModal } from './components/Modals/FeedbackModal';
 import { ChannelRadioButton } from './components/ChannelRadioButton';
@@ -11,6 +11,7 @@ import { Footer } from './components/Footer';
 import { PaginationButtons } from './components/PaginationButtons';
 import { Quotes } from './components/Quotes';
 import { useSearchState } from './hooks/useSearchState';
+import Privacy from './components/Privacy';
 
 const App = () => {
     const { state, updateState, resetState } = useSearchState();
@@ -188,7 +189,7 @@ const App = () => {
                 await new Promise(resolve => setTimeout(resolve, 300));
             } catch (error) {
                 console.error('Error fetching quotes:', error);
-                setError('Unable to connect to database. If you\'re seeing this on the deployed site, try the main site at nlquotes.com. Database connection works fine on local development.');
+                setError('Unable to connect to database.');
                 setQuotes([]);
                 setTotalPages(0);
                 setTotalQuotes(0);
@@ -230,124 +231,129 @@ const App = () => {
     };
 
     return (
-        <div className='main-container'>
-            <div className="logo-container" onClick={handleLogoClick}>
-                <img 
-                    src="/NLogo.webp" 
-                    alt="Northernlion Logo"
-                    onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = "/NLogo.png";
-                    }}
-                />
-            </div>
-            <div className="input-container">
-                <button
-                    onClick={handleRandomQuotes}
-                    disabled={loading}
-                    style={{
-                        opacity: loading ? 0.7 : 1,
-                        cursor: loading ? 'not-allowed' : 'pointer',
-                    }}
-                >
-                    {loading ? 'Loading...' : 'Random Quotes'}
-                </button>
-                <input
-                    type="text"
-                    value={state.searchTerm}
-                    onChange={(e) => updateState({ searchTerm: e.target.value })}
-                    onKeyDown={handleKeyPress}
-                    placeholder="Search quotes..."
-                    className="search-input"
-                    style={{ boxSizing: "border-box" }}
-                />
-                <button onClick={handleSearch}>
-                    Search
-                </button>
-                <button
-                    onClick={handleResetSearch}
-                    style={{ marginLeft: '0.5rem' }}
-                >
-                    Reset Search
-                </button>
-            </div>
-
-            {error && <div className="error-message">{error}</div>}
-
-            <div className="radio-group channel-tooltip">
-                <ChannelRadioButton
-                    selectedChannel={state.selectedChannel}
-                    handleChannelChange={handleChannelChange}
-                    id="all"
-                    name="All Sources"
-                />
-                <ChannelRadioButton
-                    selectedChannel={state.selectedChannel}
-                    handleChannelChange={handleChannelChange}
-                    id="librarian"
-                    name="Librarian"
-                />
-                <ChannelRadioButton
-                    selectedChannel={state.selectedChannel}
-                    handleChannelChange={handleChannelChange}
-                    id="northernlion"
-                    name="Northernlion"
-                />
-            </div>
-            
-            <Filters 
-                selectedYear={state.selectedYear}
-                handleYearChange={handleYearChange}
-                sortOrder={state.sortOrder}
-                handleSortChange={handleSortChange}
-                selectedGame={state.selectedGame}
-                handleGameChange={handleGameChange}
-                handleGameReset={handleGameReset}
-                games={games}
-                searchTerm={state.searchTerm}
-                fetchQuotes={fetchQuotes}
-                page={state.page}
-                selectedChannel={state.selectedChannel}
-                strict={strict} 
-            />
-
-            {!state.hasSearched && <Disclaimer />}
-                    
-            {loading && <div>Loading...</div>}
-            {state.hasSearched && (
-                <>
-                    <div className="total-quotes">
-                        Total quotes found: {numberFormatter.format(totalQuotes)}
+        <Routes>
+            <Route path="/" element={
+                <div className='main-container'>
+                    <div className="logo-container" onClick={handleLogoClick}>
+                        <img 
+                            src="/NLogo.webp" 
+                            alt="Northernlion Logo"
+                            onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = "/NLogo.png";
+                            }}
+                        />
                     </div>
-                    <Quotes quotes={quotes} searchTerm={state.searchTerm} totalQuotes={totalQuotes} />
-                </>
-            )}
+                    <div className="input-container">
+                        <button
+                            onClick={handleRandomQuotes}
+                            disabled={loading}
+                            style={{
+                                opacity: loading ? 0.7 : 1,
+                                cursor: loading ? 'not-allowed' : 'pointer',
+                            }}
+                        >
+                            {loading ? 'Loading...' : 'Random Quotes'}
+                        </button>
+                        <input
+                            type="text"
+                            value={state.searchTerm}
+                            onChange={(e) => updateState({ searchTerm: e.target.value })}
+                            onKeyDown={handleKeyPress}
+                            placeholder="Search quotes..."
+                            className="search-input"
+                            style={{ boxSizing: "border-box" }}
+                        />
+                        <button onClick={handleSearch}>
+                            Search
+                        </button>
+                        <button
+                            onClick={handleResetSearch}
+                            style={{ marginLeft: '0.5rem' }}
+                        >
+                            Reset Search
+                        </button>
+                    </div>
 
-            {quotes.length > 0 && (
-                <PaginationButtons
-                    page={state.page}
-                    totalPages={totalPages}
-                    handlePageChange={handlePageChange}
-                />
-            )}
+                    {error && <div className="error-message">{error}</div>}
 
-            <Footer />
+                    <div className="radio-group channel-tooltip">
+                        <ChannelRadioButton
+                            selectedChannel={state.selectedChannel}
+                            handleChannelChange={handleChannelChange}
+                            id="all"
+                            name="All Sources"
+                        />
+                        <ChannelRadioButton
+                            selectedChannel={state.selectedChannel}
+                            handleChannelChange={handleChannelChange}
+                            id="librarian"
+                            name="Librarian"
+                        />
+                        <ChannelRadioButton
+                            selectedChannel={state.selectedChannel}
+                            handleChannelChange={handleChannelChange}
+                            id="northernlion"
+                            name="Northernlion"
+                        />
+                    </div>
+                    
+                    <Filters 
+                        selectedYear={state.selectedYear}
+                        handleYearChange={handleYearChange}
+                        sortOrder={state.sortOrder}
+                        handleSortChange={handleSortChange}
+                        selectedGame={state.selectedGame}
+                        handleGameChange={handleGameChange}
+                        handleGameReset={handleGameReset}
+                        games={games}
+                        searchTerm={state.searchTerm}
+                        fetchQuotes={fetchQuotes}
+                        page={state.page}
+                        selectedChannel={state.selectedChannel}
+                        strict={strict} 
+                    />
 
-            {/* Improved desktop-only feedback button */}
-            <button
-                className="floating-feedback-button"
-                onClick={() => setFeedbackModalOpen(true)}
-                disabled={submittingFeedback}
-            >
-                💡 Send Feedback
-            </button>
+                    {!state.hasSearched && <Disclaimer />}
+                            
+                    {loading && <div>Loading...</div>}
+                    {state.hasSearched && (
+                        <>
+                            <div className="total-quotes">
+                                Total quotes found: {numberFormatter.format(totalQuotes)}
+                            </div>
+                            <Quotes quotes={quotes} searchTerm={state.searchTerm} totalQuotes={totalQuotes} />
+                        </>
+                    )}
 
-            <FeedbackModal
-                isOpen={feedbackModalOpen}
-                onClose={() => setFeedbackModalOpen(false)}
-                onSubmit={handleFeedbackSubmit}
-            />
-        </div>
+                    {quotes.length > 0 && (
+                        <PaginationButtons
+                            page={state.page}
+                            totalPages={totalPages}
+                            handlePageChange={handlePageChange}
+                        />
+                    )}
+
+                    <Footer />
+
+                    {/* Improved desktop-only feedback button */}
+                    <button
+                        className="floating-feedback-button"
+                        onClick={() => setFeedbackModalOpen(true)}
+                        disabled={submittingFeedback}
+                    >
+                        💡 Send Feedback
+                    </button>
+
+                    <FeedbackModal
+                        isOpen={feedbackModalOpen}
+                        onClose={() => setFeedbackModalOpen(false)}
+                        onSubmit={handleFeedbackSubmit}
+                    />
+                </div>
+            } />
+            <Route path="/privacy" element={<Privacy />} />
+        </Routes>
     );
 };
 
