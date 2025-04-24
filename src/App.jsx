@@ -189,7 +189,7 @@ const App = () => {
                 await new Promise(resolve => setTimeout(resolve, 300));
             } catch (error) {
                 console.error('Error fetching quotes:', error);
-                setError('Unable to connect to database. If you\'re seeing this on the deployed site, try the main site at nlquotes.com. Database connection works fine on local development.');
+                setError('Unable to connect to database.');
                 setQuotes([]);
                 setTotalPages(0);
                 setTotalQuotes(0);
