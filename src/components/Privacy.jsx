@@ -4,11 +4,7 @@ import { useNavigate } from 'react-router-dom';
 const Privacy = () => {
   const navigate = useNavigate();
   const handleBack = () => {
-    if (window.history.length > 1) {
-      navigate(-1);
-    } else {
-      navigate('/');
-    }
+    navigate('/');
   };
 
   return (
