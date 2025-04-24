@@ -18,7 +18,7 @@ const Privacy = () => {
       </button>
       <h2>Privacy Policy</h2>
       <p>
-        Your privacy is critically important to us at Chat Audit. Our fundamental principle is to collect the absolute minimum information necessary and to be transparent about it. This policy explains our approach.
+        Your privacy is critically important to us at NL Quotes. Our fundamental principle is to collect the absolute minimum information necessary and to be transparent about it. This policy explains our approach.
       </p>
 
       <h3>Core Privacy Principles</h3>
@@ -31,7 +31,7 @@ const Privacy = () => {
 
       <h3>Information We Collect (Minimal Anonymous Analytics)</h3>
       <p>
-        We aim to understand basic usage patterns to improve Chat Audit without compromising your privacy.
+        We aim to understand basic usage patterns to improve NL Quotes without compromising your privacy.
       </p>
       <ul>
         <li>
