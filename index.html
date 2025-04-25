@@ -10,7 +10,18 @@
 <div id="root"></div>
 <script type="module" src="/src/main.jsx"></script>
 <!-- 100% privacy-first analytics -->
-<script data-collect-dnt="true" async src="https://api.nlquotes.com/latest.js"></script>
-<noscript><img src="https://api.nlquotes.com/noscript.gif?collect-dnt=true" alt="" referrerpolicy="no-referrer-when-downgrade"/></noscript>
+<script
+  async
+  data-collect-dnt="true"
+  data-allow-params="q,page,channel,year,sort,game"
+  src="https://api.nlquotes.com/latest.js"
+></script>
+<noscript>
+  <img
+    src="https://api.nlquotes.com/noscript.gif?collect-dnt=true"
+    alt=""
+    referrerpolicy="no-referrer-when-downgrade"
+  />
+</noscript>
 </body>
 </html>
