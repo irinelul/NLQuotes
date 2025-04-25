@@ -8,6 +8,7 @@ import fs from 'fs';
 import rateLimit from 'express-rate-limit';
 import slowDown from 'express-slow-down';
 import pkg from 'pg';
+import path from 'path';
 const { Pool } = pkg;
 
 // Load environment variables
@@ -508,6 +509,20 @@ const errorHandler = (error, req, res, next) => {
 
 app.use(errorHandler);
 
+// SPA fallback for React Router with CSP header
+app.get('*', (req, res) => {
+    res.setHeader(
+      'Content-Security-Policy',
+      "default-src 'self'; " +
+      "script-src 'self' 'unsafe-inline' https://api.nlquotes.com https://www.youtube.com; " +
+      "style-src 'self' 'unsafe-inline'; " +
+      "img-src 'self' https://nlquotes.com https://api.nlquotes.com https://img.youtube.com https://www.youtube.com data:; " +
+      "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; " +
+      "object-src 'none'"
+    );
+    res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
+  });
+  
 // Create server with optimized settings
 const server = app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
