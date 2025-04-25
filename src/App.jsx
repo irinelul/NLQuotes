@@ -12,6 +12,7 @@ import { PaginationButtons } from './components/PaginationButtons';
 import { Quotes } from './components/Quotes';
 import { useSearchState } from './hooks/useSearchState';
 import Privacy from './components/Privacy';
+import SearchPage from './components/SearchPage';
 
 const App = () => {
     const { state, updateState, resetState, updateSearchParams } = useSearchState();
@@ -112,8 +113,32 @@ const App = () => {
         }
     };
 
+    const handleKeyPress = (event) => {
+        if (event.key === 'Enter' && !loading) {
+            if (searchInput.trim().length > 2) {
+                navigate(buildSearchUrl({ q: searchInput, page: 1 }));
+            } else {
+                setError('Please enter at least 3 characters to search');
+                setTimeout(() => setError(null), 3000);
+            }
+        }
+    };
+
+    const handlePageChange = (newPage) => {
+        navigate(buildSearchUrl({ page: newPage }));
+    };
+
+    const handleGameChange = (e) => {
+        const value = e.target.value;
+        navigate(buildSearchUrl({ game: value, page: 1 }));
+    };
+
+    const handleGameReset = () => {
+        navigate(buildSearchUrl({ game: 'all', page: 1 }));
+    };
+
     // Helper to build URL with all current params and overrides
-    function buildSearchUrl(overrides = {}) {
+    function buildSearchUrl(overrides = {}, basePath = '/search') {
         const params = {
             q: searchTerm,
             page,
@@ -128,23 +153,8 @@ const App = () => {
             .filter(([k, v]) => v && v !== 'all' && v !== 'default' && v !== 1 && v !== '1')
             .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
             .join('&');
-        return `/?${query}`;
+        return `${basePath}?${query}`;
     }
-
-    const handlePageChange = (newPage) => {
-        navigate(buildSearchUrl({ page: newPage }));
-    };
-
-    const handleKeyPress = (event) => {
-        if (event.key === 'Enter' && !loading) {
-            if (searchInput.trim().length > 2) {
-                navigate(buildSearchUrl({ q: searchInput, page: 1 }));
-            } else {
-                setError('Please enter at least 3 characters to search');
-                setTimeout(() => setError(null), 3000);
-            }
-        }
-    };
 
     const handleRandomQuotes = async () => {
         setLoading(true);
@@ -180,42 +190,6 @@ const App = () => {
         navigate('/', { replace: true });
     };
 
-    const handleGameChange = (e) => {
-        const value = e.target.value;
-        navigate(buildSearchUrl({ game: value, page: 1 }));
-    };
-
-    const handleGameReset = () => {
-        navigate(buildSearchUrl({ game: 'all', page: 1 }));
-    };
-
-    const fetchQuotes = async (pageNum, channel, year, sort, strictMode, game) => {
-        try {
-            const response = await query.getAll(
-                searchTerm,
-                pageNum,
-                strictMode,
-                channel,
-                "searchText",
-                year,
-                sort,
-                game
-            );
-            setQuotes(response.data);
-            setTotalPages(Math.ceil(response.total / 10));
-            setTotalQuotes(response.totalQuotes || 0);
-            await new Promise(resolve => setTimeout(resolve, 300));
-        } catch (error) {
-            console.error('Error fetching quotes:', error);
-            setError('Unable to connect to database.');
-            setQuotes([]);
-            setTotalPages(0);
-            setTotalQuotes(0);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const numberFormatter = new Intl.NumberFormat('en-US');
 
     const handleFeedbackSubmit = async (feedback) => {
@@ -247,130 +221,106 @@ const App = () => {
         navigate("/");
     };
 
+    // Define fetchQuotes in App.jsx
+    const fetchQuotes = async (pageNum, channel, year, sort, strictMode, game) => {
+        try {
+            const response = await query.getAll(
+                searchTerm,
+                pageNum,
+                strictMode,
+                channel,
+                "searchText",
+                year,
+                sort,
+                game
+            );
+            setQuotes(response.data);
+            setTotalPages(Math.ceil(response.total / 10));
+            setTotalQuotes(response.totalQuotes || 0);
+            await new Promise(resolve => setTimeout(resolve, 300));
+        } catch (error) {
+            console.error('Error fetching quotes:', error);
+            setError('Unable to connect to database.');
+            setQuotes([]);
+            setTotalPages(0);
+            setTotalQuotes(0);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <Routes>
-            <Route path="/" element={
-                <div className='main-container'>
-                    <div className="logo-container" onClick={handleLogoClick}>
-                        <img 
-                            src="/NLogo.webp" 
-                            alt="Northernlion Logo"
-                            onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = "/NLogo.png";
-                            }}
-                        />
-                    </div>
-                    <div className="input-container">
-                        <button
-                            onClick={handleRandomQuotes}
-                            disabled={loading}
-                            style={{
-                                opacity: loading ? 0.7 : 1,
-                                cursor: loading ? 'not-allowed' : 'pointer',
-                            }}
-                        >
-                            {loading ? 'Loading...' : 'Random Quotes'}
-                        </button>
-                        <input
-                            type="text"
-                            value={searchInput}
-                            onChange={(e) => setSearchInput(e.target.value)}
-                            onKeyDown={handleKeyPress}
-                            placeholder="Search quotes..."
-                            className="search-input"
-                            style={{ boxSizing: "border-box" }}
-                        />
-                        <button onClick={handleSearch}>
-                            Search
-                        </button>
-                        <button
-                            onClick={handleResetSearch}
-                            style={{ marginLeft: '0.5rem' }}
-                        >
-                            Reset Search
-                        </button>
-                    </div>
-
-                    {error && <div className="error-message">{error}</div>}
-
-                    <div className="radio-group channel-tooltip">
-                        <ChannelRadioButton
-                            selectedChannel={channel}
-                            handleChannelChange={handleChannelChange}
-                            id="all"
-                            name="All Sources"
-                        />
-                        <ChannelRadioButton
-                            selectedChannel={channel}
-                            handleChannelChange={handleChannelChange}
-                            id="librarian"
-                            name="Librarian"
-                        />
-                        <ChannelRadioButton
-                            selectedChannel={channel}
-                            handleChannelChange={handleChannelChange}
-                            id="northernlion"
-                            name="Northernlion"
-                        />
-                    </div>
-                    
-                    <Filters 
-                        selectedYear={yearInput}
-                        handleYearChange={handleYearChange}
-                        sortOrder={sort}
-                        handleSortChange={handleSortChange}
-                        selectedGame={game}
-                        handleGameChange={handleGameChange}
-                        handleGameReset={handleGameReset}
-                        games={games}
-                        searchTerm={searchTerm}
-                        fetchQuotes={fetchQuotes}
-                        page={page}
-                        selectedChannel={channel}
-                        strict={strict} 
-                        yearInput={yearInput}
-                        setYearInput={setYearInput}
-                    />
-
-                    {!hasSearched && <Disclaimer />}
-                            
-                    {loading && <div>Loading...</div>}
-                    {hasSearched && (
-                        <>
-                            <div className="total-quotes">
-                                Total quotes found: {numberFormatter.format(totalQuotes)}
-                            </div>
-                            <Quotes quotes={quotes} searchTerm={searchTerm} totalQuotes={totalQuotes} />
-                        </>
-                    )}
-
-                    {quotes.length > 0 && (
-                        <PaginationButtons
-                            page={page}
-                            totalPages={totalPages}
-                            handlePageChange={handlePageChange}
-                        />
-                    )}
-
-                    <Footer />
-
-                    {/* Improved desktop-only feedback button */}
-                    <button
-                        className="floating-feedback-button"
-                        onClick={() => setFeedbackModalOpen(true)}
-                        disabled={submittingFeedback}
-                    >
-                        💡 Send Feedback
-                    </button>
-
-                    <FeedbackModal
-                        isOpen={feedbackModalOpen}
-                        onClose={() => setFeedbackModalOpen(false)}
-                        onSubmit={handleFeedbackSubmit}
-                    />
-                </div>
-            } />
+            <Route path="/" element={<SearchPage
+                searchInput={searchInput}
+                setSearchInput={setSearchInput}
+                yearInput={yearInput}
+                setYearInput={setYearInput}
+                handleSearch={handleSearch}
+                handleKeyPress={handleKeyPress}
+                handleResetSearch={handleResetSearch}
+                handleRandomQuotes={handleRandomQuotes}
+                handleChannelChange={handleChannelChange}
+                handleYearChange={handleYearChange}
+                handleSortChange={handleSortChange}
+                handleGameChange={handleGameChange}
+                handleGameReset={handleGameReset}
+                loading={loading}
+                error={error}
+                channel={channel}
+                sort={sort}
+                game={game}
+                games={games}
+                page={page}
+                totalPages={totalPages}
+                totalQuotes={totalQuotes}
+                hasSearched={hasSearched}
+                quotes={quotes}
+                searchTerm={searchTerm}
+                numberFormatter={numberFormatter}
+                strict={strict}
+                feedbackModalOpen={feedbackModalOpen}
+                setFeedbackModalOpen={setFeedbackModalOpen}
+                submittingFeedback={submittingFeedback}
+                handleFeedbackSubmit={handleFeedbackSubmit}
+                handleLogoClick={handleLogoClick}
+                fetchQuotes={fetchQuotes}
+            />} />
+            <Route path="/search" element={<SearchPage
+                searchInput={searchInput}
+                setSearchInput={setSearchInput}
+                yearInput={yearInput}
+                setYearInput={setYearInput}
+                handleSearch={handleSearch}
+                handleKeyPress={handleKeyPress}
+                handleResetSearch={handleResetSearch}
+                handleRandomQuotes={handleRandomQuotes}
+                handleChannelChange={handleChannelChange}
+                handleYearChange={handleYearChange}
+                handleSortChange={handleSortChange}
+                handleGameChange={handleGameChange}
+                handleGameReset={handleGameReset}
+                loading={loading}
+                error={error}
+                channel={channel}
+                sort={sort}
+                game={game}
+                games={games}
+                page={page}
+                totalPages={totalPages}
+                totalQuotes={totalQuotes}
+                hasSearched={hasSearched}
+                quotes={quotes}
+                searchTerm={searchTerm}
+                numberFormatter={numberFormatter}
+                strict={strict}
+                feedbackModalOpen={feedbackModalOpen}
+                setFeedbackModalOpen={setFeedbackModalOpen}
+                submittingFeedback={submittingFeedback}
+                handleFeedbackSubmit={handleFeedbackSubmit}
+                handleLogoClick={handleLogoClick}
+                fetchQuotes={fetchQuotes}
+            />} />
             <Route path="/privacy" element={<Privacy />} />
         </Routes>
     );
