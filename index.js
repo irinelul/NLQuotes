@@ -9,6 +9,8 @@ import rateLimit from 'express-rate-limit';
 import slowDown from 'express-slow-down';
 import pkg from 'pg';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
 const { Pool } = pkg;
 
 // Load environment variables
@@ -35,6 +37,9 @@ if (!dbUrlPattern.test(process.env.DATABASE_URL)) {
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // ======= OPTIMIZED CONNECTION HANDLING =======
 // Configure connection and security in a single middleware to prevent conflicts
@@ -105,16 +110,7 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '250kb' })); // Limit payload size
 
 // ======= STREAMLINED STATIC FILE SERVING =======
-app.use(express.static('dist', {
-    setHeaders: (res, path) => {
-        // Set correct MIME types
-        if (path.endsWith('.css')) {
-            res.setHeader('Content-Type', 'text/css');
-        } else if (path.endsWith('.js')) {
-            res.setHeader('Content-Type', 'application/javascript');
-        }
-    }
-}));
+app.use(express.static(path.resolve(__dirname, 'dist')));
 
 // ======= REDUCED LOGGING =======
 // Only log essential information to reduce overhead
@@ -508,21 +504,20 @@ const errorHandler = (error, req, res, next) => {
 };
 
 app.use(errorHandler);
-
 // SPA fallback for React Router with CSP header
 app.get('*', (req, res) => {
-    res.setHeader(
-      'Content-Security-Policy',
-      "default-src 'self'; " +
-      "script-src 'self' 'unsafe-inline' https://api.nlquotes.com https://www.youtube.com; " +
-      "style-src 'self' 'unsafe-inline'; " +
-      "img-src 'self' https://nlquotes.com https://api.nlquotes.com https://img.youtube.com https://www.youtube.com data:; " +
-      "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; " +
-      "object-src 'none'"
-    );
-    res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
-  });
-  
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' https://api.nlquotes.com https://www.youtube.com; " +
+    "style-src 'self' 'unsafe-inline'; " +
+    "img-src 'self' https://nlquotes.com https://api.nlquotes.com https://img.youtube.com https://www.youtube.com data:; " +
+    "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; " +
+    "object-src 'none'"
+  );
+  res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
+});
+
 // Create server with optimized settings
 const server = app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
