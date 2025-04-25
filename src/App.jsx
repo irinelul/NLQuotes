@@ -61,6 +61,14 @@ const App = () => {
         setSearchInput(searchTerm);
     }, [searchTerm]);
 
+    // Add local state for year input
+    const [yearInput, setYearInput] = useState(year);
+
+    // Sync yearInput with year from URL
+    useEffect(() => {
+        setYearInput(year);
+    }, [year]);
+
     // Effect to handle URL parameter changes
     useEffect(() => {
         if (searchTerm.trim().length > 2) {
@@ -83,7 +91,8 @@ const App = () => {
 
     const handleYearChange = (e) => {
         const value = e.target.value;
-        if (value.length === 4) {
+        setYearInput(value);
+        if (value.length === 4 && /^\d{4}$/.test(value)) {
             navigate(buildSearchUrl({ year: value, page: 1 }));
         }
     };
@@ -307,7 +316,7 @@ const App = () => {
                     </div>
                     
                     <Filters 
-                        selectedYear={year}
+                        selectedYear={yearInput}
                         handleYearChange={handleYearChange}
                         sortOrder={sort}
                         handleSortChange={handleSortChange}
@@ -320,6 +329,8 @@ const App = () => {
                         page={page}
                         selectedChannel={channel}
                         strict={strict} 
+                        yearInput={yearInput}
+                        setYearInput={setYearInput}
                     />
 
                     {!hasSearched && <Disclaimer />}

@@ -10,14 +10,19 @@ export const Filters = ({
     handleGameChange,
     handleGameReset,
     games,
+    yearInput,
+    setYearInput,
 }) => (
     <div className={styles.container}>
         <div className={styles.group}>
             <div className="year-tooltip">
                 <input
                     type="text"
-                    value={selectedYear}
-                    onChange={handleYearChange}
+                    value={yearInput}
+                    onChange={e => {
+                        setYearInput(e.target.value);
+                        handleYearChange(e);
+                    }}
                     placeholder="Year (YYYY)"
                     maxLength="4"
                     className={styles.yearInput}
