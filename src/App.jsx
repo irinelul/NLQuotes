@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import query from './services/quotes';
-import { useNavigate, Routes, Route } from 'react-router-dom';
+import { useNavigate, Routes, Route, useSearchParams } from 'react-router-dom';
 import Disclaimer from './components/Disclaimer';
 import { FeedbackModal } from './components/Modals/FeedbackModal';
 import { ChannelRadioButton } from './components/ChannelRadioButton';
@@ -21,6 +21,7 @@ const App = () => {
     const [totalPages, setTotalPages] = useState(0);
     const [totalQuotes, setTotalQuotes] = useState(0);
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
     const [submittingFeedback, setSubmittingFeedback] = useState(false);
     
@@ -43,12 +44,36 @@ const App = () => {
 
     const games = useFetchGames();
 
-    // Initial load from URL parameters
+    // Effect to handle URL parameter changes
     useEffect(() => {
-        if (state.searchTerm) {
-            fetchQuotes(state.page, state.selectedChannel, state.selectedYear, state.sortOrder, strict, state.selectedGame);
+        const searchTerm = searchParams.get('q');
+        const page = Number(searchParams.get('page')) || 1;
+        const channel = searchParams.get('channel') || 'all';
+        const year = searchParams.get('year') || '';
+        const sort = searchParams.get('sort') || 'default';
+        const game = searchParams.get('game') || 'all';
+
+        // Update state with URL parameters
+        updateState({
+            searchTerm: searchTerm || '',
+            page,
+            selectedChannel: channel,
+            selectedYear: year,
+            sortOrder: sort,
+            selectedGame: game,
+            hasSearched: !!searchTerm
+        });
+
+        // If there's a search term, perform the search
+        if (searchTerm && searchTerm.trim().length > 2) {
+            fetchQuotes(page, channel, year, sort, strict, game);
+        } else if (!searchTerm) {
+            // If no search term, reset the quotes
+            setQuotes([]);
+            setTotalPages(0);
+            setTotalQuotes(0);
         }
-    }, []); // Empty dependency array to run only once on mount
+    }, [searchParams]);
 
     const handleChannelChange = (channelId) => {
         const newState = { 
@@ -59,6 +84,7 @@ const App = () => {
         updateState(newState);
         updateSearchParams(newState);
         if (state.searchTerm.trim()) {
+            navigate(`/?q=${encodeURIComponent(state.searchTerm)}&channel=${channelId}`);
             fetchQuotes(1, channelId, state.selectedYear, state.sortOrder, strict, state.selectedGame);
         }
     };
@@ -71,6 +97,7 @@ const App = () => {
             updateState(newState);
             updateSearchParams(newState);
             if (state.searchTerm.trim()) {
+                navigate(`/?q=${encodeURIComponent(state.searchTerm)}&year=${value}`);
                 fetchQuotes(1, state.selectedChannel, value, state.sortOrder, strict, state.selectedGame);
             }
         }
@@ -86,6 +113,7 @@ const App = () => {
         updateState(newState);
         updateSearchParams(newState);
         if (state.searchTerm.trim()) {
+            navigate(`/?q=${encodeURIComponent(state.searchTerm)}&sort=${value}`);
             fetchQuotes(1, state.selectedChannel, state.selectedYear, value, strict, state.selectedGame);
         }
     };
@@ -96,6 +124,7 @@ const App = () => {
             const newState = { ...state, page: 1 };
             updateState(newState);
             updateSearchParams(newState);
+            navigate(`/?q=${encodeURIComponent(state.searchTerm)}`);
             fetchQuotes(1, state.selectedChannel, state.selectedYear, state.sortOrder, strict, state.selectedGame);
         } else {
             setError('Please enter at least 3 characters to search');
@@ -107,6 +136,7 @@ const App = () => {
         const newState = { ...state, page: newPage };
         updateState(newState);
         updateSearchParams(newState);
+        navigate(`/?q=${encodeURIComponent(state.searchTerm)}&page=${newPage}`);
         fetchQuotes(newPage, state.selectedChannel, state.selectedYear, state.sortOrder, strict, state.selectedGame);
     };
 
@@ -116,6 +146,7 @@ const App = () => {
                 const newState = { ...state, page: 1 };
                 updateState(newState);
                 updateSearchParams(newState);
+                navigate(`/?q=${encodeURIComponent(state.searchTerm)}`);
                 fetchQuotes(1, state.selectedChannel, state.selectedYear, state.sortOrder, strict, state.selectedGame);
             } else {
                 setError('Please enter at least 3 characters to search');
@@ -169,6 +200,7 @@ const App = () => {
         updateState(newState);
         updateSearchParams(newState);
         if (state.searchTerm.trim()) {
+            navigate(`/?q=${encodeURIComponent(state.searchTerm)}&game=${encodeURIComponent(value)}`);
             fetchQuotes(1, state.selectedChannel, state.selectedYear, state.sortOrder, strict, value);
         }
     };
@@ -182,6 +214,7 @@ const App = () => {
         updateState(newState);
         updateSearchParams(newState);
         if (state.searchTerm.trim()) {
+            navigate(`/?q=${encodeURIComponent(state.searchTerm)}`);
             fetchQuotes(1, state.selectedChannel, state.selectedYear, state.sortOrder, strict, 'all');
         }
     };
