@@ -15,25 +15,25 @@ export const useSearchState = () => {
         hasSearched: !!searchParams.get('q')
     });
 
-    // Update URL when state changes
-    useEffect(() => {
+    // Update URL only when search is performed
+    const updateSearchParams = (newState) => {
         const params = new URLSearchParams();
-        if (state.searchTerm) params.set('q', state.searchTerm);
-        if (state.page > 1) params.set('page', state.page);
-        if (state.selectedChannel !== 'all') params.set('channel', state.selectedChannel);
-        if (state.selectedYear) params.set('year', state.selectedYear);
-        if (state.sortOrder !== 'default') params.set('sort', state.sortOrder);
-        if (state.selectedGame !== 'all') params.set('game', state.selectedGame);
+        if (newState.searchTerm) params.set('q', newState.searchTerm);
+        if (newState.page > 1) params.set('page', newState.page);
+        if (newState.selectedChannel !== 'all') params.set('channel', newState.selectedChannel);
+        if (newState.selectedYear) params.set('year', newState.selectedYear);
+        if (newState.sortOrder !== 'default') params.set('sort', newState.sortOrder);
+        if (newState.selectedGame !== 'all') params.set('game', newState.selectedGame);
         
         setSearchParams(params);
-    }, [state, setSearchParams]);
+    };
 
     const updateState = (newState) => {
         setState(prev => ({ ...prev, ...newState }));
     };
 
     const resetState = () => {
-        setState({
+        const newState = {
             searchTerm: '',
             page: 1,
             selectedChannel: 'all',
@@ -41,12 +41,15 @@ export const useSearchState = () => {
             sortOrder: 'default',
             selectedGame: 'all',
             hasSearched: false
-        });
+        };
+        setState(newState);
+        updateSearchParams(newState);
     };
 
     return {
         state,
         updateState,
-        resetState
+        resetState,
+        updateSearchParams
     };
 }; 
