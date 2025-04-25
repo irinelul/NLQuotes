@@ -20,6 +20,7 @@ const App = () => {
     const [loading, setLoading] = useState(false);
     const [totalPages, setTotalPages] = useState(0);
     const [totalQuotes, setTotalQuotes] = useState(0);
+    const [hasSearched, setHasSearched] = useState(false);
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
@@ -44,88 +45,58 @@ const App = () => {
 
     const games = useFetchGames();
 
+    // Extract URL params at the top of the component
+    const searchTerm = searchParams.get('q') || '';
+    const page = Number(searchParams.get('page')) || 1;
+    const channel = searchParams.get('channel') || 'all';
+    const year = searchParams.get('year') || '';
+    const sort = searchParams.get('sort') || 'default';
+    const game = searchParams.get('game') || 'all';
+
+    // Add local state for search input
+    const [searchInput, setSearchInput] = useState(searchTerm);
+
+    // Sync searchInput with searchTerm from URL
+    useEffect(() => {
+        setSearchInput(searchTerm);
+    }, [searchTerm]);
+
     // Effect to handle URL parameter changes
     useEffect(() => {
-        const searchTerm = searchParams.get('q');
-        const page = Number(searchParams.get('page')) || 1;
-        const channel = searchParams.get('channel') || 'all';
-        const year = searchParams.get('year') || '';
-        const sort = searchParams.get('sort') || 'default';
-        const game = searchParams.get('game') || 'all';
-
-        // Update state with URL parameters
-        updateState({
-            searchTerm: searchTerm || '',
-            page,
-            selectedChannel: channel,
-            selectedYear: year,
-            sortOrder: sort,
-            selectedGame: game,
-            hasSearched: !!searchTerm
-        });
-
-        // If there's a search term, perform the search
-        if (searchTerm && searchTerm.trim().length > 2) {
+        if (searchTerm.trim().length > 2) {
+            setLoading(true);
+            setError(null);
+            setQuotes([]);
+            setHasSearched(true);
             fetchQuotes(page, channel, year, sort, strict, game);
         } else if (!searchTerm) {
-            // If no search term, reset the quotes
             setQuotes([]);
             setTotalPages(0);
             setTotalQuotes(0);
+            setHasSearched(false);
         }
-    }, [searchParams]);
+    }, [searchTerm, page, channel, year, sort, game]);
 
     const handleChannelChange = (channelId) => {
-        const newState = { 
-            ...state,
-            selectedChannel: channelId,
-            page: 1
-        };
-        updateState(newState);
-        updateSearchParams(newState);
-        if (state.searchTerm.trim()) {
-            navigate(`/?q=${encodeURIComponent(state.searchTerm)}&channel=${channelId}`, { replace: true });
-            fetchQuotes(1, channelId, state.selectedYear, state.sortOrder, strict, state.selectedGame);
-        }
+        navigate(`/?q=${encodeURIComponent(searchTerm)}&channel=${channelId}`, { replace: true });
     };
 
     const handleYearChange = (e) => {
         const value = e.target.value;
-        updateState({ selectedYear: value });
         if (value.length === 4) {
-            const newState = { ...state, selectedYear: value, page: 1 };
-            updateState(newState);
-            updateSearchParams(newState);
-            if (state.searchTerm.trim()) {
-                navigate(`/?q=${encodeURIComponent(state.searchTerm)}&year=${value}`, { replace: true });
-                fetchQuotes(1, state.selectedChannel, value, state.sortOrder, strict, state.selectedGame);
-            }
+            navigate(`/?q=${encodeURIComponent(searchTerm)}&year=${value}`, { replace: true });
         }
     };
 
     const handleSortChange = (e) => {
         const value = e.target.value;
-        const newState = { 
-            ...state,
-            sortOrder: value,
-            page: 1
-        };
-        updateState(newState);
-        updateSearchParams(newState);
-        if (state.searchTerm.trim()) {
-            navigate(`/?q=${encodeURIComponent(state.searchTerm)}&sort=${value}`, { replace: true });
-            fetchQuotes(1, state.selectedChannel, state.selectedYear, value, strict, state.selectedGame);
-        }
+        navigate(`/?q=${encodeURIComponent(searchTerm)}&sort=${value}`, { replace: true });
     };
 
     const handleSearch = (e) => {
         e.preventDefault();
-        if (state.searchTerm.trim().length > 2) {
-            const newState = { ...state, page: 1 };
-            updateState(newState);
-            updateSearchParams(newState);
-            navigate(`/?q=${encodeURIComponent(state.searchTerm)}`, { replace: true });
-            fetchQuotes(1, state.selectedChannel, state.selectedYear, state.sortOrder, strict, state.selectedGame);
+        if (searchInput.trim().length > 2) {
+            navigate(`/?q=${encodeURIComponent(searchInput)}`, { replace: true });
         } else {
             setError('Please enter at least 3 characters to search');
             setTimeout(() => setError(null), 3000);
@@ -133,21 +104,13 @@ const App = () => {
     };
 
     const handlePageChange = (newPage) => {
-        const newState = { ...state, page: newPage };
-        updateState(newState);
-        updateSearchParams(newState);
-        navigate(`/?q=${encodeURIComponent(state.searchTerm)}&page=${newPage}`, { replace: true });
-        fetchQuotes(newPage, state.selectedChannel, state.selectedYear, state.sortOrder, strict, state.selectedGame);
+        navigate(`/?q=${encodeURIComponent(searchTerm)}&page=${newPage}`, { replace: true });
     };
 
     const handleKeyPress = (event) => {
         if (event.key === 'Enter' && !loading) {
-            if (state.searchTerm.trim().length > 2) {
-                const newState = { ...state, page: 1 };
-                updateState(newState);
-                updateSearchParams(newState);
-                navigate(`/?q=${encodeURIComponent(state.searchTerm)}`, { replace: true });
-                fetchQuotes(1, state.selectedChannel, state.selectedYear, state.sortOrder, strict, state.selectedGame);
+            if (searchInput.trim().length > 2) {
+                navigate(`/?q=${encodeURIComponent(searchInput)}`, { replace: true });
             } else {
                 setError('Please enter at least 3 characters to search');
                 setTimeout(() => setError(null), 3000);
@@ -158,7 +121,7 @@ const App = () => {
     const handleRandomQuotes = async () => {
         setLoading(true);
         setError(null);
-        updateState({ hasSearched: true });
+        setHasSearched(true);
         try {
             console.log('Fetching random quotes...');
             const response = await query.getRandomQuotes();
@@ -170,7 +133,6 @@ const App = () => {
 
             setQuotes(response.quotes);
             setTotalPages(1);
-            updateState({ page: 1 });
             setTotalQuotes(response.quotes.length);
         } catch (error) {
             console.error('Error fetching random quotes:', error);
@@ -186,69 +148,43 @@ const App = () => {
     const handleResetSearch = () => {
         resetState();
         setQuotes([]);
-        updateState({ hasSearched: false });
+        setHasSearched(false);
         navigate('/', { replace: true });
     };
 
     const handleGameChange = (e) => {
         const value = e.target.value;
-        const newState = { 
-            ...state,
-            selectedGame: value,
-            page: 1
-        };
-        updateState(newState);
-        updateSearchParams(newState);
-        if (state.searchTerm.trim()) {
-            navigate(`/?q=${encodeURIComponent(state.searchTerm)}&game=${encodeURIComponent(value)}`, { replace: true });
-            fetchQuotes(1, state.selectedChannel, state.selectedYear, state.sortOrder, strict, value);
-        }
+        navigate(`/?q=${encodeURIComponent(searchTerm)}&game=${encodeURIComponent(value)}`, { replace: true });
     };
 
     const handleGameReset = () => {
-        const newState = { 
-            ...state,
-            selectedGame: 'all',
-            page: 1
-        };
-        updateState(newState);
-        updateSearchParams(newState);
-        if (state.searchTerm.trim()) {
-            navigate(`/?q=${encodeURIComponent(state.searchTerm)}`, { replace: true });
-            fetchQuotes(1, state.selectedChannel, state.selectedYear, state.sortOrder, strict, 'all');
-        }
+        navigate(`/?q=${encodeURIComponent(searchTerm)}`, { replace: true });
     };
 
-    const fetchQuotes = async (pageNum = state.page, channel = state.selectedChannel, year = state.selectedYear, sort = state.sortOrder, strictMode = strict, game = state.selectedGame) => {
-        if (state.searchTerm.trim()) {
-            setLoading(true);
-            setError(null);
-            updateState({ hasSearched: true });
+    const fetchQuotes = async (pageNum, channel, year, sort, strictMode, game) => {
+        try {
+            const response = await query.getAll(
+                searchTerm,
+                pageNum,
+                strictMode,
+                channel,
+                "searchText",
+                year,
+                sort,
+                game
+            );
+            setQuotes(response.data);
+            setTotalPages(Math.ceil(response.total / 10));
+            setTotalQuotes(response.totalQuotes || 0);
+            await new Promise(resolve => setTimeout(resolve, 300));
+        } catch (error) {
+            console.error('Error fetching quotes:', error);
+            setError('Unable to connect to database.');
             setQuotes([]);
-            try {
-                const response = await query.getAll(
-                    state.searchTerm,
-                    pageNum,
-                    strictMode,
-                    channel,
-                    "searchText",
-                    year,
-                    sort,
-                    game
-                );
-                setQuotes(response.data);
-                setTotalPages(Math.ceil(response.total / 10));
-                setTotalQuotes(response.totalQuotes || 0);
-                await new Promise(resolve => setTimeout(resolve, 300));
-            } catch (error) {
-                console.error('Error fetching quotes:', error);
-                setError('Unable to connect to database.');
-                setQuotes([]);
-                setTotalPages(0);
-                setTotalQuotes(0);
-            } finally {
-                setLoading(false);
-            }
+            setTotalPages(0);
+            setTotalQuotes(0);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -310,8 +246,8 @@ const App = () => {
                         </button>
                         <input
                             type="text"
-                            value={state.searchTerm}
-                            onChange={(e) => updateState({ searchTerm: e.target.value })}
+                            value={searchInput}
+                            onChange={(e) => setSearchInput(e.target.value)}
                             onKeyDown={handleKeyPress}
                             placeholder="Search quotes..."
                             className="search-input"
@@ -332,19 +268,19 @@ const App = () => {
 
                     <div className="radio-group channel-tooltip">
                         <ChannelRadioButton
-                            selectedChannel={state.selectedChannel}
+                            selectedChannel={channel}
                             handleChannelChange={handleChannelChange}
                             id="all"
                             name="All Sources"
                         />
                         <ChannelRadioButton
-                            selectedChannel={state.selectedChannel}
+                            selectedChannel={channel}
                             handleChannelChange={handleChannelChange}
                             id="librarian"
                             name="Librarian"
                         />
                         <ChannelRadioButton
-                            selectedChannel={state.selectedChannel}
+                            selectedChannel={channel}
                             handleChannelChange={handleChannelChange}
                             id="northernlion"
                             name="Northernlion"
@@ -352,36 +288,36 @@ const App = () => {
                     </div>
                     
                     <Filters 
-                        selectedYear={state.selectedYear}
+                        selectedYear={year}
                         handleYearChange={handleYearChange}
-                        sortOrder={state.sortOrder}
+                        sortOrder={sort}
                         handleSortChange={handleSortChange}
-                        selectedGame={state.selectedGame}
+                        selectedGame={game}
                         handleGameChange={handleGameChange}
                         handleGameReset={handleGameReset}
                         games={games}
-                        searchTerm={state.searchTerm}
+                        searchTerm={searchTerm}
                         fetchQuotes={fetchQuotes}
-                        page={state.page}
-                        selectedChannel={state.selectedChannel}
+                        page={page}
+                        selectedChannel={channel}
                         strict={strict} 
                     />
 
-                    {!state.hasSearched && <Disclaimer />}
+                    {!hasSearched && <Disclaimer />}
                             
                     {loading && <div>Loading...</div>}
-                    {state.hasSearched && (
+                    {hasSearched && (
                         <>
                             <div className="total-quotes">
                                 Total quotes found: {numberFormatter.format(totalQuotes)}
                             </div>
-                            <Quotes quotes={quotes} searchTerm={state.searchTerm} totalQuotes={totalQuotes} />
+                            <Quotes quotes={quotes} searchTerm={searchTerm} totalQuotes={totalQuotes} />
                         </>
                     )}
 
                     {quotes.length > 0 && (
                         <PaginationButtons
-                            page={state.page}
+                            page={page}
                             totalPages={totalPages}
                             handlePageChange={handlePageChange}
                         />
