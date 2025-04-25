@@ -40,6 +40,7 @@ const SearchPage = ({
     submittingFeedback,
     handleFeedbackSubmit,
     handleLogoClick,
+    handlePageChange,
 }) => (
     <div className='main-container'>
         <div className="logo-container" onClick={handleLogoClick}>
@@ -139,7 +140,7 @@ const SearchPage = ({
             <PaginationButtons
                 page={page}
                 totalPages={totalPages}
-                handlePageChange={handleGameChange}
+                handlePageChange={handlePageChange}
             />
         )}
 

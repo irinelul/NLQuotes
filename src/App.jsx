@@ -296,6 +296,7 @@ const App = () => {
                 handleFeedbackSubmit={handleFeedbackSubmit}
                 handleLogoClick={handleLogoClick}
                 fetchQuotes={fetchQuotes}
+                handlePageChange={handlePageChange}
             />} />
             <Route path="/search" element={<SearchPage
                 searchInput={searchInput}
@@ -331,6 +332,7 @@ const App = () => {
                 handleFeedbackSubmit={handleFeedbackSubmit}
                 handleLogoClick={handleLogoClick}
                 fetchQuotes={fetchQuotes}
+                handlePageChange={handlePageChange}
             />} />
             <Route path="/privacy" element={<Privacy />} />
         </Routes>
