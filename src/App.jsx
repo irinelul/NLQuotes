@@ -78,39 +78,58 @@ const App = () => {
     }, [searchTerm, page, channel, year, sort, game]);
 
     const handleChannelChange = (channelId) => {
-        navigate(`/?q=${encodeURIComponent(searchTerm)}&channel=${channelId}`, { replace: true });
+        navigate(buildSearchUrl({ channel: channelId, page: 1 }));
     };
 
     const handleYearChange = (e) => {
         const value = e.target.value;
         if (value.length === 4) {
-            navigate(`/?q=${encodeURIComponent(searchTerm)}&year=${value}`, { replace: true });
+            navigate(buildSearchUrl({ year: value, page: 1 }));
         }
     };
 
     const handleSortChange = (e) => {
         const value = e.target.value;
-        navigate(`/?q=${encodeURIComponent(searchTerm)}&sort=${value}`, { replace: true });
+        navigate(buildSearchUrl({ sort: value, page: 1 }));
     };
 
     const handleSearch = (e) => {
         e.preventDefault();
         if (searchInput.trim().length > 2) {
-            navigate(`/?q=${encodeURIComponent(searchInput)}`, { replace: true });
+            navigate(buildSearchUrl({ q: searchInput, page: 1 }));
         } else {
             setError('Please enter at least 3 characters to search');
             setTimeout(() => setError(null), 3000);
         }
     };
 
+    // Helper to build URL with all current params and overrides
+    function buildSearchUrl(overrides = {}) {
+        const params = {
+            q: searchTerm,
+            page,
+            channel,
+            year,
+            sort,
+            game,
+            ...overrides
+        };
+        // Remove empty/default values
+        const query = Object.entries(params)
+            .filter(([k, v]) => v && v !== 'all' && v !== 'default' && v !== 1 && v !== '1')
+            .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
+            .join('&');
+        return `/?${query}`;
+    }
+
     const handlePageChange = (newPage) => {
-        navigate(`/?q=${encodeURIComponent(searchTerm)}&page=${newPage}`, { replace: true });
+        navigate(buildSearchUrl({ page: newPage }));
     };
 
     const handleKeyPress = (event) => {
         if (event.key === 'Enter' && !loading) {
             if (searchInput.trim().length > 2) {
-                navigate(`/?q=${encodeURIComponent(searchInput)}`, { replace: true });
+                navigate(buildSearchUrl({ q: searchInput, page: 1 }));
             } else {
                 setError('Please enter at least 3 characters to search');
                 setTimeout(() => setError(null), 3000);
@@ -154,11 +173,11 @@ const App = () => {
 
     const handleGameChange = (e) => {
         const value = e.target.value;
-        navigate(`/?q=${encodeURIComponent(searchTerm)}&game=${encodeURIComponent(value)}`, { replace: true });
+        navigate(buildSearchUrl({ game: value, page: 1 }));
     };
 
     const handleGameReset = () => {
-        navigate(`/?q=${encodeURIComponent(searchTerm)}`, { replace: true });
+        navigate(buildSearchUrl({ game: 'all', page: 1 }));
     };
 
     const fetchQuotes = async (pageNum, channel, year, sort, strictMode, game) => {
