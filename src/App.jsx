@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import query from './services/quotes';
-import { useNavigate, Routes, Route, useSearchParams } from 'react-router-dom';
+import { useNavigate, Routes, Route, useSearchParams, useLocation } from 'react-router-dom';
 import Disclaimer from './components/Disclaimer';
 import { FeedbackModal } from './components/Modals/FeedbackModal';
 import { ChannelRadioButton } from './components/ChannelRadioButton';
@@ -14,7 +14,18 @@ import { useSearchState } from './hooks/useSearchState';
 import Privacy from './components/Privacy';
 import SearchPage from './components/SearchPage';
 
+// Custom hook for Simple Analytics pageview
+function useSimpleAnalyticsPageview() {
+    const location = useLocation();
+    useEffect(() => {
+        if (window.sa_event) {
+            window.sa_event('pageview');
+        }
+    }, [location]);
+}
+
 const App = () => {
+    useSimpleAnalyticsPageview();
     const { state, updateState, resetState, updateSearchParams } = useSearchState();
     const [quotes, setQuotes] = useState([]);
     const [error, setError] = useState(null);
