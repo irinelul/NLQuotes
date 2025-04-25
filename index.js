@@ -10,6 +10,7 @@ import slowDown from 'express-slow-down';
 import pkg from 'pg';
 import path from 'path';
 import { fileURLToPath } from 'url';
+
 const { Pool } = pkg;
 
 // Load environment variables
@@ -503,12 +504,16 @@ const errorHandler = (error, req, res, next) => {
 };
 
 app.use(errorHandler);
-
 // SPA fallback for React Router with CSP header
 app.get('*', (req, res) => {
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' https://api.nlquotes.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://nlquotes.com https://api.nlquotes.com data:; object-src 'none'"
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' https://api.nlquotes.com https://www.youtube.com; " +
+    "style-src 'self' 'unsafe-inline'; " +
+    "img-src 'self' https://nlquotes.com https://api.nlquotes.com https://img.youtube.com https://www.youtube.com data:; " +
+    "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; " +
+    "object-src 'none'"
   );
   res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
 });
