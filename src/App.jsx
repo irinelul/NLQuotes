@@ -14,7 +14,7 @@ import { useSearchState } from './hooks/useSearchState';
 import Privacy from './components/Privacy';
 
 const App = () => {
-    const { state, updateState, resetState } = useSearchState();
+    const { state, updateState, resetState, updateSearchParams } = useSearchState();
     const [quotes, setQuotes] = useState([]);
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -51,10 +51,13 @@ const App = () => {
     }, []); // Empty dependency array to run only once on mount
 
     const handleChannelChange = (channelId) => {
-        updateState({ 
+        const newState = { 
+            ...state,
             selectedChannel: channelId,
             page: 1
-        });
+        };
+        updateState(newState);
+        updateSearchParams(newState);
         if (state.searchTerm.trim()) {
             fetchQuotes(1, channelId, state.selectedYear, state.sortOrder, strict, state.selectedGame);
         }
@@ -64,7 +67,9 @@ const App = () => {
         const value = e.target.value;
         updateState({ selectedYear: value });
         if (value.length === 4) {
-            updateState({ page: 1 });
+            const newState = { ...state, selectedYear: value, page: 1 };
+            updateState(newState);
+            updateSearchParams(newState);
             if (state.searchTerm.trim()) {
                 fetchQuotes(1, state.selectedChannel, value, state.sortOrder, strict, state.selectedGame);
             }
@@ -73,10 +78,13 @@ const App = () => {
 
     const handleSortChange = (e) => {
         const value = e.target.value;
-        updateState({ 
+        const newState = { 
+            ...state,
             sortOrder: value,
             page: 1
-        });
+        };
+        updateState(newState);
+        updateSearchParams(newState);
         if (state.searchTerm.trim()) {
             fetchQuotes(1, state.selectedChannel, state.selectedYear, value, strict, state.selectedGame);
         }
@@ -85,7 +93,9 @@ const App = () => {
     const handleSearch = (e) => {
         e.preventDefault();
         if (state.searchTerm.trim().length > 2) {
-            updateState({ page: 1 });
+            const newState = { ...state, page: 1 };
+            updateState(newState);
+            updateSearchParams(newState);
             fetchQuotes(1, state.selectedChannel, state.selectedYear, state.sortOrder, strict, state.selectedGame);
         } else {
             setError('Please enter at least 3 characters to search');
@@ -94,14 +104,18 @@ const App = () => {
     };
 
     const handlePageChange = (newPage) => {
-        updateState({ page: newPage });
+        const newState = { ...state, page: newPage };
+        updateState(newState);
+        updateSearchParams(newState);
         fetchQuotes(newPage, state.selectedChannel, state.selectedYear, state.sortOrder, strict, state.selectedGame);
     };
 
     const handleKeyPress = (event) => {
         if (event.key === 'Enter' && !loading) {
             if (state.searchTerm.trim().length > 2) {
-                updateState({ page: 1 });
+                const newState = { ...state, page: 1 };
+                updateState(newState);
+                updateSearchParams(newState);
                 fetchQuotes(1, state.selectedChannel, state.selectedYear, state.sortOrder, strict, state.selectedGame);
             } else {
                 setError('Please enter at least 3 characters to search');
@@ -147,20 +161,26 @@ const App = () => {
 
     const handleGameChange = (e) => {
         const value = e.target.value;
-        updateState({ 
+        const newState = { 
+            ...state,
             selectedGame: value,
             page: 1
-        });
+        };
+        updateState(newState);
+        updateSearchParams(newState);
         if (state.searchTerm.trim()) {
             fetchQuotes(1, state.selectedChannel, state.selectedYear, state.sortOrder, strict, value);
         }
     };
 
     const handleGameReset = () => {
-        updateState({ 
+        const newState = { 
+            ...state,
             selectedGame: 'all',
             page: 1
-        });
+        };
+        updateState(newState);
+        updateSearchParams(newState);
         if (state.searchTerm.trim()) {
             fetchQuotes(1, state.selectedChannel, state.selectedYear, state.sortOrder, strict, 'all');
         }
