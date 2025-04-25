@@ -214,7 +214,7 @@ const quoteModel = {
       // Validate year is a 4-digit number between reasonable bounds
       try {
         const yearInt = parseInt(year);
-        if (!isNaN(yearInt) && yearInt >= 1990 && yearInt <= new Date().getFullYear()) {
+        if (!isNaN(yearInt)) {
           whereClauses.push(`EXTRACT(YEAR FROM q.upload_date) = $${paramIndex}`);
           params.push(yearInt);
           paramIndex++;
