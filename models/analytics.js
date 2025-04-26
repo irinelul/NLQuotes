@@ -87,6 +87,110 @@ const analyticsModel = {
           eventData.city || null,
           eventData.session_id || null
         ];
+      } else if (eventData.type === 'ending_session') {
+        // Handle ending_session events (session end/page unload)
+        if (!eventData.path || !eventData.start_time) {
+          throw new Error('Missing required fields for ending_session: path and start_time are required');
+        }
+
+        query = `
+          INSERT INTO track_event (
+            type,
+            path,
+            query_params,
+            referrer,
+            user_hash,
+            start_time,
+            duration_seconds,
+            created_at,
+            device,
+            os,
+            browser,
+            screen_width,
+            screen_height,
+            pixel_ratio,
+            language,
+            timezone,
+            region,
+            city,
+            session_id
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+          RETURNING id
+        `;
+
+        values = [
+          eventData.type,
+          eventData.path,
+          eventData.query_params || null,
+          eventData.referrer || null,
+          eventData.user_hash,
+          eventData.start_time,
+          eventData.duration_seconds || 0,
+          eventData.timestamp || new Date().toISOString(),
+          eventData.device || null,
+          eventData.os || null,
+          eventData.browser || null,
+          eventData.screen?.width || null,
+          eventData.screen?.height || null,
+          eventData.screen?.pixelRatio || null,
+          eventData.language || null,
+          eventData.timezone || null,
+          eventData.region || null,
+          eventData.city || null,
+          eventData.session_id || null
+        ];
+      } else if (eventData.type === 'starting_session') {
+        // Handle starting_session events (session start/page load)
+        if (!eventData.path) {
+          throw new Error('Missing required field for starting_session: path');
+        }
+
+        query = `
+          INSERT INTO track_event (
+            type,
+            path,
+            query_params,
+            referrer,
+            user_hash,
+            start_time,
+            duration_seconds,
+            created_at,
+            device,
+            os,
+            browser,
+            screen_width,
+            screen_height,
+            pixel_ratio,
+            language,
+            timezone,
+            region,
+            city,
+            session_id
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+          RETURNING id
+        `;
+
+        values = [
+          eventData.type,
+          eventData.path,
+          eventData.query_params || null,
+          eventData.referrer || null,
+          eventData.user_hash,
+          eventData.start_time || new Date().toISOString(),
+          eventData.duration_seconds || 0,
+          eventData.timestamp || new Date().toISOString(),
+          eventData.device || null,
+          eventData.os || null,
+          eventData.browser || null,
+          eventData.screen?.width || null,
+          eventData.screen?.height || null,
+          eventData.screen?.pixelRatio || null,
+          eventData.language || null,
+          eventData.timezone || null,
+          eventData.region || null,
+          eventData.city || null,
+          eventData.session_id || null
+        ];
       } else if (eventData.type === 'search') {
         // Handle search events
         if (!eventData.search_term) {
@@ -96,6 +200,7 @@ const analyticsModel = {
         query = `
           INSERT INTO track_event (
             type,
+            path,
             search_term,
             channel,
             year,
@@ -117,12 +222,13 @@ const analyticsModel = {
             page,
             total_pages,
             response_time_ms
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
           RETURNING id
         `;
 
         values = [
           eventData.type,
+          eventData.path || null,
           eventData.search_term,
           eventData.channel || null,
           eventData.year || null,
@@ -154,6 +260,7 @@ const analyticsModel = {
         query = `
           INSERT INTO track_event (
             type,
+            path,
             search_term,
             channel,
             year,
@@ -175,12 +282,13 @@ const analyticsModel = {
             city,
             session_id,
             response_time_ms
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
           RETURNING id
         `;
 
         values = [
           eventData.type,
+          eventData.path || null,
           eventData.search_term,
           eventData.channel || null,
           eventData.year || null,

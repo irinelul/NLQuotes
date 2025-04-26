@@ -70,6 +70,7 @@ function getScreenSize() {
 
 // Function to send analytics data
 const sendAnalytics = (type, data) => {
+  console.log('sendAnalytics called:', type, data);
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const { region, city } = parseTimezone(timezone);
 
@@ -113,7 +114,8 @@ const sendAnalytics = (type, data) => {
   // navigator.sendBeacon(
   //   getAnalyticsUrl(),
   //   new Blob([JSON.stringify(payload)], { type: 'application/json' })
-  };
+  // );
+};
 
 export function useAnalyticsTracker() {
   const startTimeRef = useRef(Date.now());
@@ -137,17 +139,18 @@ export function useAnalyticsTracker() {
 
       // Get current URL and parameters at unload time
       const currentUrl = new URL(window.location.href);
+      // const query = parseQueryParams(currentUrl.search); // Don't use query params for unload
 
       // Only send analytics if the user spent at least 1 second on the page
       if (duration >= 1) {
         sendAnalytics('ending_session', {
           path: currentUrl.pathname,
-          query_params: {}, //Didn't like to send query params so i turned it off
+          query_params: {}, // No query params on unload
           referrer: document.referrer,
           start_time: startTimeISORef.current,
           duration_seconds: duration,
           session_id: sessionIdRef.current,
-          event:'unload' //Manually added event to track the end of the session
+          event: 'unload' // Mark this as a page unload event
         });
       }
     }

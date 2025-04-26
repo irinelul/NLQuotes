@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import query from './services/quotes';
 import { useNavigate, Routes, Route, useSearchParams, useLocation } from 'react-router-dom';
 import Disclaimer from './components/Disclaimer';
@@ -28,6 +28,7 @@ function useSimpleAnalyticsPageview() {
 
 const App = () => {
     useSimpleAnalyticsPageview();
+    const sessionId = useAnalyticsTracker();    
     const { state, updateState, resetState, updateSearchParams } = useSearchState();
     const [quotes, setQuotes] = useState([]);
     const [error, setError] = useState(null);
@@ -83,6 +84,30 @@ const App = () => {
         setYearInput(year);
     }, [year]);
 
+    const prevSearchRef = useRef('');
+
+    useEffect(() => {
+        if (
+            hasSearched &&
+            page === 1 &&
+            searchTerm.trim().length > 2 &&
+            totalPages > 0 &&
+            prevSearchRef.current !== searchTerm
+        ) {
+            sendAnalytics('search', {
+                path: '/search',
+                search_term: searchTerm,
+                channel,
+                year,
+                sort_order: sort,
+                strict,
+                session_id: sessionId,
+                page: 1,
+                total_pages: totalPages
+            });
+            prevSearchRef.current = searchTerm;
+        }
+    }, [hasSearched, page, searchTerm, totalPages, channel, year, sort, strict, sessionId]);
     // Effect to handle URL parameter changes
     useEffect(() => {
         if (searchTerm.trim().length > 2) {
@@ -139,8 +164,19 @@ const App = () => {
 
     const handlePageChange = (newPage) => {
         navigate(buildSearchUrl({ page: newPage }));
+        // Analytics for pagination
+        sendAnalytics('pagination', {
+            path: '/search',
+            search_term: searchTerm,
+            channel,
+            year,
+            sort_order: sort,
+            strict,
+            page: newPage,
+            total_pages: totalPages,
+            session_id: sessionId
+        });
     };
-
     const handleGameChange = (e) => {
         const value = e.target.value;
         navigate(buildSearchUrl({ game: value, page: 1 }));
@@ -260,6 +296,21 @@ const App = () => {
         } finally {
             setLoading(false);
         }
+        useEffect(() => {
+            console.log('[starting_session effect] path:', window.location.pathname, 'hasSearched:', hasSearched);
+            if (
+                window.location.pathname === '/' &&
+                hasSearched === false &&
+                !sessionStorage.getItem('starting_session_sent')
+            ) {
+                console.log('[starting_session effect] Sending starting_session event');
+                sendAnalytics('starting_session', {
+                    path: window.location.pathname,
+                    session_id: sessionId
+                });
+                sessionStorage.setItem('starting_session_sent', 'true');
+            }
+        }, [sessionId, hasSearched]);
     };
 
     return (
