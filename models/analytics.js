@@ -62,8 +62,9 @@ const analyticsModel = {
             region,
             city,
             domain,
-            session_id
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+            session_id,
+            game
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
           RETURNING id
         `;
 
@@ -87,7 +88,8 @@ const analyticsModel = {
           eventData.region || null,
           eventData.city || null,
           eventData.domain || null,
-          eventData.session_id || null
+          eventData.session_id || null,
+          eventData.game || null
         ];
       } else if (eventData.type === 'ending_session') {
         // Handle ending_session events (session end/page unload)
@@ -117,8 +119,9 @@ const analyticsModel = {
             city,
             domain,
             session_id,
-            response_time_ms
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+            response_time_ms,
+            game
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
           RETURNING id
         `;
 
@@ -143,7 +146,8 @@ const analyticsModel = {
           eventData.city || null,
           eventData.domain || null,
           eventData.session_id || null,
-          eventData.response_time_ms || null
+          eventData.response_time_ms || null,
+          eventData.game || null
         ];
       } else if (eventData.type === 'starting_session') {
         // Handle starting_session events (session start/page load)
@@ -173,8 +177,9 @@ const analyticsModel = {
             city,
             domain,
             session_id,
-            response_time_ms
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+            response_time_ms,
+            game
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
           RETURNING id
         `;
 
@@ -199,7 +204,8 @@ const analyticsModel = {
           eventData.city || null,
           eventData.domain || null,
           eventData.session_id || null,
-          eventData.response_time_ms || null
+          eventData.response_time_ms || null,
+          eventData.game || null
         ];
       } else if (eventData.type === 'search') {
         // Handle search events
@@ -215,6 +221,7 @@ const analyticsModel = {
             channel,
             year,
             sort_order,
+            game,
             strict,
             user_hash,
             created_at,
@@ -233,7 +240,7 @@ const analyticsModel = {
             page,
             total_pages,
             response_time_ms
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
           RETURNING id
         `;
 
@@ -244,6 +251,7 @@ const analyticsModel = {
           eventData.channel || null,
           eventData.year || null,
           eventData.sort_order || null,
+          eventData.game || null,
           eventData.strict || false,
           eventData.user_hash,
           eventData.timestamp || new Date().toISOString(),
@@ -277,6 +285,7 @@ const analyticsModel = {
             channel,
             year,
             sort_order,
+            game,
             strict,
             page,
             total_pages,
@@ -295,7 +304,7 @@ const analyticsModel = {
             domain,
             session_id,
             response_time_ms
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
           RETURNING id
         `;
 
@@ -306,6 +315,7 @@ const analyticsModel = {
           eventData.channel || null,
           eventData.year || null,
           eventData.sort_order || null,
+          eventData.game || null,
           eventData.strict || false,
           eventData.page,
           eventData.total_pages || null,

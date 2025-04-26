@@ -269,7 +269,8 @@ const App = () => {
                     session_id: sessionId,
                     page: 1,
                     total_pages: Math.ceil(response.total / 10),
-                    response_time_ms: responseTimeMs
+                    response_time_ms: responseTimeMs,
+                    game: game
                 });
             } else {
                 sendAnalytics('pagination', {
@@ -282,7 +283,8 @@ const App = () => {
                     page: pageNum,
                     total_pages: Math.ceil(response.total / 10),
                     session_id: sessionId,
-                    response_time_ms: responseTimeMs
+                    response_time_ms: responseTimeMs,
+                    game: game
                 });
             }
         } catch (error) {
@@ -303,11 +305,12 @@ const App = () => {
                 path: window.location.pathname,
                 session_id: sessionId,
                 referrer: document.referrer,
-                response_time_ms: responseTimeMs
+                response_time_ms: responseTimeMs,
+                game: game
             });
             sessionStorage.setItem('starting_session_sent', 'true');
         }
-    }, [sessionId]);
+    }, [sessionId, game]);
 
     return (
         <Routes>
