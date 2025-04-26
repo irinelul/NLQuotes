@@ -13,6 +13,7 @@ import { Quotes } from './components/Quotes';
 import { useSearchState } from './hooks/useSearchState';
 import Privacy from './components/Privacy';
 import SearchPage from './components/SearchPage';
+import getUserHash from './utils/userHash';
 
 // Custom hook for Simple Analytics pageview
 function useSimpleAnalyticsPageview() {
