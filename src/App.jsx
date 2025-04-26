@@ -14,6 +14,7 @@ import { useSearchState } from './hooks/useSearchState';
 import Privacy from './components/Privacy';
 import SearchPage from './components/SearchPage';
 import getUserHash from './utils/userHash';
+import { useAnalyticsTracker, sendAnalytics } from './hooks/useAnalyticsTracker';
 
 // Custom hook for Simple Analytics pageview
 function useSimpleAnalyticsPageview() {
