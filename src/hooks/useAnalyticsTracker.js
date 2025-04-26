@@ -86,7 +86,8 @@ const sendAnalytics = (type, data) => {
     language: navigator.language,
     timezone,
     region,
-    city
+    city,
+    domain: window.location.hostname
   };
 
   const getAnalyticsUrl = () => {

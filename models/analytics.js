@@ -61,8 +61,9 @@ const analyticsModel = {
             timezone,
             region,
             city,
+            domain,
             session_id
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
           RETURNING id
         `;
 
@@ -85,6 +86,7 @@ const analyticsModel = {
           eventData.timezone || null,
           eventData.region || null,
           eventData.city || null,
+          eventData.domain || null,
           eventData.session_id || null
         ];
       } else if (eventData.type === 'ending_session') {
@@ -113,8 +115,9 @@ const analyticsModel = {
             timezone,
             region,
             city,
+            domain,
             session_id
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
           RETURNING id
         `;
 
@@ -137,6 +140,7 @@ const analyticsModel = {
           eventData.timezone || null,
           eventData.region || null,
           eventData.city || null,
+          eventData.domain || null,
           eventData.session_id || null
         ];
       } else if (eventData.type === 'starting_session') {
@@ -165,8 +169,9 @@ const analyticsModel = {
             timezone,
             region,
             city,
+            domain,
             session_id
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
           RETURNING id
         `;
 
@@ -189,6 +194,7 @@ const analyticsModel = {
           eventData.timezone || null,
           eventData.region || null,
           eventData.city || null,
+          eventData.domain || null,
           eventData.session_id || null
         ];
       } else if (eventData.type === 'search') {
@@ -218,11 +224,12 @@ const analyticsModel = {
             timezone,
             region,
             city,
+            domain,
             session_id,
             page,
             total_pages,
             response_time_ms
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
           RETURNING id
         `;
 
@@ -246,6 +253,7 @@ const analyticsModel = {
           eventData.timezone || null,
           eventData.region || null,
           eventData.city || null,
+          eventData.domain || null,
           eventData.session_id || null,
           eventData.page || 1,
           eventData.total_pages || null,
@@ -280,9 +288,10 @@ const analyticsModel = {
             timezone,
             region,
             city,
+            domain,
             session_id,
             response_time_ms
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
           RETURNING id
         `;
 
@@ -308,6 +317,7 @@ const analyticsModel = {
           eventData.timezone || null,
           eventData.region || null,
           eventData.city || null,
+          eventData.domain || null,
           eventData.session_id || null,
           eventData.response_time_ms || null
         ];

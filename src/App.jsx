@@ -306,7 +306,8 @@ const App = () => {
                 console.log('[starting_session effect] Sending starting_session event');
                 sendAnalytics('starting_session', {
                     path: window.location.pathname,
-                    session_id: sessionId
+                    session_id: sessionId,
+                    referrer: document.referrer
                 });
                 sessionStorage.setItem('starting_session_sent', 'true');
             }
