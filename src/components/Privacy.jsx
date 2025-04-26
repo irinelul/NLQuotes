@@ -17,75 +17,85 @@ const Privacy = () => {
         Go Back
       </button>
       <h2>Privacy Policy</h2>
+      <p><strong>Last updated: April 26, 2025</strong></p>
+
       <p>
-        Your privacy is critically important to us at NL Quotes. Our fundamental principle is to collect the absolute minimum information necessary and to be transparent about it. This policy explains our approach.
+        Your privacy is critically important to us at NL Quotes. Our guiding principle is to collect the absolute minimum information necessary and to be transparent about it. This policy explains what we collect and why.
       </p>
 
       <h3>Core Privacy Principles</h3>
       <ul>
         <li><strong>We do not collect personal information.</strong> Your identity remains anonymous.</li>
-        <li><strong>We do not track your individual activity.</strong> No cookies, no browser fingerprinting, no tracking pixels.</li>
+        <li><strong>We do not use cookies</strong> or persistent tracking technologies.</li>
         <li><strong>We do not serve advertisements.</strong></li>
-        <li><strong>We do not sell data.</strong> We don't collect personal data in the first place, and we absolutely do not sell any information.</li>
+        <li><strong>We do not sell or share data with third parties.</strong></li>
       </ul>
 
-      <h3>Information We Collect (Minimal Anonymous Analytics)</h3>
+      <h3>Information We Collect (Anonymous In-House Analytics)</h3>
       <p>
-        We aim to understand basic usage patterns to improve NL Quotes without compromising your privacy.
+        We collect limited anonymous data to understand basic usage patterns and improve NL Quotes, while fully respecting your privacy.
       </p>
       <ul>
         <li>
-          We use <strong>Simple Analytics</strong>, a privacy-focused analytics provider. Simple Analytics provides us with minimal, aggregated website statistics like total page views and referring websites.
+          <strong>User and Session Hashes:</strong> We generate anonymous hashes to distinguish usage sessions without identifying individuals.
         </li>
         <li>
-          <strong>No personal data is collected</strong> through analytics. No IP addresses are stored, no user profiles are built, and individual user sessions are not tracked.
+          <strong>Usage Events:</strong> We track events such as search terms, page views, and user interactions with the site.
         </li>
         <li>
-          Simple Analytics respects <strong>Do Not Track (DNT)</strong> browser settings.
+          <strong>Device and Browser Info:</strong> We collect general details such as device type, operating system, browser name, screen width and height, pixel ratio, preferred language, timezone, region, and city.
         </li>
         <li>
-          Specific usage data within the app (like searches performed or pages visited by an individual) is <strong>not logged or stored</strong>.
+          <strong>Performance Metrics:</strong> We measure page response times and total pages visited to help optimize site performance.
         </li>
+      </ul>
+
+      <h3>What We Do Not Collect</h3>
+      <ul>
+        <li>No IP addresses are stored.</li>
+        <li>No cookies or tracking pixels are used.</li>
+        <li>No personal identifiers like name, email, or account details are collected.</li>
+        <li>No user profiles are created.</li>
       </ul>
 
       <h3>How We Use Information</h3>
       <p>
-        The limited, anonymous, aggregate data we receive from Simple Analytics is used solely to:
+        The anonymous data we collect is used strictly to improve site functionality, monitor performance, and understand general usage trends. We do not use the data for profiling, advertising, or marketing purposes.
       </p>
-      <ul>
-        <li>Provide and improve our services based on overall usage trends.</li>
-        <li>Understand general traffic patterns to enhance user experience.</li>
-        <li>Ensure the website is functioning correctly and securely (e.g., identify pages that might be broken).</li>
-      </ul>
 
       <h3>Data Security</h3>
       <p>
-        While we collect virtually no personal data, we still take reasonable measures to protect the minimal anonymous aggregate statistics we handle. However, please remember that no method of transmission over the Internet is 100% secure.
+        Although we collect only anonymous data, we take reasonable measures to secure the information we store. However, no method of transmission over the Internet is 100% secure.
       </p>
 
       <h3>Third-Party Services & Data Sharing</h3>
       <ul>
-         <li><strong>Analytics:</strong> As mentioned, we use Simple Analytics for minimal, privacy-respecting stats. They do not collect personal data.</li>
-         <li><strong>Data Sharing:</strong> We do not share any information with third parties, except if strictly required by law (which is highly unlikely given we don't collect identifiable data).</li>
-         <li><strong>Data Selling:</strong> We restate: We <strong>never</strong> sell any data.</li>
+        <li><strong>Analytics:</strong> We operate our own in-house analytics system. No third-party analytics services are used.</li>
+        <li><strong>Data Sharing:</strong> We do not share any data with third parties, except if strictly required by law (which is extremely unlikely given the anonymous nature of the data).</li>
+        <li><strong>Data Selling:</strong> We do not, and will never, sell any data.</li>
       </ul>
 
       <h3>Cookies and Tracking</h3>
-       <p>
-         We <strong>do not use cookies</strong> or any other persistent tracking technologies to monitor your individual activity or Browse history on our site or across the web.
-       </p>
+      <p>
+        We do not use cookies or any other persistent tracking technologies to monitor your browsing history on our site or across the web.
+      </p>
 
       <h3>Changes to This Policy</h3>
       <p>
         We may update this Privacy Policy occasionally. Any changes will be posted on this page. We encourage you to review this policy periodically.
       </p>
 
+      <h3>Change Log</h3>
+      <ul>
+        <li><strong>April 26, 2025:</strong> Updated our Privacy Policy to better reflect the anonymous analytics data collected (hashed identifiers, device/browser information, search terms, page views). Transitioned from using Simple Analytics to our own in-house analytics system. No new data collection was introduced — this is a clarification of existing practices.</li>
+      </ul>
+
       <h3>Contact</h3>
       <p>
-        If you have any questions about this Privacy Policy or encounter any issues, please don't hesitate to contact us at quotes.contacts@gmail.com.
+        If you have any questions about this Privacy Policy or encounter any issues, please contact us at quotes.contacts@gmail.com.
       </p>
     </div>
   );
 };
 
-export default Privacy; 
+export default Privacy;

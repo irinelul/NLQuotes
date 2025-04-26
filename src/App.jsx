@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import query from './services/quotes';
 import { useNavigate, Routes, Route, useSearchParams, useLocation } from 'react-router-dom';
 import Disclaimer from './components/Disclaimer';
@@ -13,6 +13,8 @@ import { Quotes } from './components/Quotes';
 import { useSearchState } from './hooks/useSearchState';
 import Privacy from './components/Privacy';
 import SearchPage from './components/SearchPage';
+import getUserHash from './utils/userHash';
+import { useAnalyticsTracker, sendAnalytics } from './hooks/useAnalyticsTracker';
 
 // Custom hook for Simple Analytics pageview
 function useSimpleAnalyticsPageview() {
@@ -26,6 +28,7 @@ function useSimpleAnalyticsPageview() {
 
 const App = () => {
     useSimpleAnalyticsPageview();
+    const sessionId = useAnalyticsTracker();    
     const { state, updateState, resetState, updateSearchParams } = useSearchState();
     const [quotes, setQuotes] = useState([]);
     const [error, setError] = useState(null);
@@ -80,6 +83,8 @@ const App = () => {
     useEffect(() => {
         setYearInput(year);
     }, [year]);
+
+    const prevSearchRef = useRef('');
 
     // Effect to handle URL parameter changes
     useEffect(() => {
@@ -138,7 +143,6 @@ const App = () => {
     const handlePageChange = (newPage) => {
         navigate(buildSearchUrl({ page: newPage }));
     };
-
     const handleGameChange = (e) => {
         const value = e.target.value;
         navigate(buildSearchUrl({ game: value, page: 1 }));
@@ -232,8 +236,11 @@ const App = () => {
         navigate("/");
     };
 
-    // Define fetchQuotes in App.jsx
+    // Record the time when the page was loaded
+    const pageLoadTime = performance.now();
+
     const fetchQuotes = async (pageNum, channel, year, sort, strictMode, game) => {
+        const fetchStart = performance.now();
         try {
             const response = await query.getAll(
                 searchTerm,
@@ -249,6 +256,37 @@ const App = () => {
             setTotalPages(Math.ceil(response.total / 10));
             setTotalQuotes(response.totalQuotes || 0);
             await new Promise(resolve => setTimeout(resolve, 300));
+            const responseTimeMs = Math.round(performance.now() - fetchStart);
+            // Send analytics for search or pagination
+            if (pageNum === 1) {
+                sendAnalytics('search', {
+                    path: '/search',
+                    search_term: searchTerm,
+                    channel,
+                    year,
+                    sort_order: sort,
+                    strict,
+                    session_id: sessionId,
+                    page: 1,
+                    total_pages: Math.ceil(response.total / 10),
+                    response_time_ms: responseTimeMs,
+                    game: game
+                });
+            } else {
+                sendAnalytics('pagination', {
+                    path: '/search',
+                    search_term: searchTerm,
+                    channel,
+                    year,
+                    sort_order: sort,
+                    strict,
+                    page: pageNum,
+                    total_pages: Math.ceil(response.total / 10),
+                    session_id: sessionId,
+                    response_time_ms: responseTimeMs,
+                    game: game
+                });
+            }
         } catch (error) {
             console.error('Error fetching quotes:', error);
             setError('Unable to connect to database.');
@@ -259,6 +297,20 @@ const App = () => {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        if (window.location.pathname === '/' && !sessionStorage.getItem('starting_session_sent')) {
+            const responseTimeMs = Math.round(performance.now() - pageLoadTime);
+            sendAnalytics('starting_session', {
+                path: window.location.pathname,
+                session_id: sessionId,
+                referrer: document.referrer,
+                response_time_ms: responseTimeMs,
+                game: game
+            });
+            sessionStorage.setItem('starting_session_sent', 'true');
+        }
+    }, [sessionId, game]);
 
     return (
         <Routes>
