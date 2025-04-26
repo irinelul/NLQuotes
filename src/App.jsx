@@ -296,23 +296,18 @@ const App = () => {
         } finally {
             setLoading(false);
         }
-        useEffect(() => {
-            console.log('[starting_session effect] path:', window.location.pathname, 'hasSearched:', hasSearched);
-            if (
-                window.location.pathname === '/' &&
-                hasSearched === false &&
-                !sessionStorage.getItem('starting_session_sent')
-            ) {
-                console.log('[starting_session effect] Sending starting_session event');
-                sendAnalytics('starting_session', {
-                    path: window.location.pathname,
-                    session_id: sessionId,
-                    referrer: document.referrer
-                });
-                sessionStorage.setItem('starting_session_sent', 'true');
-            }
-        }, [sessionId, hasSearched]);
     };
+
+    useEffect(() => {
+        if (window.location.pathname === '/' && !sessionStorage.getItem('starting_session_sent')) {
+            sendAnalytics('starting_session', {
+                path: window.location.pathname,
+                session_id: sessionId,
+                referrer: document.referrer
+            });
+            sessionStorage.setItem('starting_session_sent', 'true');
+        }
+    }, [sessionId]);
 
     return (
         <Routes>
