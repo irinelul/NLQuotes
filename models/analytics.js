@@ -116,8 +116,9 @@ const analyticsModel = {
             region,
             city,
             domain,
-            session_id
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+            session_id,
+            response_time_ms
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
           RETURNING id
         `;
 
@@ -141,7 +142,8 @@ const analyticsModel = {
           eventData.region || null,
           eventData.city || null,
           eventData.domain || null,
-          eventData.session_id || null
+          eventData.session_id || null,
+          eventData.response_time_ms || null
         ];
       } else if (eventData.type === 'starting_session') {
         // Handle starting_session events (session start/page load)
@@ -170,8 +172,9 @@ const analyticsModel = {
             region,
             city,
             domain,
-            session_id
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+            session_id,
+            response_time_ms
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
           RETURNING id
         `;
 
@@ -195,7 +198,8 @@ const analyticsModel = {
           eventData.region || null,
           eventData.city || null,
           eventData.domain || null,
-          eventData.session_id || null
+          eventData.session_id || null,
+          eventData.response_time_ms || null
         ];
       } else if (eventData.type === 'search') {
         // Handle search events

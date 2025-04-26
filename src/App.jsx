@@ -86,28 +86,6 @@ const App = () => {
 
     const prevSearchRef = useRef('');
 
-    useEffect(() => {
-        if (
-            hasSearched &&
-            page === 1 &&
-            searchTerm.trim().length > 2 &&
-            totalPages > 0 &&
-            prevSearchRef.current !== searchTerm
-        ) {
-            sendAnalytics('search', {
-                path: '/search',
-                search_term: searchTerm,
-                channel,
-                year,
-                sort_order: sort,
-                strict,
-                session_id: sessionId,
-                page: 1,
-                total_pages: totalPages
-            });
-            prevSearchRef.current = searchTerm;
-        }
-    }, [hasSearched, page, searchTerm, totalPages, channel, year, sort, strict, sessionId]);
     // Effect to handle URL parameter changes
     useEffect(() => {
         if (searchTerm.trim().length > 2) {
@@ -164,18 +142,6 @@ const App = () => {
 
     const handlePageChange = (newPage) => {
         navigate(buildSearchUrl({ page: newPage }));
-        // Analytics for pagination
-        sendAnalytics('pagination', {
-            path: '/search',
-            search_term: searchTerm,
-            channel,
-            year,
-            sort_order: sort,
-            strict,
-            page: newPage,
-            total_pages: totalPages,
-            session_id: sessionId
-        });
     };
     const handleGameChange = (e) => {
         const value = e.target.value;
@@ -270,8 +236,11 @@ const App = () => {
         navigate("/");
     };
 
-    // Define fetchQuotes in App.jsx
+    // Record the time when the page was loaded
+    const pageLoadTime = performance.now();
+
     const fetchQuotes = async (pageNum, channel, year, sort, strictMode, game) => {
+        const fetchStart = performance.now();
         try {
             const response = await query.getAll(
                 searchTerm,
@@ -287,6 +256,35 @@ const App = () => {
             setTotalPages(Math.ceil(response.total / 10));
             setTotalQuotes(response.totalQuotes || 0);
             await new Promise(resolve => setTimeout(resolve, 300));
+            const responseTimeMs = Math.round(performance.now() - fetchStart);
+            // Send analytics for search or pagination
+            if (pageNum === 1) {
+                sendAnalytics('search', {
+                    path: '/search',
+                    search_term: searchTerm,
+                    channel,
+                    year,
+                    sort_order: sort,
+                    strict,
+                    session_id: sessionId,
+                    page: 1,
+                    total_pages: Math.ceil(response.total / 10),
+                    response_time_ms: responseTimeMs
+                });
+            } else {
+                sendAnalytics('pagination', {
+                    path: '/search',
+                    search_term: searchTerm,
+                    channel,
+                    year,
+                    sort_order: sort,
+                    strict,
+                    page: pageNum,
+                    total_pages: Math.ceil(response.total / 10),
+                    session_id: sessionId,
+                    response_time_ms: responseTimeMs
+                });
+            }
         } catch (error) {
             console.error('Error fetching quotes:', error);
             setError('Unable to connect to database.');
@@ -300,10 +298,12 @@ const App = () => {
 
     useEffect(() => {
         if (window.location.pathname === '/' && !sessionStorage.getItem('starting_session_sent')) {
+            const responseTimeMs = Math.round(performance.now() - pageLoadTime);
             sendAnalytics('starting_session', {
                 path: window.location.pathname,
                 session_id: sessionId,
-                referrer: document.referrer
+                referrer: document.referrer,
+                response_time_ms: responseTimeMs
             });
             sessionStorage.setItem('starting_session_sent', 'true');
         }
