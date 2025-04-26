@@ -137,17 +137,17 @@ export function useAnalyticsTracker() {
 
       // Get current URL and parameters at unload time
       const currentUrl = new URL(window.location.href);
-      const query = parseQueryParams(currentUrl.search);
 
       // Only send analytics if the user spent at least 1 second on the page
       if (duration >= 1) {
-        sendAnalytics('page_view', {
+        sendAnalytics('ending_session', {
           path: currentUrl.pathname,
-          query_params: query,
+          query_params: {}, //Didn't like to send query params so i turned it off
           referrer: document.referrer,
           start_time: startTimeISORef.current,
           duration_seconds: duration,
-          session_id: sessionIdRef.current
+          session_id: sessionIdRef.current,
+          event:'unload' //Manually added event to track the end of the session
         });
       }
     }
