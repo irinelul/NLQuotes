@@ -10,7 +10,7 @@ import slowDown from 'express-slow-down';
 import pkg from 'pg';
 import path from 'path';
 import { fileURLToPath } from 'url';
-
+import analyticsModel from './models/analytics.js';
 const { Pool } = pkg;
 
 // Load environment variables
@@ -543,5 +543,34 @@ process.on('SIGTERM', () => {
   });
 });
 
+// --- Analytics endpoint ---
+app.post('/analytics', async (req, res) => {
+    try {
+      console.log('POST /analytics hit', req.body);
+
+      // Check database connection first
+      const isConnected = await analyticsModel.checkConnection();
+      if (!isConnected) {
+        console.error('Analytics database connection failed');
+        return res.status(500).json({ error: 'Database connection failed' });
+      }
+
+      // Validate request body
+      if (!req.body || typeof req.body !== 'object') {
+        console.error('Invalid request body:', req.body);
+        return res.status(400).json({ error: 'Invalid request body' });
+      }
+
+      // Store the analytics event
+      await analyticsModel.storeEvent(req.body);
+      res.status(204).end();
+    } catch (error) {
+      console.error('Error in analytics endpoint:', error);
+      res.status(500).json({ 
+        error: 'Failed to store analytics',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  });
 
 
