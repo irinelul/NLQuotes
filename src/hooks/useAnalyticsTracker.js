@@ -88,11 +88,32 @@ const sendAnalytics = (type, data) => {
     city
   };
 
-  navigator.sendBeacon(
-    '/analytics',
-    new Blob([JSON.stringify(payload)], { type: 'application/json' })
-  );
-};
+  const getAnalyticsUrl = () => {
+    if (
+      window.location.hostname === 'localhost' &&
+      window.location.port === '5173'
+    ) {
+      return 'http://localhost:3001/analytics';
+    }
+    return '/analytics';
+  };
+
+  // TEMP: Use fetch instead of sendBeacon for debugging
+  fetch(getAnalyticsUrl(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    keepalive: true
+  }).then(res => {
+    console.log('Analytics POST response:', res.status);
+  }).catch(err => {
+    console.error('Analytics POST error:', err);
+  });
+
+  // navigator.sendBeacon(
+  //   getAnalyticsUrl(),
+  //   new Blob([JSON.stringify(payload)], { type: 'application/json' })
+  };
 
 export function useAnalyticsTracker() {
   const startTimeRef = useRef(Date.now());
