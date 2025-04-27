@@ -11,6 +11,9 @@ const NLDLE = () => {
   const [isCorrect, setIsCorrect] = useState(false);
   const [roundResults, setRoundResults] = useState(Array(5).fill(null));
   const [animateResult, setAnimateResult] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(true);
+  const [streak, setStreak] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
 
   // Sample word pairs with earliest reference data
   const wordPairs = [
@@ -27,12 +30,12 @@ const NLDLE = () => {
       }
     },
     {
-      option1: { 
+      option2: { 
         text: "kingston, ontario", 
         count: 148,
         earliestReference: "04 November 2010"
       },
-      option2: { 
+      option1: { 
         text: "ontario, canada", 
         count: 34,
         earliestReference: "04 November 2010"
@@ -91,6 +94,12 @@ const NLDLE = () => {
     
     if (isCorrectAnswer) {
       setScore(score + 1);
+      setStreak(streak + 1);
+      if (streak + 1 > bestStreak) {
+        setBestStreak(streak + 1);
+      }
+    } else {
+      setStreak(0);
     }
   };
 
@@ -113,10 +122,33 @@ const NLDLE = () => {
     setShowResult(false);
     setAnimateResult(false);
     setRoundResults(Array(5).fill(null));
+    setStreak(0);
   };
 
   const handleBack = () => {
     navigate('/');
+  };
+
+  const handleStartGame = () => {
+    setShowTutorial(false);
+  };
+
+  const handleFeedbackSubmit = async (feedback) => {
+    try {
+      await query.flagQuote({
+        quote: "NLDLE Feedback",
+        searchTerm: "NLDLE Feedback",
+        timestamp: "0",
+        videoId: "nldle-feedback",
+        title: "NLDLE Feedback",
+        channel: "User Feedback",
+        reason: feedback
+      });
+      alert('Thank you for your feedback!');
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      alert('Unable to submit feedback. Please try again later.');
+    }
   };
 
   const renderProgressIndicator = () => {
@@ -174,6 +206,75 @@ const NLDLE = () => {
     });
   };
 
+  if (showTutorial) {
+    return (
+      <div style={{ maxWidth: 800, margin: '2rem auto', padding: '2rem', background: 'var(--surface-color)', borderRadius: 12 }}>
+        <div style={{ 
+          background: 'linear-gradient(135deg, #2196F3, #4CAF50)',
+          padding: '2rem',
+          borderRadius: '12px',
+          marginBottom: '2rem',
+          textAlign: 'center',
+          color: 'white'
+        }}>
+          <h2 style={{ fontSize: '2.5rem', margin: 0 }}>Welcome to NLDLE!</h2>
+        </div>
+
+        <div style={{ 
+          background: 'rgba(255,255,255,0.1)',
+          padding: '1.5rem',
+          borderRadius: '8px',
+          marginBottom: '1.5rem'
+        }}>
+          <h3 style={{ marginTop: 0 }}>How to Play</h3>
+          <ol style={{ paddingLeft: '1.5rem', marginBottom: '1.5rem' }}>
+            <li>You'll be shown two phrases from NL's videos</li>
+            <li>Guess which phrase was said more frequently</li>
+            <li>Each phrase shows when it was first mentioned</li>
+            <li>Pay attention to context - words can have multiple meanings</li>
+            <li>Try to maintain a streak of correct answers!</li>
+          </ol>
+
+          <div style={{ 
+            background: 'rgba(255,255,255,0.1)',
+            padding: '1rem',
+            borderRadius: '8px',
+            marginBottom: '1.5rem',
+            fontSize: '0.9rem',
+            color: '#ccc'
+          }}>
+            <p style={{ margin: 0 }}>
+              <strong>Note:</strong> These counts are based on exact term matches. For example, "cat" and "cats" are counted separately.
+              This is only a prototype, and the counts are manually inputted, and only has these 5 pairs for now.
+              Will build more soon, but for now, let me know what you think!
+            </p>
+          </div>
+
+          <button
+            onClick={handleStartGame}
+            style={{
+              padding: '0.8rem 1.5rem',
+              background: '#4CAF50',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '1.1rem',
+              fontWeight: 'bold',
+              transition: 'all 0.3s ease',
+              boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+              width: '100%'
+            }}
+            onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'}
+            onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
+          >
+            Start Game
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (gameOver) {
     return (
       <div style={{ maxWidth: 800, margin: '2rem auto', padding: '2rem', background: 'var(--surface-color)', borderRadius: 12 }}>
@@ -187,8 +288,65 @@ const NLDLE = () => {
         }}>
           <h2 style={{ fontSize: '2.5rem', margin: 0 }}>Game Over!</h2>
           <p style={{ fontSize: '1.5rem', margin: '1rem 0' }}>Your final score: {score} out of {wordPairs.length}</p>
+          <p style={{ fontSize: '1.2rem', margin: '0.5rem 0' }}>Best streak: {bestStreak}</p>
         </div>
         {renderProgressIndicator()}
+
+        <div style={{ 
+          background: 'rgba(255,255,255,0.1)',
+          padding: '1.5rem',
+          borderRadius: '8px',
+          marginBottom: '1.5rem'
+        }}>
+          <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>How was your experience?</h3>
+          <p style={{ marginBottom: '1rem', color: '#ccc' }}>
+            We'd love to hear your thoughts on NLDLE! What did you like? What could be improved?
+            Also, let me know if you think of any other pairs I should add, for now manually.
+          </p>
+          <textarea
+            style={{
+              width: '100%',
+              padding: '0.8rem',
+              borderRadius: '8px',
+              background: 'rgba(255,255,255,0.1)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              color: 'white',
+              fontSize: '1rem',
+              marginBottom: '1rem',
+              minHeight: '100px',
+              resize: 'vertical'
+            }}
+            placeholder="Share your feedback..."
+          />
+          <button
+            onClick={() => {
+              const feedback = document.querySelector('textarea').value;
+              if (feedback.trim()) {
+                handleFeedbackSubmit(feedback);
+              } else {
+                alert('Please enter some feedback before submitting.');
+              }
+            }}
+            style={{
+              padding: '0.8rem 1.5rem',
+              background: '#2196F3',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '1.1rem',
+              fontWeight: 'bold',
+              transition: 'all 0.3s ease',
+              boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+              width: '100%'
+            }}
+            onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'}
+            onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
+          >
+            Submit Feedback
+          </button>
+        </div>
+
         <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'center', gap: '1rem' }}>
           <button
             onClick={handlePlayAgain}
@@ -246,6 +404,11 @@ const NLDLE = () => {
         <h2 style={{ fontSize: '2.5rem', margin: 0 }}>NLDLE</h2>
         <p style={{ fontSize: '1.2rem', margin: '0.5rem 0' }}>Round {currentRound + 1} of {wordPairs.length}</p>
         <p style={{ fontSize: '1.2rem', margin: '0.5rem 0' }}>Score: {score}</p>
+        {streak > 0 && (
+          <p style={{ fontSize: '1.2rem', margin: '0.5rem 0', color: '#4CAF50' }}>
+            🔥 Streak: {streak}
+          </p>
+        )}
       </div>
 
       <div style={{ 
@@ -258,7 +421,7 @@ const NLDLE = () => {
       }}>
         <p style={{ margin: 0 }}>
           <strong>Note:</strong> These counts are based on exact term matches. For example, "cat" and "cats" are counted separately.
-          The earliest reference is the first time the phrase was said in a video, pay attention to the context, and how many meanings a word can have. 
+          The earliest reference is the first time the phrase was said in a video, pay attention to the context, and how many meanings a word can have.
         </p>
       </div>
 
