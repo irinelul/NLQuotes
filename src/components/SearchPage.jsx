@@ -6,6 +6,7 @@ import { Quotes } from './Quotes';
 import { PaginationButtons } from './PaginationButtons';
 import { Footer } from './Footer';
 import { FeedbackModal } from './Modals/FeedbackModal';
+import { useNavigate } from 'react-router-dom';
 
 const SearchPage = ({
     searchInput,
@@ -41,126 +42,147 @@ const SearchPage = ({
     handleFeedbackSubmit,
     handleLogoClick,
     handlePageChange,
-}) => (
-    <div className='main-container'>
-        <div className="logo-container" onClick={handleLogoClick}>
-            <img 
-                src="/NLogo.webp" 
-                alt="Northernlion Logo"
-                onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = "/NLogo.png";
-                }}
-            />
-        </div>
-        <div className="input-container">
-            <button
-                onClick={handleRandomQuotes}
-                disabled={loading}
-                style={{
-                    opacity: loading ? 0.7 : 1,
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                }}
-            >
-                {loading ? 'Loading...' : 'Random Quotes'}
-            </button>
-            <input
-                type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                onKeyDown={handleKeyPress}
-                placeholder="Search quotes..."
-                className="search-input"
-                style={{ boxSizing: "border-box" }}
-            />
-            <button onClick={handleSearch}>
-                Search
-            </button>
-            <button
-                onClick={handleResetSearch}
-                style={{ marginLeft: '0.5rem' }}
-            >
-                Reset Search
-            </button>
-        </div>
+}) => {
+    const navigate = useNavigate();
 
-        {error && <div className="error-message">{error}</div>}
+    return (
+        <div className='main-container'>
+            <div className="logo-container" onClick={handleLogoClick}>
+                <img 
+                    src="/NLogo.webp" 
+                    alt="Northernlion Logo"
+                    onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = "/NLogo.png";
+                    }}
+                />
+            </div>
+            <div className="input-container">
+                <button
+                    onClick={handleRandomQuotes}
+                    disabled={loading}
+                    style={{
+                        opacity: loading ? 0.7 : 1,
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                    }}
+                >
+                    {loading ? 'Loading...' : 'Random Quotes'}
+                </button>
+                <input
+                    type="text"
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    onKeyDown={handleKeyPress}
+                    placeholder="Search quotes..."
+                    className="search-input"
+                    style={{ boxSizing: "border-box" }}
+                />
+                <button onClick={handleSearch}>
+                    Search
+                </button>
+                <button
+                    onClick={handleResetSearch}
+                    style={{ marginLeft: '0.5rem' }}
+                >
+                    Reset Search
+                </button>
+                <button
+                    onClick={() => navigate('/nldle')}
+                    style={{ 
+                        marginLeft: '0.5rem',
+                        background: '#4CAF50',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        padding: '0.5rem 1rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease'
+                    }}
+                    onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'}
+                    onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
+                >
+                    🎮 Play NLDLE
+                </button>
+            </div>
 
-        <div className="radio-group channel-tooltip">
-            <ChannelRadioButton
-                selectedChannel={channel}
-                handleChannelChange={handleChannelChange}
-                id="all"
-                name="All Sources"
-            />
-            <ChannelRadioButton
-                selectedChannel={channel}
-                handleChannelChange={handleChannelChange}
-                id="librarian"
-                name="Librarian"
-            />
-            <ChannelRadioButton
-                selectedChannel={channel}
-                handleChannelChange={handleChannelChange}
-                id="northernlion"
-                name="Northernlion"
-            />
-        </div>
-        
-        <Filters 
-            selectedYear={yearInput}
-            handleYearChange={handleYearChange}
-            sortOrder={sort}
-            handleSortChange={handleSortChange}
-            selectedGame={game}
-            handleGameChange={handleGameChange}
-            handleGameReset={handleGameReset}
-            games={games}
-            searchTerm={searchTerm}
-            page={page}
-            selectedChannel={channel}
-            strict={strict} 
-            yearInput={yearInput}
-            setYearInput={setYearInput}
-        />
+            {error && <div className="error-message">{error}</div>}
 
-        {!hasSearched && <Disclaimer />}
-                
-        {loading && <div>Loading...</div>}
-        {hasSearched && (
-            <>
-                <div className="total-quotes">
-                    Total quotes found: {numberFormatter.format(totalQuotes)}
-                </div>
-                <Quotes quotes={quotes} searchTerm={searchTerm} totalQuotes={totalQuotes} />
-            </>
-        )}
-
-        {quotes.length > 0 && (
-            <PaginationButtons
+            <div className="radio-group channel-tooltip">
+                <ChannelRadioButton
+                    selectedChannel={channel}
+                    handleChannelChange={handleChannelChange}
+                    id="all"
+                    name="All Sources"
+                />
+                <ChannelRadioButton
+                    selectedChannel={channel}
+                    handleChannelChange={handleChannelChange}
+                    id="librarian"
+                    name="Librarian"
+                />
+                <ChannelRadioButton
+                    selectedChannel={channel}
+                    handleChannelChange={handleChannelChange}
+                    id="northernlion"
+                    name="Northernlion"
+                />
+            </div>
+            
+            <Filters 
+                selectedYear={yearInput}
+                handleYearChange={handleYearChange}
+                sortOrder={sort}
+                handleSortChange={handleSortChange}
+                selectedGame={game}
+                handleGameChange={handleGameChange}
+                handleGameReset={handleGameReset}
+                games={games}
+                searchTerm={searchTerm}
                 page={page}
-                totalPages={totalPages}
-                handlePageChange={handlePageChange}
+                selectedChannel={channel}
+                strict={strict} 
+                yearInput={yearInput}
+                setYearInput={setYearInput}
             />
-        )}
 
-        <Footer />
+            {!hasSearched && <Disclaimer />}
+                    
+            {loading && <div>Loading...</div>}
+            {hasSearched && (
+                <>
+                    <div className="total-quotes">
+                        Total quotes found: {numberFormatter.format(totalQuotes)}
+                    </div>
+                    <Quotes quotes={quotes} searchTerm={searchTerm} totalQuotes={totalQuotes} />
+                </>
+            )}
 
-        {/* Improved desktop-only feedback button */}
-        <button
-            className="floating-feedback-button"
-            onClick={() => setFeedbackModalOpen(true)}
-            disabled={submittingFeedback}
-        >
-            💡 Send Feedback
-        </button>
+            {quotes.length > 0 && (
+                <PaginationButtons
+                    page={page}
+                    totalPages={totalPages}
+                    handlePageChange={handlePageChange}
+                />
+            )}
 
-        <FeedbackModal
-            isOpen={feedbackModalOpen}
-            onClose={() => setFeedbackModalOpen(false)}
-            onSubmit={handleFeedbackSubmit}
-        />
-    </div>
-);
+            <Footer />
+
+            {/* Improved desktop-only feedback button */}
+            <button
+                className="floating-feedback-button"
+                onClick={() => setFeedbackModalOpen(true)}
+                disabled={submittingFeedback}
+            >
+                💡 Send Feedback
+            </button>
+
+            <FeedbackModal
+                isOpen={feedbackModalOpen}
+                onClose={() => setFeedbackModalOpen(false)}
+                onSubmit={handleFeedbackSubmit}
+            />
+        </div>
+    );
+};
 
 export default SearchPage; 

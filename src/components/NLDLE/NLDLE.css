@@ -1,0 +1,272 @@
+.nldle-container {
+  max-width: 800px;
+  margin: 1rem auto;
+  padding: 1rem;
+  background: var(--surface-color);
+  border-radius: 12px;
+}
+
+.nldle-header {
+  background: linear-gradient(135deg, #2196F3, #4CAF50);
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  color: white;
+}
+
+.nldle-title {
+  font-size: 2.5rem;
+  margin: 0;
+}
+
+.nldle-subtitle {
+  font-size: 1.2rem;
+  margin: 0.5rem 0;
+}
+
+.nldle-streak {
+  font-size: 1.2rem;
+  margin: 0.5rem 0;
+  color: white;
+  font-weight: bold;
+}
+
+.nldle-note {
+  background: rgba(255,255,255,0.1);
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  color: #ccc;
+}
+
+.nldle-options {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.nldle-option-button {
+  flex: 1;
+  padding: 1.5rem;
+  background: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nldle-option-button:hover {
+  transform: translateY(-2px);
+}
+
+.nldle-option-button:disabled {
+  cursor: default;
+  transform: none;
+  opacity: 0.7;
+  background: #666;
+  color: white;
+}
+
+.nldle-option-button.disabled {
+  background: #666;
+  color: white;
+  opacity: 0.7;
+}
+
+.nldle-option-button.correct {
+  background: #4CAF50;
+  color: white;
+}
+
+.nldle-option-button.incorrect {
+  background: #f44336;
+  color: white;
+}
+
+.nldle-option-button.disabled {
+  background: #666;
+}
+
+.nldle-option-date {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  font-style: italic;
+  color: white;
+}
+
+.nldle-result {
+  margin-top: 2rem;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.5s ease;
+}
+
+.nldle-result.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.nldle-result-correct {
+  color: #4CAF50;
+  font-weight: bold;
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.nldle-result-incorrect {
+  color: #f44336;
+  font-weight: bold;
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.nldle-result-container {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.nldle-result-card {
+  flex: 1;
+  background: rgba(255,255,255,0.1);
+  padding: 1.5rem;
+  border-radius: 8px;
+  text-align: left;
+}
+
+.nldle-result-link {
+  color: #2196F3;
+  text-decoration: none;
+  font-size: 0.9rem;
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.3rem 0.8rem;
+  background: rgba(33, 150, 243, 0.1);
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.nldle-result-link:hover {
+  background: rgba(33, 150, 243, 0.2);
+}
+
+.nldle-button {
+  padding: 0.8rem 1.5rem;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.nldle-button:hover {
+  transform: translateY(-2px);
+}
+
+.nldle-button.secondary {
+  background: #f44336;
+  color: white;
+}
+
+.nldle-feedback {
+  background: rgba(255,255,255,0.1);
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.nldle-feedback-textarea {
+  width: 100%;
+  padding: 0.8rem;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: white;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  min-height: 100px;
+  resize: vertical;
+}
+
+/* Mobile styles */
+@media (max-width: 768px) {
+  .nldle-container {
+    padding: 1rem;
+  }
+
+  .nldle-header {
+    padding: 1.5rem;
+  }
+
+  .nldle-title {
+    font-size: 2rem;
+  }
+
+  .nldle-subtitle {
+    font-size: 1rem;
+  }
+
+  .nldle-streak {
+    font-size: 1rem;
+  }
+
+  .nldle-note {
+    padding: 0.8rem;
+    font-size: 0.8rem;
+  }
+
+  .nldle-options {
+    flex-direction: column;
+  }
+
+  .nldle-option-button {
+    padding: 1rem;
+    font-size: 1rem;
+  }
+
+  .nldle-option-date {
+    font-size: 0.8rem;
+  }
+
+  .nldle-result-container {
+    flex-direction: column;
+  }
+
+  .nldle-result-card {
+    padding: 1rem;
+  }
+
+  .nldle-result-link {
+    font-size: 0.8rem;
+  }
+
+  .nldle-button {
+    padding: 0.6rem 1.2rem;
+    font-size: 1rem;
+    width: 100%;
+  }
+
+  .nldle-feedback {
+    padding: 1rem;
+  }
+
+  .nldle-feedback-textarea {
+    font-size: 0.9rem;
+    min-height: 80px;
+  }
+} 
