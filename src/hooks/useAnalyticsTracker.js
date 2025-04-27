@@ -70,6 +70,14 @@ function getScreenSize() {
 
 // Function to send analytics data
 const sendAnalytics = (type, data) => {
+  // Check if analytics is opted out
+  const isOptedOut = localStorage.getItem('analytics_opt_out') === 'true';
+  
+  if (isOptedOut) {
+    console.log('Analytics skipped - user has opted out');
+    return;
+  }
+
   console.log('sendAnalytics called:', type, data);
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const { region, city } = parseTimezone(timezone);
@@ -87,7 +95,8 @@ const sendAnalytics = (type, data) => {
     timezone,
     region,
     city,
-    domain: window.location.hostname
+    domain: window.location.hostname,
+    analytics_opted_out: isOptedOut
   };
 
   const getAnalyticsUrl = () => {
