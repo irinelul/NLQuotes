@@ -13,6 +13,7 @@ import { Quotes } from './components/Quotes';
 import { useSearchState } from './hooks/useSearchState';
 import Privacy from './components/Privacy';
 import SearchPage from './components/SearchPage';
+import NLDLE from './components/NLDLE';
 import getUserHash from './utils/userHash';
 import { useAnalyticsTracker, sendAnalytics } from './hooks/useAnalyticsTracker';
 
@@ -387,6 +388,7 @@ const App = () => {
                 handlePageChange={handlePageChange}
             />} />
             <Route path="/privacy" element={<Privacy />} />
+            <Route path="/nldle" element={<NLDLE />} />
         </Routes>
     );
 };
