@@ -1,8 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAnalyticsOptOut } from '../hooks/useAnalyticsOptOut';
 
 const Privacy = () => {
   const navigate = useNavigate();
+  const { isOptedOut, toggleOptOut } = useAnalyticsOptOut();
+
   const handleBack = () => {
     navigate('/');
   };
@@ -22,6 +25,41 @@ const Privacy = () => {
       <p>
         Your privacy is critically important to us at NL Quotes. Our guiding principle is to collect the absolute minimum information necessary and to be transparent about it. This policy explains what we collect and why.
       </p>
+
+      <h3>Analytics Collection</h3>
+      <p>
+        By default, we collect anonymous analytics to help improve our service. This includes information about how you use the site, such as page views and search terms. All data is anonymous and cannot be used to identify you.
+      </p>
+      <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1rem' }}>
+        Note: Analytics collection is enabled by default. You can opt out at any time using the button below.
+      </p>
+      <div style={{ marginBottom: '1.5rem' }}>
+        <button
+          type="button"
+          onClick={toggleOptOut}
+          style={{
+            background: isOptedOut ? '#1976d2' : '#f44336',
+            color: 'white',
+            border: 'none',
+            borderRadius: 6,
+            padding: '0.5rem 1rem',
+            cursor: 'pointer',
+            fontSize: '1rem',
+            fontWeight: 500,
+            marginBottom: '0.5rem'
+          }}
+        >
+          {isOptedOut ? 'Enable Analytics' : 'Disable Analytics'}
+        </button>
+        <p style={{ 
+          margin: 0,
+          fontSize: '0.9rem'
+        }}>
+          {isOptedOut 
+            ? '✓ Analytics is currently disabled. No usage data will be collected.'
+            : '✓ Analytics is currently enabled. Anonymous usage data will be collected to help improve the service.'}
+        </p>
+      </div>
 
       <h3>Core Privacy Principles</h3>
       <ul>
