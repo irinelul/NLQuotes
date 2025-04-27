@@ -14,8 +14,14 @@ const NLDLE = () => {
   const [roundResults, setRoundResults] = useState(Array(5).fill(null));
   const [animateResult, setAnimateResult] = useState(false);
   const [showTutorial, setShowTutorial] = useState(true);
-  const [streak, setStreak] = useState(0);
-  const [bestStreak, setBestStreak] = useState(0);
+  const [streak, setStreak] = useState(() => {
+    const savedStreak = localStorage.getItem('nldleStreak');
+    return savedStreak ? parseInt(savedStreak) : 0;
+  });
+  const [bestStreak, setBestStreak] = useState(() => {
+    const savedBestStreak = localStorage.getItem('nldleBestStreak');
+    return savedBestStreak ? parseInt(savedBestStreak) : 0;
+  });
 
   // Sample word pairs with earliest reference data
   const wordPairs = [
@@ -100,12 +106,20 @@ const NLDLE = () => {
     
     if (isCorrectAnswer) {
       setScore(score + 1);
-      setStreak(streak + 1);
-      if (streak + 1 > bestStreak) {
-        setBestStreak(streak + 1);
+      // Only update streak if this is the last round and we got a perfect score
+      if (currentRound === wordPairs.length - 1 && score + 1 === wordPairs.length) {
+        const newStreak = streak + 1;
+        setStreak(newStreak);
+        localStorage.setItem('nldleStreak', newStreak.toString());
+        
+        if (newStreak > bestStreak) {
+          setBestStreak(newStreak);
+          localStorage.setItem('nldleBestStreak', newStreak.toString());
+        }
       }
     } else {
       setStreak(0);
+      localStorage.setItem('nldleStreak', '0');
     }
   };
 
@@ -128,11 +142,36 @@ const NLDLE = () => {
     setShowResult(false);
     setAnimateResult(false);
     setRoundResults(Array(5).fill(null));
-    setStreak(0);
+    // Don't reset streak here since we want to persist it
   };
 
   const handleBack = () => {
     navigate('/');
+  };
+
+  const handleCopyResults = () => {
+    const squares = roundResults.map(result => result === true ? '🟩 ' : '🟪 ').join('');
+    
+    const date = new Date();
+    const day = date.getDate();
+    const month = date.toLocaleString('default', { month: 'long' });
+    const year = date.getFullYear();
+    const formattedDate = `${day} ${month} ${year}`;
+    
+    const resultText = `NLdle Results:
+Score: ${score}/${wordPairs.length}
+Best Streak: ${bestStreak} 
+${squares}
+${formattedDate}`;
+
+    navigator.clipboard.writeText(resultText)
+      .then(() => {
+        alert('Results copied to clipboard!');
+      })
+      .catch(err => {
+        console.error('Failed to copy results:', err);
+        alert('Failed to copy results. Please try again.');
+      });
   };
 
   const handleFeedbackSubmit = async (feedback) => {
@@ -250,20 +289,23 @@ const NLDLE = () => {
       <div className="nldle-container">
         <div className="nldle-header">
           <h2 className="nldle-title">Game Over!</h2>
-          <p className="nldle-subtitle">Your final score: {score} out of {wordPairs.length}</p>
-          <p className="nldle-subtitle">Best streak: {bestStreak}</p>
+          <div style={{ marginTop: '1rem', marginBottom: '2rem' }}>
+            <p className="nldle-subtitle" style={{ marginBottom: '0.5rem' }}>Your final score: {score} out of {wordPairs.length}</p>
+            <p className="nldle-subtitle" style={{ marginBottom: '0.5rem' }}>Best streak: {bestStreak} 🔥</p>
+          </div>
         </div>
         {renderProgressIndicator()}
 
-        <div className="nldle-feedback">
-          <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>How was your experience?</h3>
+        <div className="nldle-feedback" style={{ marginTop: '2rem' }}>
+          <h3 style={{ marginTop: 0, marginBottom: '1rem' }}><strong>Thank you for playing!</strong> How was your experience?</h3>
           <p style={{ marginBottom: '1rem', color: '#ccc' }}>
-            We'd love to hear your thoughts on NLDLE! What did you like? What could be improved?
+            We'd love to hear your thoughts on NLDLE! What did you like? What could be improved?<br></br>
             Also, let me know if you think of any other pairs I should add, for now manually.
           </p>
           <textarea
             className="nldle-feedback-textarea"
             placeholder="Share your feedback..."
+            style={{ marginBottom: '1rem' }}
           />
           <button
             onClick={() => {
@@ -275,12 +317,19 @@ const NLDLE = () => {
               }
             }}
             className="nldle-button"
+            style={{ marginBottom: '2rem' }}
           >
             Submit Feedback
           </button>
         </div>
 
-        <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem' }}>
+        <div style={{ 
+          marginTop: '2rem', 
+          display: 'flex', 
+          gap: '1rem',
+          justifyContent: 'center',
+          flexWrap: 'wrap'
+        }}>
           <button
             onClick={handlePlayAgain}
             className="nldle-button"
@@ -292,6 +341,13 @@ const NLDLE = () => {
             className="nldle-button secondary"
           >
             Go Back
+          </button>
+          <button
+            onClick={handleCopyResults}
+            className="nldle-button"
+            style={{ backgroundColor: '#4CAF50' }}
+          >
+            Copy Results
           </button>
         </div>
       </div>
