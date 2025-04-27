@@ -58,7 +58,7 @@ const NLDLE = () => {
     {
       option1: { 
         text: "severance", 
-        count: 220,
+        count: 99,
         earliestReference: "08 February 2014"
       },
       option2: { 
@@ -313,9 +313,12 @@ const NLDLE = () => {
 
       <div className="nldle-note">
         <p style={{ margin: 0 }}>
-          <strong>Note:</strong> These counts are based on exact term matches. For example, "cat" and "cats" are counted separately.
-          This is only a prototype, and the counts are manually inputted, and only has these 5 pairs for now.
-          Will build more soon, but for now, let me know what you think!
+          <strong>Important Note:</strong> We are looking for <strong>exact phrase matches only</strong>. <br></br>
+          We are only looking for exact matches of the phrase in the exact order. <br></br>
+          For example, if the phrase is 'Apple tree', it will only match 'Apple tree' and not 'apple grows in a big tree' because the words are broken up. Keep this in mind when choosing your answer.
+          <br></br>
+          Similarly, as another example, "cat" and "cats" are counted separately due to this exact match rule.
+
         </p>
       </div>
 
@@ -379,7 +382,7 @@ const NLDLE = () => {
                 </span>
                 <br />
                 <a 
-                  href={`https://nlquotes.com/search?q=${encodeURIComponent(wordPairs[currentRound].option1.text)}&channel=northernlion`}
+                  href={`https://nlquotes.com/search?q=%22${encodeURIComponent(wordPairs[currentRound].option1.text)}%22&channel=northernlion`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="nldle-result-link"
@@ -397,7 +400,7 @@ const NLDLE = () => {
                 </span>
                 <br />
                 <a 
-                  href={`https://nlquotes.com/search?q=${encodeURIComponent(wordPairs[currentRound].option2.text)}&channel=northernlion`}
+                  href={`https://nlquotes.com/search?q=%22${encodeURIComponent(wordPairs[currentRound].option2.text)}%22&channel=northernlion`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="nldle-result-link"

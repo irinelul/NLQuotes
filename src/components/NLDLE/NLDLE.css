@@ -28,7 +28,8 @@
 .nldle-streak {
   font-size: 1.2rem;
   margin: 0.5rem 0;
-  color: #4CAF50;
+  color: white;
+  font-weight: bold;
 }
 
 .nldle-note {
@@ -71,14 +72,25 @@
 .nldle-option-button:disabled {
   cursor: default;
   transform: none;
+  opacity: 0.7;
+  background: #666;
+  color: white;
+}
+
+.nldle-option-button.disabled {
+  background: #666;
+  color: white;
+  opacity: 0.7;
 }
 
 .nldle-option-button.correct {
   background: #4CAF50;
+  color: white;
 }
 
 .nldle-option-button.incorrect {
   background: #f44336;
+  color: white;
 }
 
 .nldle-option-button.disabled {
@@ -89,6 +101,7 @@
   font-size: 0.9rem;
   opacity: 0.8;
   font-style: italic;
+  color: white;
 }
 
 .nldle-result {
@@ -167,6 +180,7 @@
 
 .nldle-button.secondary {
   background: #f44336;
+  color: white;
 }
 
 .nldle-feedback {
