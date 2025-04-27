@@ -13,7 +13,7 @@ import { Quotes } from './components/Quotes';
 import { useSearchState } from './hooks/useSearchState';
 import Privacy from './components/Privacy';
 import SearchPage from './components/SearchPage';
-import NLDLE from './components/NLDLE';
+import NLDLE from './components/NLDLE/NLDLE';
 import getUserHash from './utils/userHash';
 import { useAnalyticsTracker, sendAnalytics } from './hooks/useAnalyticsTracker';
 
