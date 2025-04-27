@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import query from '../services/quotes';
 
 const NLDLE = () => {
   const navigate = useNavigate();
@@ -14,6 +15,18 @@ const NLDLE = () => {
   const [showTutorial, setShowTutorial] = useState(true);
   const [streak, setStreak] = useState(0);
   const [bestStreak, setBestStreak] = useState(0);
+
+  // Add media query hook
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Sample word pairs with earliest reference data
   const wordPairs = [
@@ -135,16 +148,28 @@ const NLDLE = () => {
 
   const handleFeedbackSubmit = async (feedback) => {
     try {
-      await query.flagQuote({
-        quote: "NLDLE Feedback",
-        searchTerm: "NLDLE Feedback",
-        timestamp: "0",
-        videoId: "nldle-feedback",
-        title: "NLDLE Feedback",
-        channel: "User Feedback",
-        reason: feedback
+      const response = await fetch('/api/flag', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          quote: "NLDLE Feedback",
+          searchTerm: "NLDLE Feedback",
+          timestamp: "0",
+          videoId: "nldle-feedback",
+          title: "NLDLE Feedback",
+          channel: "User Feedback",
+          reason: feedback
+        })
       });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit feedback');
+      }
+
       alert('Thank you for your feedback!');
+      document.querySelector('textarea').value = '';
     } catch (error) {
       console.error('Error submitting feedback:', error);
       alert('Unable to submit feedback. Please try again later.');
@@ -208,26 +233,36 @@ const NLDLE = () => {
 
   if (showTutorial) {
     return (
-      <div style={{ maxWidth: 800, margin: '2rem auto', padding: '2rem', background: 'var(--surface-color)', borderRadius: 12 }}>
+      <div style={{ 
+        maxWidth: 800, 
+        margin: '1rem auto', 
+        padding: isMobile ? '1rem' : '2rem', 
+        background: 'var(--surface-color)', 
+        borderRadius: 12 
+      }}>
         <div style={{ 
           background: 'linear-gradient(135deg, #2196F3, #4CAF50)',
-          padding: '2rem',
+          padding: isMobile ? '1.5rem' : '2rem',
           borderRadius: '12px',
-          marginBottom: '2rem',
+          marginBottom: '1.5rem',
           textAlign: 'center',
           color: 'white'
         }}>
-          <h2 style={{ fontSize: '2.5rem', margin: 0 }}>Welcome to NLDLE!</h2>
+          <h2 style={{ fontSize: isMobile ? '2rem' : '2.5rem', margin: 0 }}>Welcome to NLDLE!</h2>
         </div>
 
         <div style={{ 
           background: 'rgba(255,255,255,0.1)',
-          padding: '1.5rem',
+          padding: isMobile ? '1rem' : '1.5rem',
           borderRadius: '8px',
           marginBottom: '1.5rem'
         }}>
-          <h3 style={{ marginTop: 0 }}>How to Play</h3>
-          <ol style={{ paddingLeft: '1.5rem', marginBottom: '1.5rem' }}>
+          <h3 style={{ marginTop: 0, fontSize: isMobile ? '1.2rem' : '1.5rem' }}>How to Play</h3>
+          <ol style={{ 
+            paddingLeft: '1.5rem', 
+            marginBottom: '1.5rem',
+            fontSize: isMobile ? '0.9rem' : '1rem'
+          }}>
             <li>You'll be shown two phrases from NL's videos</li>
             <li>Guess which phrase was said more frequently</li>
             <li>Each phrase shows when it was first mentioned</li>
@@ -240,7 +275,7 @@ const NLDLE = () => {
             padding: '1rem',
             borderRadius: '8px',
             marginBottom: '1.5rem',
-            fontSize: '0.9rem',
+            fontSize: isMobile ? '0.8rem' : '0.9rem',
             color: '#ccc'
           }}>
             <p style={{ margin: 0 }}>
@@ -253,13 +288,13 @@ const NLDLE = () => {
           <button
             onClick={handleStartGame}
             style={{
-              padding: '0.8rem 1.5rem',
+              padding: isMobile ? '0.6rem 1.2rem' : '0.8rem 1.5rem',
               background: '#4CAF50',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
               cursor: 'pointer',
-              fontSize: '1.1rem',
+              fontSize: isMobile ? '1rem' : '1.1rem',
               fontWeight: 'bold',
               transition: 'all 0.3s ease',
               boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
@@ -277,29 +312,35 @@ const NLDLE = () => {
 
   if (gameOver) {
     return (
-      <div style={{ maxWidth: 800, margin: '2rem auto', padding: '2rem', background: 'var(--surface-color)', borderRadius: 12 }}>
+      <div style={{ 
+        maxWidth: 800, 
+        margin: '1rem auto', 
+        padding: isMobile ? '1rem' : '2rem', 
+        background: 'var(--surface-color)', 
+        borderRadius: 12 
+      }}>
         <div style={{ 
           background: 'linear-gradient(135deg, #2196F3, #4CAF50)',
-          padding: '2rem',
+          padding: isMobile ? '1.5rem' : '2rem',
           borderRadius: '12px',
-          marginBottom: '2rem',
+          marginBottom: '1.5rem',
           textAlign: 'center',
           color: 'white'
         }}>
-          <h2 style={{ fontSize: '2.5rem', margin: 0 }}>Game Over!</h2>
-          <p style={{ fontSize: '1.5rem', margin: '1rem 0' }}>Your final score: {score} out of {wordPairs.length}</p>
-          <p style={{ fontSize: '1.2rem', margin: '0.5rem 0' }}>Best streak: {bestStreak}</p>
+          <h2 style={{ fontSize: isMobile ? '2rem' : '2.5rem', margin: 0 }}>Game Over!</h2>
+          <p style={{ fontSize: isMobile ? '1.2rem' : '1.5rem', margin: '1rem 0' }}>Your final score: {score} out of {wordPairs.length}</p>
+          <p style={{ fontSize: isMobile ? '1rem' : '1.2rem', margin: '0.5rem 0' }}>Best streak: {bestStreak}</p>
         </div>
         {renderProgressIndicator()}
 
         <div style={{ 
           background: 'rgba(255,255,255,0.1)',
-          padding: '1.5rem',
+          padding: isMobile ? '1rem' : '1.5rem',
           borderRadius: '8px',
           marginBottom: '1.5rem'
         }}>
-          <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>How was your experience?</h3>
-          <p style={{ marginBottom: '1rem', color: '#ccc' }}>
+          <h3 style={{ marginTop: 0, marginBottom: '1rem', fontSize: isMobile ? '1.2rem' : '1.5rem' }}>How was your experience?</h3>
+          <p style={{ marginBottom: '1rem', color: '#ccc', fontSize: isMobile ? '0.9rem' : '1rem' }}>
             We'd love to hear your thoughts on NLDLE! What did you like? What could be improved?
             Also, let me know if you think of any other pairs I should add, for now manually.
           </p>
@@ -311,9 +352,9 @@ const NLDLE = () => {
               background: 'rgba(255,255,255,0.1)',
               border: '1px solid rgba(255,255,255,0.2)',
               color: 'white',
-              fontSize: '1rem',
+              fontSize: isMobile ? '0.9rem' : '1rem',
               marginBottom: '1rem',
-              minHeight: '100px',
+              minHeight: isMobile ? '80px' : '100px',
               resize: 'vertical'
             }}
             placeholder="Share your feedback..."
@@ -328,13 +369,13 @@ const NLDLE = () => {
               }
             }}
             style={{
-              padding: '0.8rem 1.5rem',
+              padding: isMobile ? '0.6rem 1.2rem' : '0.8rem 1.5rem',
               background: '#2196F3',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
               cursor: 'pointer',
-              fontSize: '1.1rem',
+              fontSize: isMobile ? '1rem' : '1.1rem',
               fontWeight: 'bold',
               transition: 'all 0.3s ease',
               boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
@@ -347,20 +388,26 @@ const NLDLE = () => {
           </button>
         </div>
 
-        <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'center', gap: '1rem' }}>
+        <div style={{ 
+          marginTop: '1.5rem', 
+          display: 'flex', 
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: '1rem'
+        }}>
           <button
             onClick={handlePlayAgain}
             style={{
-              padding: '0.8rem 1.5rem',
+              padding: isMobile ? '0.6rem 1.2rem' : '0.8rem 1.5rem',
               background: '#4CAF50',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
               cursor: 'pointer',
-              fontSize: '1.1rem',
+              fontSize: isMobile ? '1rem' : '1.1rem',
               fontWeight: 'bold',
               transition: 'all 0.3s ease',
-              boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+              boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+              width: isMobile ? '100%' : 'auto'
             }}
             onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'}
             onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
@@ -370,16 +417,17 @@ const NLDLE = () => {
           <button
             onClick={handleBack}
             style={{
-              padding: '0.8rem 1.5rem',
+              padding: isMobile ? '0.6rem 1.2rem' : '0.8rem 1.5rem',
               background: '#f44336',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
               cursor: 'pointer',
-              fontSize: '1.1rem',
+              fontSize: isMobile ? '1rem' : '1.1rem',
               fontWeight: 'bold',
               transition: 'all 0.3s ease',
-              boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+              boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+              width: isMobile ? '100%' : 'auto'
             }}
             onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'}
             onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
@@ -392,20 +440,26 @@ const NLDLE = () => {
   }
 
   return (
-    <div style={{ maxWidth: 800, margin: '2rem auto', padding: '2rem', background: 'var(--surface-color)', borderRadius: 12 }}>
+    <div style={{ 
+      maxWidth: 800, 
+      margin: '1rem auto', 
+      padding: isMobile ? '1rem' : '2rem', 
+      background: 'var(--surface-color)', 
+      borderRadius: 12 
+    }}>
       <div style={{ 
         background: 'linear-gradient(135deg, #2196F3, #4CAF50)',
-        padding: '2rem',
+        padding: isMobile ? '1.5rem' : '2rem',
         borderRadius: '12px',
-        marginBottom: '2rem',
+        marginBottom: '1.5rem',
         textAlign: 'center',
         color: 'white'
       }}>
-        <h2 style={{ fontSize: '2.5rem', margin: 0 }}>NLDLE</h2>
-        <p style={{ fontSize: '1.2rem', margin: '0.5rem 0' }}>Round {currentRound + 1} of {wordPairs.length}</p>
-        <p style={{ fontSize: '1.2rem', margin: '0.5rem 0' }}>Score: {score}</p>
+        <h2 style={{ fontSize: isMobile ? '2rem' : '2.5rem', margin: 0 }}>NLDLE</h2>
+        <p style={{ fontSize: isMobile ? '1rem' : '1.2rem', margin: '0.5rem 0' }}>Round {currentRound + 1} of {wordPairs.length}</p>
+        <p style={{ fontSize: isMobile ? '1rem' : '1.2rem', margin: '0.5rem 0' }}>Score: {score}</p>
         {streak > 0 && (
-          <p style={{ fontSize: '1.2rem', margin: '0.5rem 0', color: '#4CAF50' }}>
+          <p style={{ fontSize: isMobile ? '1rem' : '1.2rem', margin: '0.5rem 0', color: '#4CAF50' }}>
             🔥 Streak: {streak}
           </p>
         )}
@@ -413,15 +467,16 @@ const NLDLE = () => {
 
       <div style={{ 
         background: 'rgba(255,255,255,0.1)',
-        padding: '1rem',
+        padding: isMobile ? '0.8rem' : '1rem',
         borderRadius: '8px',
         marginBottom: '1.5rem',
-        fontSize: '0.9rem',
+        fontSize: isMobile ? '0.8rem' : '0.9rem',
         color: '#ccc'
       }}>
         <p style={{ margin: 0 }}>
           <strong>Note:</strong> These counts are based on exact term matches. For example, "cat" and "cats" are counted separately.
-          The earliest reference is the first time the phrase was said in a video, pay attention to the context, and how many meanings a word can have.
+          This is only a prototype, and the counts are manually inputted, and only has these 5 pairs for now.
+          Will build more soon, but for now, let me know what you think!
         </p>
       </div>
 
@@ -429,20 +484,31 @@ const NLDLE = () => {
       {renderProgressBar()}
 
       <div style={{ marginTop: '2rem' }}>
-        <h3 style={{ textAlign: 'center', fontSize: '1.5rem', marginBottom: '1.5rem' }}>Which phrase was said more frequently?</h3>
-        <div style={{ display: 'flex', gap: '1.5rem', marginTop: '1rem' }}>
+        <h3 style={{ 
+          textAlign: 'center', 
+          fontSize: isMobile ? '1.2rem' : '1.5rem', 
+          marginBottom: '1.5rem' 
+        }}>
+          Which phrase was said more frequently?
+        </h3>
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: '1rem', 
+          marginTop: '1rem' 
+        }}>
           <button
             onClick={() => handleOptionSelect(1)}
             disabled={showResult}
             style={{
               flex: 1,
-              padding: '1.5rem',
+              padding: isMobile ? '1rem' : '1.5rem',
               background: showResult ? (selectedOption === 1 ? (isCorrect ? '#4CAF50' : '#f44336') : '#666') : '#2196F3',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
               cursor: showResult ? 'default' : 'pointer',
-              fontSize: '1.1rem',
+              fontSize: isMobile ? '1rem' : '1.1rem',
               fontWeight: 'bold',
               transition: 'all 0.3s ease',
               boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
@@ -455,8 +521,8 @@ const NLDLE = () => {
             onMouseOut={(e) => !showResult && (e.target.style.transform = 'translateY(0)')}
           >
             <span>{wordPairs[currentRound].option1.text}</span>
-            <span style={{ fontSize: '0.9rem', opacity: 0.8, fontStyle: 'italic' }}>
-              First seen: {formatDate(wordPairs[currentRound].option1.earliestReference)}
+            <span style={{ fontSize: isMobile ? '0.8rem' : '0.9rem', opacity: 0.8, fontStyle: 'italic' }}>
+              First seen: {wordPairs[currentRound].option1.earliestReference}
             </span>
           </button>
           <button
@@ -464,13 +530,13 @@ const NLDLE = () => {
             disabled={showResult}
             style={{
               flex: 1,
-              padding: '1.5rem',
+              padding: isMobile ? '1rem' : '1.5rem',
               background: showResult ? (selectedOption === 2 ? (isCorrect ? '#4CAF50' : '#f44336') : '#666') : '#2196F3',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
               cursor: showResult ? 'default' : 'pointer',
-              fontSize: '1.1rem',
+              fontSize: isMobile ? '1rem' : '1.1rem',
               fontWeight: 'bold',
               transition: 'all 0.3s ease',
               boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
@@ -483,8 +549,8 @@ const NLDLE = () => {
             onMouseOut={(e) => !showResult && (e.target.style.transform = 'translateY(0)')}
           >
             <span>{wordPairs[currentRound].option2.text}</span>
-            <span style={{ fontSize: '0.9rem', opacity: 0.8, fontStyle: 'italic' }}>
-              First seen: {formatDate(wordPairs[currentRound].option2.earliestReference)}
+            <span style={{ fontSize: isMobile ? '0.8rem' : '0.9rem', opacity: 0.8, fontStyle: 'italic' }}>
+              First seen: {wordPairs[currentRound].option2.earliestReference}
             </span>
           </button>
         </div>
@@ -503,28 +569,29 @@ const NLDLE = () => {
           <p style={{ 
             color: isCorrect ? '#4CAF50' : '#f44336', 
             fontWeight: 'bold',
-            fontSize: '1.5rem',
+            fontSize: isMobile ? '1.2rem' : '1.5rem',
             marginBottom: '1rem'
           }}>
             {isCorrect ? 'Correct!' : 'Incorrect!'}
           </p>
           <div style={{ 
             display: 'flex',
-            gap: '1.5rem',
+            flexDirection: isMobile ? 'column' : 'row',
+            gap: '1rem',
             marginBottom: '1.5rem'
           }}>
             <div style={{ 
               flex: 1,
               background: 'rgba(255,255,255,0.1)',
-              padding: '1.5rem',
+              padding: isMobile ? '1rem' : '1.5rem',
               borderRadius: '8px',
               textAlign: 'left'
             }}>
-              <p style={{ marginBottom: '1rem' }}>
+              <p style={{ marginBottom: '1rem', fontSize: isMobile ? '0.9rem' : '1rem' }}>
                 {wordPairs[currentRound].option1.text}: {wordPairs[currentRound].option1.count} times
                 <br />
-                <span style={{ fontSize: '0.9rem', color: '#ccc', fontStyle: 'italic' }}>
-                  Earliest reference: {formatDate(wordPairs[currentRound].option1.earliestReference)}
+                <span style={{ fontSize: isMobile ? '0.8rem' : '0.9rem', color: '#ccc', fontStyle: 'italic' }}>
+                  Earliest reference: {wordPairs[currentRound].option1.earliestReference}
                 </span>
                 <br />
                 <a 
@@ -534,7 +601,7 @@ const NLDLE = () => {
                   style={{ 
                     color: '#2196F3', 
                     textDecoration: 'none', 
-                    fontSize: '0.9rem',
+                    fontSize: isMobile ? '0.8rem' : '0.9rem',
                     display: 'inline-block',
                     marginTop: '0.5rem',
                     padding: '0.3rem 0.8rem',
@@ -552,15 +619,15 @@ const NLDLE = () => {
             <div style={{ 
               flex: 1,
               background: 'rgba(255,255,255,0.1)',
-              padding: '1.5rem',
+              padding: isMobile ? '1rem' : '1.5rem',
               borderRadius: '8px',
               textAlign: 'left'
             }}>
-              <p style={{ marginBottom: '1rem' }}>
+              <p style={{ marginBottom: '1rem', fontSize: isMobile ? '0.9rem' : '1rem' }}>
                 {wordPairs[currentRound].option2.text}: {wordPairs[currentRound].option2.count} times
                 <br />
-                <span style={{ fontSize: '0.9rem', color: '#ccc', fontStyle: 'italic' }}>
-                  Earliest reference: {formatDate(wordPairs[currentRound].option2.earliestReference)}
+                <span style={{ fontSize: isMobile ? '0.8rem' : '0.9rem', color: '#ccc', fontStyle: 'italic' }}>
+                  Earliest reference: {wordPairs[currentRound].option2.earliestReference}
                 </span>
                 <br />
                 <a 
@@ -570,7 +637,7 @@ const NLDLE = () => {
                   style={{ 
                     color: '#2196F3', 
                     textDecoration: 'none', 
-                    fontSize: '0.9rem',
+                    fontSize: isMobile ? '0.8rem' : '0.9rem',
                     display: 'inline-block',
                     marginTop: '0.5rem',
                     padding: '0.3rem 0.8rem',
@@ -589,13 +656,13 @@ const NLDLE = () => {
           <button
             onClick={handleNextRound}
             style={{
-              padding: '0.8rem 1.5rem',
+              padding: isMobile ? '0.6rem 1.2rem' : '0.8rem 1.5rem',
               background: '#4CAF50',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
               cursor: 'pointer',
-              fontSize: '1.1rem',
+              fontSize: isMobile ? '1rem' : '1.1rem',
               fontWeight: 'bold',
               transition: 'all 0.3s ease',
               boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
