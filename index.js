@@ -548,6 +548,12 @@ app.post('/analytics', async (req, res) => {
     try {
       console.log('POST /analytics hit', req.body);
 
+      // Check if user has opted out of analytics
+      if (req.body.analytics_opted_out === true) {
+        console.log('Analytics skipped - user has opted out');
+        return res.status(204).end();
+      }
+
       // Check database connection first
       const isConnected = await analyticsModel.checkConnection();
       if (!isConnected) {
