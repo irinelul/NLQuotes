@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import query from '../../services/quotes';
+import { formatDate } from '../../services/dateHelpers';
 import './NLDLE.css';
 
 const NLDLE = () => {
@@ -22,70 +23,66 @@ const NLDLE = () => {
     const savedBestStreak = localStorage.getItem('nldleBestStreak');
     return savedBestStreak ? parseInt(savedBestStreak) : 0;
   });
+  const [wordPairs, setWordPairs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [gameDate, setGameDate] = useState(new Date());
+  const [lastPlayedDate, setLastPlayedDate] = useState(() => {
+    const savedDate = localStorage.getItem('nldleLastPlayedDate');
+    return savedDate ? new Date(savedDate) : null;
+  });
 
-  // Sample word pairs with earliest reference data
-  const wordPairs = [
-    {
-      option1: { 
-        text: "salmonella and campylobacter", 
-        count: 52,
-        earliestReference: "08 July 2022"
-      },
-      option2: { 
-        text: "watermelon ass", 
-        count: 14,
-        earliestReference: "13 July 2021"
+  useEffect(() => {
+    let isMounted = true;
+    let isFetching = false;
+
+    const fetchGameData = async () => {
+      if (isFetching) return;
+      isFetching = true;
+
+      try {
+        setLoading(true);
+        console.log('Fetching game data...');
+        const response = await fetch('/api/nldle');
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Failed to fetch game data' }));
+          throw new Error(errorData.error || 'Failed to fetch game data');
+        }
+        
+        const data = await response.json();
+        console.log('Received data:', data);
+        
+        if (isMounted) {
+          if (data.game_data && data.game_data.wordPairs) {
+            setWordPairs(data.game_data.wordPairs);
+            if (data.game_date) {
+              setGameDate(new Date(data.game_date));
+            }
+          } else {
+            throw new Error('Invalid game data format');
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching game data:', err);
+        if (isMounted) {
+          setError(err.message || 'Failed to load game data. Please try again later.');
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+        isFetching = false;
       }
-    },
-    {
-      option1: { 
-        text: "kingston, ontario", 
-        count: 148,
-        earliestReference: "04 November 2010"
-      },
-      option2: { 
-        text: "ontario, canada", 
-        count: 34,
-        earliestReference: "04 November 2010"
-      }
-    },
-    {
-      option1: { 
-        text: "garfield", 
-        count: 293,
-        earliestReference: "03 March 2013"
-      },
-      option2: { 
-        text: "felix the cat", 
-        count: 5,
-        earliestReference: "02 August 2014"
-      }
-    },
-    {
-      option1: { 
-        text: "severance", 
-        count: 99,
-        earliestReference: "08 February 2014"
-      },
-      option2: { 
-        text: "breaking bad", 
-        count: 620,
-        earliestReference: "27 June 2011"
-      }
-    },
-    {
-      option1: { 
-        text: "dracula flow", 
-        count: 19,
-        earliestReference: "28 September 2023"
-      },
-      option2: { 
-        text: "potion seller", 
-        count: 57,
-        earliestReference: "15 October 2016"
-      }
-    }
-  ];
+    };
+
+    fetchGameData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleStartGame = () => {
     setShowTutorial(false);
@@ -94,7 +91,14 @@ const NLDLE = () => {
   const handleOptionSelect = (option) => {
     setSelectedOption(option);
     const currentPair = wordPairs[currentRound];
-    const isCorrectAnswer = option === (currentPair.option1.count > currentPair.option2.count ? 1 : 2);
+    console.log('Current pair:', currentPair);
+    const count1 = parseInt(currentPair.option1.count);
+    const count2 = parseInt(currentPair.option2.count);
+    console.log('Option 1 count:', count1);
+    console.log('Option 2 count:', count2);
+    const isCorrectAnswer = option === (count1 > count2 ? 1 : 2);
+    console.log('Selected option:', option);
+    console.log('Is correct answer:', isCorrectAnswer);
     setIsCorrect(isCorrectAnswer);
     setShowResult(true);
     setAnimateResult(true);
@@ -108,14 +112,29 @@ const NLDLE = () => {
       setScore(score + 1);
       // Only update streak if this is the last round and we got a perfect score
       if (currentRound === wordPairs.length - 1 && score + 1 === wordPairs.length) {
-        const newStreak = streak + 1;
-        setStreak(newStreak);
-        localStorage.setItem('nldleStreak', newStreak.toString());
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
         
-        if (newStreak > bestStreak) {
-          setBestStreak(newStreak);
-          localStorage.setItem('nldleBestStreak', newStreak.toString());
+        // Only update streaks if we haven't played today
+        if (!lastPlayedDate || lastPlayedDate.getTime() !== today.getTime()) {
+          const newStreak = streak + 1;
+          setStreak(newStreak);
+          localStorage.setItem('nldleStreak', newStreak.toString());
+          
+          // Update best streak if we beat our historical best
+          if (newStreak > bestStreak) {
+            setBestStreak(newStreak);
+            localStorage.setItem('nldleBestStreak', newStreak.toString());
+          }
+          
+          // Save today's date
+          setLastPlayedDate(today);
+          localStorage.setItem('nldleLastPlayedDate', today.toISOString());
         }
+      } else if (currentRound === wordPairs.length - 1) {
+        // If we reach the end without a perfect score, reset the streak
+        setStreak(0);
+        localStorage.setItem('nldleStreak', '0');
       }
     } else {
       setStreak(0);
@@ -162,7 +181,8 @@ const NLDLE = () => {
 Score: ${score}/${wordPairs.length}
 Best Streak: ${bestStreak} 
 ${squares}
-${formattedDate}`;
+${formattedDate}
+https://nlquotes.com/nldle`;
 
     navigator.clipboard.writeText(resultText)
       .then(() => {
@@ -250,6 +270,30 @@ ${formattedDate}`;
     );
   };
 
+  if (loading) {
+    return (
+      <div className="nldle-container">
+        <div className="nldle-header">
+          <h2 className="nldle-title">Loading NLDLE...</h2>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="nldle-container">
+        <div className="nldle-header">
+          <h2 className="nldle-title">Error</h2>
+          <p className="nldle-subtitle">{error}</p>
+          <button onClick={() => window.location.reload()} className="nldle-button">
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (showTutorial) {
     return (
       <div className="nldle-container">
@@ -291,7 +335,12 @@ ${formattedDate}`;
           <h2 className="nldle-title">Game Over!</h2>
           <div style={{ marginTop: '1rem', marginBottom: '2rem' }}>
             <p className="nldle-subtitle" style={{ marginBottom: '0.5rem' }}>Your final score: {score} out of {wordPairs.length}</p>
-            <p className="nldle-subtitle" style={{ marginBottom: '0.5rem' }}>Best streak: {bestStreak} 🔥</p>
+            {bestStreak > 0 && (
+              <p className="nldle-subtitle" style={{ marginBottom: '0.5rem' }}>Historical Best Streak: {bestStreak} 🔥</p>
+            )}
+            {streak > 0 && (
+              <p className="nldle-subtitle" style={{ marginBottom: '0.5rem' }}>Current Streak: {streak} 🔥</p>
+            )}
           </div>
         </div>
         {renderProgressIndicator()}
@@ -360,9 +409,10 @@ ${formattedDate}`;
         <h2 className="nldle-title">NLDLE</h2>
         <p className="nldle-subtitle">Round {currentRound + 1} of {wordPairs.length}</p>
         <p className="nldle-subtitle">Score: {score}</p>
+        <p className="nldle-subtitle">Game Date: {formatDate(gameDate)}</p>
         {streak > 0 && (
           <p className="nldle-streak">
-            🔥 Streak: {streak}
+            🔥 Current Streak: {streak}
           </p>
         )}
       </div>
