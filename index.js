@@ -520,6 +520,16 @@ app.get('/api/nldle', async (req, res) => {
   }
 });
 
+app.get('/stats', async (req, res) => {
+    try {
+        const stats = await quoteModel.getStats();
+        res.json({ data: stats });
+    } catch (error) {
+        console.error('Error fetching stats:', error);
+        res.status(500).json({ error: 'Failed to fetch stats' });
+    }
+});
+
 // SPA fallback for React Router with CSP header
 app.get('*', (req, res) => {
   res.setHeader(
@@ -607,5 +617,3 @@ app.post('/analytics', async (req, res) => {
       });
     }
   });
-
-
