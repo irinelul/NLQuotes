@@ -389,32 +389,6 @@ if (sortOrder === 'default') {
     }
   },
 
-  // Get stats (no changes needed, assumes indexes help GROUP BY)
-  async getStats() {
-    const query = `
-      SELECT
-        COALESCE(channel_source, 'Unknown') AS channel_source,
-        COUNT(DISTINCT video_id) AS "videoCount",
-        COUNT(*) AS "totalQuotes"
-      FROM quotes
-      WHERE channel_source IS NOT NULL AND channel_source <> '' -- Added condition to exclude empty strings if needed
-      GROUP BY channel_source
-      ORDER BY "videoCount" DESC
-    `;
-
-    let client;
-    try {
-      client = await pool.connect();
-      const startTime = Date.now();
-      const result = await client.query(query);
-      return result.rows;
-    } catch (error) {
-      console.error("Error fetching stats:", error);
-      throw new Error(`Failed to fetch stats: ${error.message}`);
-    } finally {
-      if (client) client.release();
-    }
-  },
 
   // Get random quotes (using TABLESAMPLE SYSTEM for better performance on large tables)
   async getRandom() {
