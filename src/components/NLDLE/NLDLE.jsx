@@ -449,7 +449,6 @@ https://nlquotes.com/nldle`;
           >
             <span>{wordPairs[currentRound].option1.text}</span>
             <span className="nldle-option-date">
-              First seen: {wordPairs[currentRound].option1.earliestReference}
             </span>
           </button>
           <button
@@ -467,7 +466,6 @@ https://nlquotes.com/nldle`;
           >
             <span>{wordPairs[currentRound].option2.text}</span>
             <span className="nldle-option-date">
-              First seen: {wordPairs[currentRound].option2.earliestReference}
             </span>
           </button>
         </div>
