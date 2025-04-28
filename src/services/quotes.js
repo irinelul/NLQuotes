@@ -120,17 +120,6 @@ const getAll = async (searchTerm, page, strict, selectedValue, selectedMode, yea
     }
 };
 
-
-const getStats = async () => {
-    try {
-        const response = await makeApiRequest('/stats', 'get');
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching stats:', error);
-        throw error;
-    }
-};
-
 const flagQuote = async (quoteData) => {
     try {
         if (isMigrationMode) {
@@ -183,7 +172,6 @@ const checkDatabaseStatus = async () => {
 
 export default {
     getAll,
-    getStats,
     flagQuote,
     getRandomQuotes,
     checkDatabaseStatus
