@@ -251,15 +251,6 @@ app.get('/api', async (req, res) => {
     }
 });
 
-app.get('/stats', async (req, res) => {
-    try {
-        const stats = await quoteModel.getStats();
-        res.json({ data: stats });
-    } catch (error) {
-        console.error('Error fetching stats:', error);
-        res.status(500).json({ error: 'Failed to fetch stats' });
-    }
-});
 
 // Add new endpoint for flagging quotes
 app.post('/api/flag', async (req, res) => {
