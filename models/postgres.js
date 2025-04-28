@@ -457,6 +457,40 @@ if (sortOrder === 'default') {
     } finally {
       if (client) client.release();
     }
+  },
+
+  // Get NLDLE game data for a specific date
+  async getNLDLEGame(date = new Date()) {
+    try {
+      console.log('Fetching NLDLE game for date:', date);
+      const client = await pool.connect();
+      try {
+        // Convert date to UTC and format as YYYY-MM-DD
+        const utcDate = new Date(date);
+        const formattedDate = utcDate.toISOString().split('T')[0];
+        console.log('Formatted date for query:', formattedDate);
+        
+        const result = await client.query(`
+          SELECT game_data 
+          FROM nldle_games 
+          WHERE game_date = $1
+        `, [formattedDate]);
+        
+        console.log('Query result:', result.rows);
+        
+        if (result.rows.length === 0) {
+          console.log('No game data found for date:', formattedDate);
+          return null;
+        }
+        
+        return result.rows[0].game_data;
+      } finally {
+        client.release();
+      }
+    } catch (error) {
+      console.error('Error fetching NLDLE game:', error);
+      return null;
+    }
   }
 };
 

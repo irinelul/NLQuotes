@@ -14,6 +14,7 @@ import { useSearchState } from './hooks/useSearchState';
 import Privacy from './components/Privacy';
 import SearchPage from './components/SearchPage';
 import NLDLE from './components/NLDLE/NLDLE';
+import Stats from './components/Stats';
 import getUserHash from './utils/userHash';
 import { useAnalyticsTracker, sendAnalytics } from './hooks/useAnalyticsTracker';
 
@@ -307,7 +308,7 @@ const App = () => {
                 session_id: sessionId,
                 referrer: document.referrer,
                 response_time_ms: responseTimeMs,
-                game: game
+                game: game  
             });
             sessionStorage.setItem('starting_session_sent', 'true');
         }
@@ -389,6 +390,7 @@ const App = () => {
             />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/nldle" element={<NLDLE />} />
+            <Route path="/stats" element={<Stats />} />
         </Routes>
     );
 };
