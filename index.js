@@ -504,6 +504,31 @@ const errorHandler = (error, req, res, next) => {
 };
 
 app.use(errorHandler);
+
+// Add NLDLE game endpoint
+app.get('/api/nldle', async (req, res) => {
+  console.log('NLDLE endpoint hit');
+  try {
+    const currentDate = new Date();
+    console.log('Fetching game for date:', currentDate);
+    const gameData = await quoteModel.getNLDLEGame(currentDate);
+    console.log('Game data:', gameData);
+    
+    if (!gameData) {
+      console.log('No game data found for date:', currentDate);
+      return res.status(404).json({ error: 'No game data available for today' });
+    }
+    
+    res.json({ 
+      game_data: gameData,
+      game_date: currentDate.toISOString().split('T')[0]
+    });
+  } catch (error) {
+    console.error('Error in NLDLE endpoint:', error);
+    res.status(500).json({ error: 'Failed to fetch game data' });
+  }
+});
+
 // SPA fallback for React Router with CSP header
 app.get('*', (req, res) => {
   res.setHeader(
@@ -520,14 +545,27 @@ app.get('*', (req, res) => {
 
 // Create server with optimized settings
 const server = app.listen(PORT, () => {
+    console.log('=================================');
     console.log(`Server running on port ${PORT}`);
     console.log('Available endpoints:');
     console.log('- /api (search)');
     console.log('- /api/random (random quotes)');
     console.log('- /api/games (game list)');
     console.log('- /api/flag (flag quotes)');
+    console.log('- /api/nldle (NLDLE game)');
     console.log('- /health (health check)');
     console.log('- /stats (statistics)');
+    console.log('=================================');
+});
+
+// Add error handling for server startup
+server.on('error', (error) => {
+    if (error.code === 'EADDRINUSE') {
+        console.error(`Port ${PORT} is already in use. Please try a different port or kill the process using this port.`);
+    } else {
+        console.error('Server error:', error);
+    }
+    process.exit(1);
 });
 
 // Configure server timeouts

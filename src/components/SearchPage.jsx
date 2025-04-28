@@ -47,15 +47,31 @@ const SearchPage = ({
 
     return (
         <div className='main-container'>
-            <div className="logo-container" onClick={handleLogoClick}>
-                <img 
-                    src="/NLogo.webp" 
-                    alt="Northernlion Logo"
-                    onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = "/NLogo.png";
-                    }}
-                />
+            <div className="logo-section">
+                <div className="logo-container" onClick={handleLogoClick}>
+                    <img 
+                        src="/NLogo.webp" 
+                        alt="Northernlion Logo"
+                        onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = "/NLogo.png";
+                        }}
+                    />
+                </div>
+                <div className="logo-nav">
+                    <button
+                        onClick={() => navigate('/nldle')}
+                        className="logo-nav-button nldle-button"
+                    >
+                        🎮 NLDLE
+                    </button>
+                    <button
+                        onClick={() => navigate('/stats')}
+                        className="logo-nav-button stats-button"
+                    >
+                        📊 Stats
+                    </button>
+                </div>
             </div>
             <div className="input-container">
                 <button
@@ -85,23 +101,6 @@ const SearchPage = ({
                     style={{ marginLeft: '0.5rem' }}
                 >
                     Reset Search
-                </button>
-                <button
-                    onClick={() => navigate('/nldle')}
-                    style={{ 
-                        marginLeft: '0.5rem',
-                        background: '#4CAF50',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        padding: '0.5rem 1rem',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease'
-                    }}
-                    onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'}
-                    onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
-                >
-                    🎮 Play NLDLE
                 </button>
             </div>
 
