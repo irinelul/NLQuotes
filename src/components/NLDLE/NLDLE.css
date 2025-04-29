@@ -1,32 +1,32 @@
 .nldle-container {
   max-width: 800px;
   margin: 1rem auto;
-  padding: 1rem;
+  padding: 0.2rem;
   background: var(--surface-color);
   border-radius: 12px;
 }
 
 .nldle-header {
   background: linear-gradient(135deg, #2196F3, #4CAF50);
-  padding: 1.5rem;
+  padding: 0.5rem;
   border-radius: 12px;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.5rem;
   text-align: center;
   color: white;
 }
 
 .nldle-title {
-  font-size: 2.5rem;
+  font-size: 1.2rem;
   margin: 0;
 }
 
 .nldle-subtitle {
-  font-size: 1.2rem;
+  font-size: 0.8rem;
   margin: 0.5rem 0;
 }
 
 .nldle-streak {
-  font-size: 1.2rem;
+  font-size: 0.8rem;
   margin: 0.5rem 0;
   color: white;
   font-weight: bold;
@@ -43,13 +43,13 @@
 
 .nldle-options {
   display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
 }
 
 .nldle-option-button {
   flex: 1;
-  padding: 1.5rem;
+  padding: 0.5rem 0.5rem;
   background: #2196F3;
   color: white;
   border: none;
@@ -105,7 +105,7 @@
 }
 
 .nldle-result {
-  margin-top: 2rem;
+  margin-top: 1rem;
   text-align: center;
   opacity: 0;
   transform: translateY(20px);
@@ -133,8 +133,8 @@
 
 .nldle-result-container {
   display: flex;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
 }
 
 .nldle-result-card {
@@ -185,13 +185,15 @@
 
 .nldle-feedback {
   background: rgba(255,255,255,0.1);
-  padding: 1.5rem;
+  padding: 0.5rem;
   border-radius: 8px;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.5rem;
 }
 
 .nldle-feedback-textarea {
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   padding: 0.8rem;
   border-radius: 8px;
   background: rgba(255,255,255,0.1);
@@ -206,23 +208,24 @@
 /* Mobile styles */
 @media (max-width: 768px) {
   .nldle-container {
-    padding: 1rem;
+    padding: 0.2rem;
   }
 
   .nldle-header {
-    padding: 1.5rem;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
   }
 
   .nldle-title {
-    font-size: 2rem;
+    font-size: 1.2rem;
   }
 
   .nldle-subtitle {
-    font-size: 1rem;
+    font-size: 0.8rem;
   }
 
   .nldle-streak {
-    font-size: 1rem;
+    font-size: 0.8rem;
   }
 
   .nldle-note {
@@ -230,21 +233,13 @@
     font-size: 0.8rem;
   }
 
-  .nldle-options {
-    flex-direction: column;
-  }
-
   .nldle-option-button {
-    padding: 1rem;
+    padding: 0.5rem 0.5rem;
     font-size: 1rem;
   }
 
   .nldle-option-date {
     font-size: 0.8rem;
-  }
-
-  .nldle-result-container {
-    flex-direction: column;
   }
 
   .nldle-result-card {
@@ -262,11 +257,11 @@
   }
 
   .nldle-feedback {
-    padding: 1rem;
+    padding: 0.5rem;
   }
 
   .nldle-feedback-textarea {
-    font-size: 0.9rem;
-    min-height: 80px;
+    font-size: 0.8rem;
+    min-height: 50px;
   }
 } 

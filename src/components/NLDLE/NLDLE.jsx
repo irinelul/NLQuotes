@@ -417,16 +417,7 @@ https://nlquotes.com/nldle`;
         )}
       </div>
 
-      <div className="nldle-note">
-        <p style={{ margin: 0 }}>
-          <strong>Important Note:</strong> We are looking for <strong>exact phrase matches only</strong>. <br></br>
-          We are only looking for exact matches of the phrase in the exact order. <br></br>
-          For example, if the phrase is 'Apple tree', it will only match 'Apple tree' and not 'apple grows in a big tree' because the words are broken up. Keep this in mind when choosing your answer.
-          <br></br>
-          Similarly, as another example, "cat" and "cats" are counted separately due to this exact match rule.
 
-        </p>
-      </div>
 
       {renderProgressIndicator()}
       {renderProgressBar()}
