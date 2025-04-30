@@ -5,7 +5,27 @@ import { formatDate } from '../../services/dateHelpers';
 import './NLDLE.css';
 
 const NLDLE = () => {
+  const NLDLE_DISABLED = true;
   const navigate = useNavigate();
+  const handleBack = () => {
+    navigate('/');
+  };
+  if (NLDLE_DISABLED) {
+    return (
+      <div className="nldle-container">
+        <div className="nldle-header">
+          <h2 className="nldle-title">NLDLE</h2>
+        </div>
+        <div className="nldle-note" style={{ marginTop: '2rem', fontSize: '1.2rem', textAlign: 'center' }}>
+          NLDLE is currently being reworked to come up with better phrases and a sustaining way to generate games. Thank you for trying it out and providing valuable feedback, all inputs are noted and will be kept in mind.
+        </div>
+        <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'center' }}>
+          <button onClick={handleBack} className="nldle-button secondary">Go Back</button>
+        </div>
+      </div>
+    );
+  }
+
   const [currentRound, setCurrentRound] = useState(0);
   const [score, setScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
@@ -162,10 +182,6 @@ const NLDLE = () => {
     setAnimateResult(false);
     setRoundResults(Array(5).fill(null));
     // Don't reset streak here since we want to persist it
-  };
-
-  const handleBack = () => {
-    navigate('/');
   };
 
   const handleCopyResults = () => {
@@ -416,8 +432,6 @@ https://nlquotes.com/nldle`;
           </p>
         )}
       </div>
-
-
 
       {renderProgressIndicator()}
       {renderProgressBar()}
