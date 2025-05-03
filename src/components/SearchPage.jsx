@@ -7,6 +7,7 @@ import { PaginationButtons } from './PaginationButtons';
 import { Footer } from './Footer';
 import { FeedbackModal } from './Modals/FeedbackModal';
 import { useNavigate } from 'react-router-dom';
+import GeneralFeedbackButton from './GeneralFeedbackButton';
 
 const SearchPage = ({
     searchInput,
@@ -167,13 +168,10 @@ const SearchPage = ({
             <Footer />
 
             {/* Improved desktop-only feedback button */}
-            <button
-                className="floating-feedback-button"
+            <GeneralFeedbackButton
                 onClick={() => setFeedbackModalOpen(true)}
                 disabled={submittingFeedback}
-            >
-                💡 Send Feedback
-            </button>
+            />
 
             <FeedbackModal
                 isOpen={feedbackModalOpen}
