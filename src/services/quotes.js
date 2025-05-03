@@ -67,6 +67,11 @@ const makeApiRequest = async (endpoint, method = 'get', params = null, data = nu
                     console.log(`API call succeeded with: ${fullPath}`);
                     return response;
                 }
+                else if (method === 'post') {
+                    const response = await axios.post(fullPath, data, axiosConfig);
+                    console.log(`API POST call succeeded with: ${fullPath}`);
+                    return response;
+                }
             } catch (error) {
                 const errorInfo = {
                     path: `${baseUrl}${prefix}${endpoint}`,

@@ -138,7 +138,7 @@ const Stats = () => {
         <iframe
           src={embedUrl}
           width="100%"
-          height={isMobile ? "400px" : "800px"}
+          height={isMobile ? "700px" : "800px"}
           frameBorder="0"
           title="NLQuotes Dashboard"
           sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-storage-access-by-user-activation allow-presentation allow-downloads allow-modals"
@@ -148,7 +148,7 @@ const Stats = () => {
           onError={handleIframeError}
           style={{
             width: '100%',
-            height: isMobile ? '400px' : '800px',
+            height: isMobile ? '700px' : '800px',
             border: 'none',
             backgroundColor: '#1e1e1e',
             transform: isMobile ? 'scale(0.8)' : 'none',
