@@ -19,9 +19,10 @@ RUN npm run build
 # Set environment variables
 ENV PORT=8080
 ENV NODE_ENV=production
+ENV DATABASE_URL=${DATABASE_URL}
 
 # Expose the port
 EXPOSE 8080
 
-# Start the server
-CMD ["node", "index.js"]
+# Start the server with proper error handling
+CMD ["node", "--trace-warnings", "index.js"]
