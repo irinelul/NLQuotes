@@ -8,14 +8,14 @@ dotenv.config();
 // Create connection pool with optimized settings
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: false, // Disable SSL requirements completely
-  max: 15, // Reduced from 20 to prevent connection overload
-  min: 2, // Keep at least 2 connections ready
-  idleTimeoutMillis: 30000, // Reduced from 60000 to recycle connections faster
-  connectionTimeoutMillis: 5000, // Increased from 1000 for better reliability
-  allowExitOnIdle: false, // Don't close pool on idle
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  max: 15,
+  min: 2,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000, // Increased timeout for cold starts
+  allowExitOnIdle: false,
   keepAlive: true,
-  keepAliveInitialDelayMillis: 5000 // Reduced from 10000
+  keepAliveInitialDelayMillis: 5000
 });
 
 // Better connection error handling

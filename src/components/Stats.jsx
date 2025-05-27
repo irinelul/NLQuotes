@@ -7,8 +7,9 @@ const Stats = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const dashboardUrl = import.meta.env.VITE_GRAFANA_DASHBOARD_URL;
-  const mobileDashboardUrl = import.meta.env.VITE_GRAFANA_DASHBOARD_URL_MOBILE;
+  // Hard-coded Grafana dashboard URLs
+  const dashboardUrl = "https://stats.nlquotes.com/d/bek3z1ymfr9j4a/test?orgId=1&from=now-24h&to=now&timezone=browser&var-city_filter=$__all&var-search_term_filter=$__all&refresh=5m";
+  const mobileDashboardUrl = "https://stats.nlquotes.com/d/xek3z1ymfr9j4a/test-mobile?orgId=1&from=now-24h&to=now&timezone=browser&refresh=5m&showCategory=Graph%20styles";
 
   // Validate and normalize dashboard URL
   const normalizeUrl = (url) => {
