@@ -123,7 +123,7 @@ const quoteModel = {
       try {
         const result = await client.query(`
           SELECT DISTINCT game_name 
-          FROM game_mapping 
+          FROM quotes 
           WHERE game_name IS NOT NULL 
           ORDER BY game_name ASC
         `);
