@@ -51,7 +51,7 @@ const SearchPage = ({
             <div className="logo-section">
                 <div className="logo-container" onClick={handleLogoClick}>
                     <img 
-                        src="/NLogo.webp" 
+                        src="/nlquotes.svg" 
                         alt="Northernlion Logo"
                         onError={(e) => {
                             e.target.onerror = null;
