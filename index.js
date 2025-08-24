@@ -520,6 +520,57 @@ app.get('/api/nldle', async (req, res) => {
   }
 });
 
+// Popular searches endpoint
+app.get('/api/popular-searches', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 20;
+    const result = await analyticsModel.getPopularSearchTerms(limit);
+    
+    res.json({ 
+      terms: result,
+      total: result.length
+    });
+  } catch (error) {
+    console.error('Error fetching popular searches:', error);
+    res.status(500).json({ error: 'Failed to fetch popular searches' });
+  }
+});
+
+// Topic quotes endpoint
+app.get('/api/topic/:term', async (req, res) => {
+  try {
+    const { term } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    
+    if (!term || term.trim().length < 2) {
+      return res.status(400).json({ error: 'Search term must be at least 2 characters' });
+    }
+    
+    const result = await quoteModel.search({
+      searchTerm: term,
+      searchPath: 'text',
+      gameName: 'all',
+      selectedValue: 'all',
+      year: '',
+      sortOrder: 'default',
+      page,
+      limit,
+      exactPhrase: false
+    });
+    
+    res.json({
+      data: result.data,
+      total: result.total,
+      totalQuotes: result.totalQuotes,
+      searchTerm: term
+    });
+  } catch (error) {
+    console.error('Error fetching topic quotes:', error);
+    res.status(500).json({ error: 'Failed to fetch topic quotes' });
+  }
+});
+
 // SPA fallback for React Router with CSP header
 app.get('*', (req, res) => {
   res.setHeader(
@@ -544,6 +595,8 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     console.log('- /api/games (game list)');
     console.log('- /api/flag (flag quotes)');
     console.log('- /api/nldle (NLDLE game)');
+    console.log('- /api/popular-searches (popular search terms)');
+    console.log('- /api/topic/:term (topic quotes)');
     console.log('- /health (health check)');
     console.log('=================================');
 });

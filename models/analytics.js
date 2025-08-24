@@ -378,6 +378,34 @@ const analyticsModel = {
     }
   },
 
+  // Get popular search terms for AdSense pages
+  async getPopularSearchTerms(limit = 20) {
+    const client = await pool.connect();
+    try {
+      const query = `
+        SELECT 
+          search_term,
+          COUNT(*) as count
+        FROM track_event 
+        WHERE type = 'search' 
+          AND search_term IS NOT NULL 
+          AND search_term != ''
+          AND LENGTH(search_term) >= 2
+        GROUP BY search_term 
+        ORDER BY count DESC 
+        LIMIT $1
+      `;
+
+      const result = await client.query(query, [limit]);
+      return result.rows;
+    } catch (error) {
+      console.error('Error fetching popular search terms:', error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+
   // Check database connection
   async checkConnection() {
     try {
