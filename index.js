@@ -524,11 +524,13 @@ app.get('/api/nldle', async (req, res) => {
 app.get('/api/popular-searches', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 20;
-    const result = await analyticsModel.getPopularSearchTerms(limit);
+    const timeRange = req.query.timeRange || '7d';
+    const result = await analyticsModel.getPopularSearchTerms(limit, timeRange);
     
     res.json({ 
       terms: result,
-      total: result.length
+      total: result.length,
+      timeRange
     });
   } catch (error) {
     console.error('Error fetching popular searches:', error);

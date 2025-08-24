@@ -379,9 +379,35 @@ const analyticsModel = {
   },
 
   // Get popular search terms for AdSense pages
-  async getPopularSearchTerms(limit = 20) {
+  async getPopularSearchTerms(limit = 20, timeRange = '7d') {
     const client = await pool.connect();
     try {
+      let timeFilter = '';
+      let params = [limit];
+      
+      // Add time-based filtering
+      switch (timeRange) {
+        case '1d':
+          timeFilter = "AND created_at >= NOW() - INTERVAL '1 day'";
+          break;
+        case '2d':
+          timeFilter = "AND created_at >= NOW() - INTERVAL '2 days'";
+          break;
+        case '7d':
+          timeFilter = "AND created_at >= NOW() - INTERVAL '7 days'";
+          break;
+        case '30d':
+          timeFilter = "AND created_at >= NOW() - INTERVAL '30 days'";
+          break;
+        case '90d':
+          timeFilter = "AND created_at >= NOW() - INTERVAL '90 days'";
+          break;
+        case 'all':
+        default:
+          timeFilter = '';
+          break;
+      }
+
       const query = `
         SELECT 
           search_term,
@@ -391,12 +417,13 @@ const analyticsModel = {
           AND search_term IS NOT NULL 
           AND search_term != ''
           AND LENGTH(search_term) >= 2
+          ${timeFilter}
         GROUP BY search_term 
         ORDER BY count DESC 
         LIMIT $1
       `;
 
-      const result = await client.query(query, [limit]);
+      const result = await client.query(query, params);
       return result.rows;
     } catch (error) {
       console.error('Error fetching popular search terms:', error);
