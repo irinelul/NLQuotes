@@ -72,6 +72,12 @@ const SearchPage = ({
                     >
                         📊 Stats
                     </button>
+                    <button
+                        onClick={() => navigate('/popular-searches')}
+                        className="logo-nav-button popular-searches-button"
+                    >
+                        🔥 Popular
+                    </button>
                 </div>
             </div>
             <div className="input-container">

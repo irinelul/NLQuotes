@@ -15,6 +15,8 @@ import Privacy from './components/Privacy';
 import SearchPage from './components/SearchPage';
 import NLDLE from './components/NLDLE/NLDLE';
 import Stats from './components/Stats';
+import { PopularSearches } from './components/PopularSearches';
+import { TopicPage } from './components/TopicPage';
 import getUserHash from './utils/userHash';
 import { useAnalyticsTracker, sendAnalytics } from './hooks/useAnalyticsTracker';
 
@@ -391,6 +393,8 @@ const App = () => {
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/nldle" element={<NLDLE />} />
             <Route path="/stats" element={<Stats />} />
+            <Route path="/popular-searches" element={<PopularSearches />} />
+            <Route path="/topic/:term" element={<TopicPage />} />
         </Routes>
     );
 };
