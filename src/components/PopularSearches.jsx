@@ -13,7 +13,7 @@ export const PopularSearches = () => {
     const fetchPopularTerms = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`http://localhost:8080/api/popular-searches?timeRange=${timeRange}`);
+        const response = await fetch(`/api/popular-searches?timeRange=${timeRange}`);
         if (!response.ok) {
           throw new Error('Failed to fetch popular searches');
         }
@@ -104,7 +104,13 @@ export const PopularSearches = () => {
 
        {/* Top AdSense Block */}
        <div className={styles.adsenseTop}>
-         <AdSenseBlock size="large" />
+        <AdSenseBlock 
+          size="responsive"
+          client="ca-pub-3762231556668854"
+          slot="4150404435"
+          format="auto"
+          fullWidthResponsive={true}
+        />
        </div>
 
        {/* Popular Terms Grid */}
@@ -165,7 +171,13 @@ export const PopularSearches = () => {
 
        {/* Bottom AdSense Block */}
        <div className={styles.adsenseBottom}>
-         <AdSenseBlock size="medium" />
+        <AdSenseBlock 
+          size="responsive"
+          client="ca-pub-3762231556668854"
+          slot="4150404435"
+          format="auto"
+          fullWidthResponsive={true}
+        />
        </div>
 
        {/* Back to Search Link */}

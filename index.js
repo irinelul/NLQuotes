@@ -578,10 +578,11 @@ app.get('*', (req, res) => {
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' https://api.nlquotes.com https://www.youtube.com; " +
-    "style-src 'self' 'unsafe-inline'; " +
-    "img-src 'self' https://nlquotes.com https://api.nlquotes.com https://img.youtube.com https://www.youtube.com data:; " +
-    "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; " +
+    "script-src 'self' 'unsafe-inline' https://api.nlquotes.com https://www.youtube.com https://stats.nlquotes.com https://pagead2.googlesyndication.com; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+    "img-src 'self' https://nlquotes.com https://api.nlquotes.com https://img.youtube.com https://www.youtube.com https://stats.nlquotes.com https://pagead2.googlesyndication.com https://tpc.googlesyndication.com data:; " +
+    "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://stats.nlquotes.com https://googleads.g.doubleclick.net; " +
+    "connect-src 'self' https://api.nlquotes.com https://stats.nlquotes.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net; " +
     "object-src 'none'"
   );
   res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
