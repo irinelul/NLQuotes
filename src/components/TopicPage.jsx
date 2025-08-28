@@ -18,7 +18,7 @@ export const TopicPage = () => {
     const fetchTopicQuotes = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`http://localhost:8080/api/topic/${encodeURIComponent(term)}?page=${page}`);
+        const response = await fetch(`/api/topic/${encodeURIComponent(term)}?page=${page}`);
         if (!response.ok) {
           throw new Error('Failed to fetch topic quotes');
         }

@@ -394,6 +394,7 @@ const App = () => {
             <Route path="/nldle" element={<NLDLE />} />
             <Route path="/stats" element={<Stats />} />
             <Route path="/popular-searches" element={<PopularSearches />} />
+            <Route path="/popular" element={<PopularSearches />} />
             <Route path="/topic/:term" element={<TopicPage />} />
         </Routes>
     );
