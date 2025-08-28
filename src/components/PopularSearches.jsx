@@ -13,7 +13,7 @@ export const PopularSearches = () => {
     const fetchPopularTerms = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`http://localhost:8080/api/popular-searches?timeRange=${timeRange}`);
+        const response = await fetch(`/api/popular-searches?timeRange=${timeRange}`);
         if (!response.ok) {
           throw new Error('Failed to fetch popular searches');
         }
@@ -66,6 +66,10 @@ export const PopularSearches = () => {
           Discover the most searched quotes and topics from Northernlion's content. 
           Click on any term to explore related quotes and moments.
         </p>
+        {/* Top AdSense Block */}
+        <div className={styles.adsenseTop}>
+          <AdSenseBlock adSlot="4150404435" size="responsive" />
+        </div>
         
                  {/* Time Range Selector */}
          <div className={styles.timeSelector}>
@@ -102,12 +106,7 @@ export const PopularSearches = () => {
          </div>
              </div>
 
-       {/* Top AdSense Block */}
-       <div className={styles.adsenseTop}>
-         <AdSenseBlock size="large" />
-       </div>
-
-       {/* Popular Terms Grid */}
+      {/* Popular Terms Grid */}
       <div className={styles.termsGrid}>
         {popularTerms.map((term, index) => {
           const count = parseInt(term.count);
@@ -163,12 +162,12 @@ export const PopularSearches = () => {
                  })}
        </div>
 
-       {/* Bottom AdSense Block */}
-       <div className={styles.adsenseBottom}>
-         <AdSenseBlock size="medium" />
-       </div>
+      {/* Bottom AdSense Block */}
+      <div className={styles.adsenseBottom}>
+        <AdSenseBlock adSlot="4150404435" size="responsive" />
+      </div>
 
-       {/* Back to Search Link */}
+      {/* Back to Search Link */}
       <div className="text-center mt-8">
         <Link
           to="/search"
