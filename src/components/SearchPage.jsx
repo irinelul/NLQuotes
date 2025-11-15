@@ -8,6 +8,7 @@ import { Footer } from './Footer';
 import { FeedbackModal } from './Modals/FeedbackModal';
 import { useNavigate } from 'react-router-dom';
 import GeneralFeedbackButton from './GeneralFeedbackButton';
+import { useTheme } from '../hooks/useTheme';
 
 const SearchPage = ({
     searchInput,
@@ -45,6 +46,7 @@ const SearchPage = ({
     handlePageChange,
 }) => {
     const navigate = useNavigate();
+    const { theme, toggleTheme } = useTheme();
 
     return (
         <div className='main-container'>
@@ -61,10 +63,11 @@ const SearchPage = ({
                 </div>
                 <div className="logo-nav">
                     <button
-                        onClick={() => navigate('/nldle')}
-                        className="logo-nav-button nldle-button"
+                        onClick={toggleTheme}
+                        className="logo-nav-button theme-toggle-button"
+                        title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
                     >
-                        🎮 NLDLE
+                        {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
                     </button>
                     <button
                         onClick={() => navigate('/stats')}
@@ -159,6 +162,13 @@ const SearchPage = ({
                     <div className="total-quotes">
                         Total quotes found: {numberFormatter.format(totalQuotes)}
                     </div>
+                    {quotes.length > 0 && (
+                        <PaginationButtons
+                            page={page}
+                            totalPages={totalPages}
+                            handlePageChange={handlePageChange}
+                        />
+                    )}
                     <Quotes quotes={quotes} searchTerm={searchTerm} totalQuotes={totalQuotes} />
                 </>
             )}

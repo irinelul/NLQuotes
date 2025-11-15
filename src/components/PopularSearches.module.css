@@ -110,16 +110,6 @@
   letter-spacing: 1px;
 }
 
-.adsenseTop {
-  margin: 3rem auto;
-  text-align: center;
-}
-
-.adsenseBottom {
-  margin: 3rem auto;
-  text-align: center;
-}
-
 .termsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -380,6 +370,151 @@
     top: -10px;
     right: -10px;
   }
+}
+
+/* Light mode styles */
+[data-theme="light"] .container {
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+  min-height: 100vh;
+}
+
+[data-theme="light"] .header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 12px 32px rgba(102, 126, 234, 0.25);
+}
+
+[data-theme="light"] .title {
+  background: linear-gradient(45deg, #fff, #f0f8ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+[data-theme="light"] .subtitle {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+[data-theme="light"] .timeSelector {
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(12px);
+}
+
+[data-theme="light"] .timeLabel {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+[data-theme="light"] .timeSelect {
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  color: #2d3748;
+}
+
+[data-theme="light"] .timeSelect:hover {
+  background: #ffffff;
+  border-color: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .statItem {
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .statNumber {
+  color: #ffffff;
+}
+
+[data-theme="light"] .statLabel {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+[data-theme="light"] .termCard {
+  background: #ffffff;
+  border: 2px solid #e0e0e0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .termCard:hover {
+  border-color: #667eea;
+  box-shadow: 0 12px 32px rgba(102, 126, 234, 0.2);
+  background: #fafafa;
+}
+
+[data-theme="light"] .termCard::before {
+  background: linear-gradient(90deg, #667eea, #764ba2);
+}
+
+[data-theme="light"] .termText {
+  color: #2d3748;
+}
+
+[data-theme="light"] .termDescription {
+  color: #5a6c7d;
+}
+
+[data-theme="light"] .popularityBar {
+  background: #e8e8e8;
+  border: 1px solid #d0d0d0;
+}
+
+[data-theme="light"] .popularityFill {
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+[data-theme="light"] .searchCount {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+[data-theme="light"] .exploreButton {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+[data-theme="light"] .exploreButton:hover {
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+}
+
+[data-theme="light"] .backButton {
+  background: linear-gradient(135deg, #48bb78, #38a169);
+  box-shadow: 0 6px 18px rgba(72, 187, 120, 0.3);
+}
+
+[data-theme="light"] .backButton:hover {
+  box-shadow: 0 10px 28px rgba(72, 187, 120, 0.4);
+}
+
+[data-theme="light"] .loadingText {
+  color: #5a6c7d;
+}
+
+[data-theme="light"] .errorContainer {
+  background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+  border: 2px solid #ef5350;
+  box-shadow: 0 4px 12px rgba(239, 83, 80, 0.2);
+}
+
+[data-theme="light"] .errorText {
+  color: #c62828;
+  font-weight: 600;
+}
+
+[data-theme="light"] .retryButton {
+  background: linear-gradient(135deg, #e53e3e, #c53030);
+  box-shadow: 0 4px 12px rgba(229, 62, 62, 0.3);
+}
+
+[data-theme="light"] .retryButton:hover {
+  box-shadow: 0 8px 20px rgba(229, 62, 62, 0.4);
+}
+
+[data-theme="light"] .spinner {
+  border-color: #e8e8e8;
+  border-top-color: #667eea;
 }
 
 /* Animation for cards appearing */

@@ -1,5 +1,6 @@
 .container {
-    background-color: var(--surface-color);
+    background-color: rgba(72, 187, 180, 0.08);
+    border: 1px solid rgba(72, 187, 180, 0.2);
     border-radius: 12px;
     padding: 1.5rem;
     margin: 2rem auto;
@@ -163,4 +164,11 @@
 
 .exampleDescription {
     margin-left: 1rem;
+}
+
+/* Light mode styles */
+[data-theme="light"] .container {
+    background-color: rgba(72, 187, 180, 0.12);
+    border: 1px solid rgba(72, 187, 180, 0.25);
+    box-shadow: 0 4px 8px rgba(72, 187, 180, 0.15);
 }

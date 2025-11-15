@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { AdSenseBlock } from './AdSenseBlock';
 import { YouTubePlayer } from './YoutubePlayer';
 import { formatDate } from '../services/dateHelpers';
 
@@ -100,12 +99,30 @@ export const TopicPage = () => {
         </div>
       </div>
 
-      {/* Top AdSense Block */}
-      <AdSenseBlock 
-        size="large" 
-        placeholder="Top Banner Advertisement"
-        style={{ marginBottom: '40px' }}
-      />
+      {/* Top Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center space-x-2 mb-8">
+          <button
+            onClick={() => handlePageChange(page - 1)}
+            disabled={page === 1}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300"
+          >
+            Previous
+          </button>
+          
+          <span className="px-4 py-2 text-gray-700">
+            Page {page} of {totalPages}
+          </span>
+          
+          <button
+            onClick={() => handlePageChange(page + 1)}
+            disabled={page === totalPages}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300"
+          >
+            Next
+          </button>
+        </div>
+      )}
 
       {/* Quotes List */}
       {quotes.length > 0 ? (
@@ -192,13 +209,6 @@ export const TopicPage = () => {
           </button>
         </div>
       )}
-
-      {/* Bottom AdSense Block */}
-      <AdSenseBlock 
-        size="medium" 
-        placeholder="Bottom Advertisement"
-        style={{ marginTop: '40px' }}
-      />
 
       {/* Navigation Links */}
       <div className="flex justify-center space-x-4 mt-8">

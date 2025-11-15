@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from '../hooks/useTheme';
 import './Stats.css';
 
 const Stats = () => {
   const navigate = useNavigate();
+  const { theme } = useTheme();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -62,23 +64,15 @@ const Stats = () => {
   
   // Add more URL parameters for better dashboard configuration
   const urlParams = new URLSearchParams({
-    kiosk: 'true',
-    theme: 'dark',
+    theme: theme,
     refresh: '5m',
     from: 'now-7d',
     to: 'now',
     orgId: '1',
     edit: 'false',
-    fullscreen: 'true',
-    autofitpanels: 'true',
-    showCategory: 'Graph styles',
     timezone: 'browser',
     cache: 'false',
-    mobile: isMobile ? 'true' : 'false',
-    disableDatasourceSelection: 'true',
-    disablePanelMenu: 'true',
-    disableTimePicker: 'true',
-    disableVariables: 'true'
+    mobile: isMobile ? 'true' : 'false'
   });
 
   const embedUrl = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}${urlParams.toString()}`;
@@ -96,6 +90,23 @@ const Stats = () => {
     setIsLoading(false);
     setError('Failed to load dashboard. Please check your network connection and try again.');
   };
+
+  // Prevent body scrolling when Stats page is mounted
+  useEffect(() => {
+    // Save original overflow style
+    const originalOverflow = document.body.style.overflow;
+    const originalOverflowHtml = document.documentElement.style.overflow;
+    
+    // Disable scrolling on body and html
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    
+    // Restore scrolling when component unmounts
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.documentElement.style.overflow = originalOverflowHtml;
+    };
+  }, []);
 
   // Add message event listener for iframe communication
   useEffect(() => {
@@ -137,10 +148,12 @@ const Stats = () => {
           </div>
         )}
         <iframe
+          key={`dashboard-${theme}`}
           src={embedUrl}
           width="100%"
-          height={isMobile ? "700px" : "800px"}
+          height="2500px"
           frameBorder="0"
+          scrolling="no"
           title="NLQuotes Dashboard"
           sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-storage-access-by-user-activation allow-presentation allow-downloads allow-modals"
           loading="eager"
@@ -149,11 +162,12 @@ const Stats = () => {
           onError={handleIframeError}
           style={{
             width: '100%',
-            height: isMobile ? '700px' : '800px',
+            height: '2500px',
+            minHeight: '2500px',
             border: 'none',
-            backgroundColor: '#1e1e1e',
-            transform: isMobile ? 'scale(0.8)' : 'none',
-            transformOrigin: 'top left'
+            backgroundColor: theme === 'dark' ? '#1e1e1e' : '#F5F5F5',
+            overflow: 'hidden',
+            display: 'block'
           }}
         />
       </div>
