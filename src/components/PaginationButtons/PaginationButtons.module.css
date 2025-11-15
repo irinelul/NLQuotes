@@ -31,6 +31,23 @@
     }
 }
 
+/* Light mode styles for pagination buttons */
+[data-theme="light"] .container button {
+    background-color: #808080;
+    color: #FFFFFF;
+}
+
+[data-theme="light"] .container button:hover:not(:disabled) {
+    background-color: #A0A0A0;
+    box-shadow: 0 4px 12px rgba(128, 128, 128, 0.3);
+    border: 1px solid #909090;
+}
+
+[data-theme="light"] .container button:disabled {
+    background-color: #D0D0D0;
+    color: #999999;
+}
+
 .info {
     color: var(--text-secondary);
     font-size: 0.9rem;

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { AdSenseBlock } from './AdSenseBlock';
 import { Link } from 'react-router-dom';
 import styles from './PopularSearches.module.css';
 
@@ -66,10 +65,6 @@ export const PopularSearches = () => {
           Discover the most searched quotes and topics from Northernlion's content. 
           Click on any term to explore related quotes and moments.
         </p>
-        {/* Top AdSense Block */}
-        <div className={styles.adsenseTop}>
-          <AdSenseBlock adSlot="4150404435" size="responsive" />
-        </div>
         
                  {/* Time Range Selector */}
          <div className={styles.timeSelector}>
@@ -161,11 +156,6 @@ export const PopularSearches = () => {
           );
                  })}
        </div>
-
-      {/* Bottom AdSense Block */}
-      <div className={styles.adsenseBottom}>
-        <AdSenseBlock adSlot="4150404435" size="responsive" />
-      </div>
 
       {/* Back to Search Link */}
       <div className="text-center mt-8">

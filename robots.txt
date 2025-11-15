@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /src/
+Disallow: /node_modules/
+Disallow: /vite/
+Disallow: /assets/*.map
+
+Sitemap: https://nlquotes.com/sitemap.xml

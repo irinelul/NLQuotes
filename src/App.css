@@ -230,8 +230,8 @@ b {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-.nldle-button {
-  background: #4CAF50;
+.theme-toggle-button {
+  background: #9C27B0;
 }
 
 .stats-button {
