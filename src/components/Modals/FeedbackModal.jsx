@@ -3,11 +3,13 @@ import styles from './Modals.module.css';
 
 export const FeedbackModal = ({ isOpen, onClose, onSubmit }) => {
     const [feedback, setFeedback] = useState('');
+    const [email, setEmail] = useState('');
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        onSubmit(feedback);
+        onSubmit(feedback, email);
         setFeedback('');
+        setEmail('');
     };
 
     if (!isOpen) return null;
@@ -25,6 +27,22 @@ export const FeedbackModal = ({ isOpen, onClose, onSubmit }) => {
                         onChange={(e) => setFeedback(e.target.value)}
                         placeholder="Enter your feedback here..."
                         required
+                    />
+                    <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="Email (optional)"
+                        style={{
+                            width: '100%',
+                            padding: '0.5rem',
+                            marginTop: '0.5rem',
+                            marginBottom: '1rem',
+                            border: '1px solid #ccc',
+                            borderRadius: '4px',
+                            fontSize: '1rem',
+                            boxSizing: 'border-box'
+                        }}
                     />
                     <div className={styles.modalButtons}>
                         <button type="button" onClick={onClose}>

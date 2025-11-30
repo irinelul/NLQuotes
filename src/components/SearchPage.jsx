@@ -44,6 +44,7 @@ const SearchPage = ({
     handleFeedbackSubmit,
     handleLogoClick,
     handlePageChange,
+    onChangelogClick,
 }) => {
     const navigate = useNavigate();
     const { theme, toggleTheme } = useTheme();
@@ -80,6 +81,14 @@ const SearchPage = ({
                         className="logo-nav-button popular-searches-button"
                     >
                         🔥 Popular
+                    </button>
+                    <button
+                        onClick={onChangelogClick}
+                        className="logo-nav-button"
+                        style={{ background: '#4CAF50' }}
+                        title="View Changelog"
+                    >
+                        📋 Changelog
                     </button>
                 </div>
             </div>
@@ -181,7 +190,7 @@ const SearchPage = ({
                 />
             )}
 
-            <Footer />
+            <Footer onChangelogClick={onChangelogClick} />
 
             {/* Improved desktop-only feedback button */}
             <GeneralFeedbackButton
