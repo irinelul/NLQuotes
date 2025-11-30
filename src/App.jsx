@@ -3,6 +3,7 @@ import query from './services/quotes';
 import { useNavigate, Routes, Route, useSearchParams, useLocation } from 'react-router-dom';
 import Disclaimer from './components/Disclaimer';
 import { FeedbackModal } from './components/Modals/FeedbackModal';
+import { ChangelogModal } from './components/Modals/ChangelogModal';
 import { ChannelRadioButton } from './components/ChannelRadioButton';
 import './App.css';
 import { Filters } from './components/Filters';
@@ -44,6 +45,7 @@ const App = () => {
     const [searchParams] = useSearchParams();
     const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
     const [submittingFeedback, setSubmittingFeedback] = useState(false);
+    const [changelogModalOpen, setChangelogModalOpen] = useState(false);
     
     const strict = false;
     // Add meta viewport tag for responsive design
@@ -211,7 +213,7 @@ const App = () => {
 
     const numberFormatter = new Intl.NumberFormat('en-US');
 
-    const handleFeedbackSubmit = async (feedback) => {
+    const handleFeedbackSubmit = async (feedback, email) => {
         try {
             setSubmittingFeedback(true);
             await query.flagQuote({
@@ -221,13 +223,15 @@ const App = () => {
                 videoId: "feedback",
                 title: "Website Feedback",
                 channel: "User Feedback",
-                reason: feedback
+                reason: feedback,
+                email: email || undefined
             });
             alert('Thank you for your feedback!');
             setFeedbackModalOpen(false);
         } catch (error) {
             console.error('Error submitting feedback:', error);
-            alert('Unable to submit feedback due to database connection issues. If you\'re on the deployed site, please try the main site at nlquotes.com.');
+            const errorMessage = error.response?.data?.error || error.message || 'Unknown error';
+            alert(`Unable to submit feedback: ${errorMessage}. Please check your connection and try again.`);
         } finally {
             setSubmittingFeedback(false);
         }
@@ -317,6 +321,7 @@ const App = () => {
     }, [sessionId, game]);
 
     return (
+        <>
         <Routes>
             <Route path="/" element={<SearchPage
                 searchInput={searchInput}
@@ -353,6 +358,7 @@ const App = () => {
                 handleLogoClick={handleLogoClick}
                 fetchQuotes={fetchQuotes}
                 handlePageChange={handlePageChange}
+                onChangelogClick={() => setChangelogModalOpen(true)}
             />} />
             <Route path="/search" element={<SearchPage
                 searchInput={searchInput}
@@ -389,6 +395,7 @@ const App = () => {
                 handleLogoClick={handleLogoClick}
                 fetchQuotes={fetchQuotes}
                 handlePageChange={handlePageChange}
+                onChangelogClick={() => setChangelogModalOpen(true)}
             />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/nldle" element={<NLDLE />} />
@@ -397,6 +404,11 @@ const App = () => {
             <Route path="/popular" element={<PopularSearches />} />
             <Route path="/topic/:term" element={<TopicPage />} />
         </Routes>
+        <ChangelogModal
+            isOpen={changelogModalOpen}
+            onClose={() => setChangelogModalOpen(false)}
+        />
+        </>
     );
 };
 

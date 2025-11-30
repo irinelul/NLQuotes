@@ -44,6 +44,37 @@ let isMigrationMode = false; // Migration complete - set to false to enable sear
 // Helper to try API calls with different path prefixes and base URLs
 const makeApiRequest = async (endpoint, method = 'get', params = null, data = null) => {
     const errors = [];
+    
+    // If endpoint already starts with /api, use it directly first
+    if (endpoint.startsWith('/api')) {
+        try {
+            console.log(`Trying API request: ${method.toUpperCase()} ${endpoint}`);
+            if (method === 'get') {
+                const response = await axios.get(endpoint, { 
+                    ...axiosConfig,
+                    params 
+                });
+                console.log(`API call succeeded with: ${endpoint}`);
+                return response;
+            }
+            else if (method === 'post') {
+                const response = await axios.post(endpoint, data, axiosConfig);
+                console.log(`API POST call succeeded with: ${endpoint}`);
+                return response;
+            }
+        } catch (error) {
+            console.log(`API call failed with: ${endpoint}`, {
+                status: error.response?.status,
+                message: error.message
+            });
+            errors.push({
+                path: endpoint,
+                status: error.response?.status,
+                message: error.message
+            });
+        }
+    }
+    
     for (const baseUrl of possibleBaseUrls) {
         // Try each path prefix
         for (const prefix of pathPrefixes) {
@@ -52,6 +83,10 @@ const makeApiRequest = async (endpoint, method = 'get', params = null, data = nu
                 let fullPath = endpoint;
                 if (prefix && !endpoint.startsWith(prefix)) {
                     fullPath = `${prefix}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+                }
+                // Skip if we already tried this exact path
+                if (fullPath === endpoint && endpoint.startsWith('/api')) {
+                    continue;
                 }
                 if (baseUrl) {
                     fullPath = `${baseUrl}${fullPath}`;
@@ -91,6 +126,11 @@ const makeApiRequest = async (endpoint, method = 'get', params = null, data = nu
         }
     }
     
+    // If we get here, all attempts failed
+    const errorMessage = errors.length > 0 
+        ? `All API attempts failed. Last error: ${errors[errors.length - 1].message}`
+        : 'API request failed';
+    throw new Error(errorMessage);
 };
 
 const getAll = async (searchTerm, page, strict, selectedValue, selectedMode, year, sortOrder, gameName) => {
@@ -132,7 +172,8 @@ const flagQuote = async (quoteData) => {
             throw new Error('Flagging unavailable during database migration');
         }
         
-        const response = await makeApiRequest('/flag', 'post', null, quoteData);
+        // Use /api/flag directly since the endpoint is /api/flag
+        const response = await makeApiRequest('/api/flag', 'post', null, quoteData);
         return response.data;
     } catch (error) {
         console.error('Error flagging quote:', error);

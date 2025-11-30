@@ -277,6 +277,7 @@ app.post('/api/flag', async (req, res) => {
         const title = sanitizeInput(req.body.title);
         const channel = sanitizeInput(req.body.channel);
         const reason = sanitizeInput(req.body.reason);
+        const email = req.body.email ? sanitizeInput(req.body.email) : null;
         
         // Check for spam or abuse patterns
         const hasSuspiciousContent = (input) => {
@@ -328,7 +329,12 @@ app.post('/api/flag', async (req, res) => {
                         name: "Feedback",
                         value: reason ? `\`\`\`${reason}\`\`\`` : "No feedback provided",
                         inline: false
-                    }
+                    },
+                    ...(email ? [{
+                        name: "Email",
+                        value: email,
+                        inline: true
+                    }] : [])
                 ],
                 timestamp: new Date().toISOString(),
                 footer: {
@@ -340,10 +346,20 @@ app.post('/api/flag', async (req, res) => {
         // Send to Discord webhook
         const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
         if (!webhookUrl) {
-            throw new Error('Discord webhook URL not configured');
+            console.error('DISCORD_WEBHOOK_URL environment variable is not set');
+            return res.status(500).json({ 
+                error: 'Discord webhook URL not configured. Please set DISCORD_WEBHOOK_URL environment variable.' 
+            });
         }
 
-        await axios.post(webhookUrl, webhookMessage);
+        try {
+            await axios.post(webhookUrl, webhookMessage);
+        } catch (discordError) {
+            console.error('Error sending to Discord webhook:', discordError.message);
+            return res.status(500).json({ 
+                error: `Failed to send to Discord: ${discordError.message}` 
+            });
+        }
         
         // Set security headers
         res.set({
@@ -354,7 +370,9 @@ app.post('/api/flag', async (req, res) => {
         res.json({ success: true });
     } catch (error) {
         console.error('Error flagging quote:', error);
-        res.status(500).json({ error: 'Failed to flag quote' });
+        res.status(500).json({ 
+            error: error.message || 'Failed to flag quote' 
+        });
     }
 });
 
