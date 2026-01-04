@@ -360,7 +360,13 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                       {quoteGroup.quotes[0]?.title || 'N/A'}
                   </div>
 
-                  <div className="mobile-video-container" style={{ width: '100%', maxWidth: '480px', margin: '0 auto' }}>
+                  <div className="mobile-video-container" style={{ 
+                      width: '100%', 
+                      maxWidth: '100%', 
+                      margin: '0 auto',
+                      padding: '0 1rem',
+                      boxSizing: 'border-box'
+                  }}>
                       <YouTubePlayer
                           key={`${quoteGroup.video_id}-${retryCount}`}
                           videoId={quoteGroup.video_id}

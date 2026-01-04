@@ -10,11 +10,51 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
     const iframeRef = React.useRef(null);
     const playerRef = React.useRef(null);
 
+    // Handle window resize and orientation changes to resize player
+    useEffect(() => {
+        const updatePlayerSize = () => {
+            if (playerRef.current && iframeRef.current?.parentElement) {
+                const container = iframeRef.current.parentElement;
+                const width = container.offsetWidth || container.clientWidth;
+                const height = container.offsetHeight || container.clientHeight;
+                
+                // Resize YouTube player if it exists and has the setSize method
+                if (playerRef.current && typeof playerRef.current.setSize === 'function' && width > 0 && height > 0) {
+                    try {
+                        playerRef.current.setSize(width, height);
+                    } catch (err) {
+                        console.error('Error resizing player:', err);
+                    }
+                }
+            }
+        };
+
+        // Listen for resize and orientation changes
+        window.addEventListener('resize', updatePlayerSize);
+        window.addEventListener('orientationchange', () => {
+            // Delay to allow layout to settle after orientation change
+            setTimeout(updatePlayerSize, 200);
+        });
+
+        return () => {
+            window.removeEventListener('resize', updatePlayerSize);
+            window.removeEventListener('orientationchange', updatePlayerSize);
+        };
+    }, [isPlaying]);
+
     // Initialize YouTube player when iframe is loaded
     useEffect(() => {
         if (isPlaying && iframeRef.current) {
             ensureApiReady().then(() => {
+                // Get container dimensions for responsive sizing
+                // Use container's actual size or fallback to defaults
+                const container = iframeRef.current.parentElement;
+                const width = container ? (container.offsetWidth || container.clientWidth || 616) : 616;
+                const height = container ? (container.offsetHeight || container.clientHeight || 346) : 346;
+                
                 const player = new window.YT.Player(iframeRef.current, {
+                    width: width,
+                    height: height,
                     videoId,
                     playerVars: {
                         autoplay: 1,
@@ -53,7 +93,7 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                 playerRef.current = null;
             }
         };
-    }, [isPlaying, videoId]);
+    }, [isPlaying, videoId, currentTimestamp]);
 
     // Handle timestamp changes
     useEffect(() => {
