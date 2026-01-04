@@ -592,7 +592,7 @@ app.get('/api/topic/:term', async (req, res) => {
 });
 
 // SPA fallback for React Router with CSP header
-app.get('*', (req, res) => {
+app.use((req, res) => {
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self'; " +
@@ -603,8 +603,10 @@ app.get('*', (req, res) => {
     "connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net; " +
     "object-src 'none'"
   );
+
   res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
 });
+
 
 // Create server with optimized settings
 const server = app.listen(PORT, '0.0.0.0', () => {
