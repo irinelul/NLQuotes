@@ -66,11 +66,17 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                         onReady: (event) => {
                             playerRef.current = event.target;
                             registerPlayer(event.target);
-                            event.target.playVideo();
+                            // Pause other players before starting this one
                             pauseOtherPlayers(event.target);
+                            event.target.playVideo();
+                            // Also pause after playVideo to ensure other players are stopped
+                            setTimeout(() => {
+                                pauseOtherPlayers(event.target);
+                            }, 100);
                         },
                         onStateChange: (event) => {
                             if (event.data === window.YT.PlayerState.PLAYING) {
+                                // Pause other players when this one starts playing
                                 pauseOtherPlayers(event.target);
                             }
                         },
@@ -98,19 +104,26 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
     // Handle timestamp changes
     useEffect(() => {
         if (timestamp !== null && !isPlaying) {
+            // Pause all other players before starting a new video
+            pauseOtherPlayers(null);
             setCurrentTimestamp(timestamp);
             setIsPlaying(true);
             console.log(`Auto-playing video ${videoId} at timestamp ${timestamp}`);
         } else if (timestamp !== null && playerRef.current) {
             setCurrentTimestamp(timestamp);
             try {
+                // Pause all other players before loading new video
+                pauseOtherPlayers(playerRef.current);
                 // Always reload the video when timestamp changes
                 playerRef.current.loadVideoById({
                     videoId: videoId,
                     startSeconds: timestamp
                 });
                 playerRef.current.playVideo();
-                pauseOtherPlayers(playerRef.current);
+                // Also pause after playVideo in case timing is off
+                setTimeout(() => {
+                    pauseOtherPlayers(playerRef.current);
+                }, 100);
                 console.log(`Loading video ${videoId} at timestamp ${timestamp}`);
             } catch (err) {
                 console.error('Error loading video:', err);

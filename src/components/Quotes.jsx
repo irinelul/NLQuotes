@@ -45,12 +45,10 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
   }, []);
 
   const handleTimestampClick = (videoId, timestamp) => {
-      // If clicking a quote from a different video, stop the current video
-      if (activeTimestamp.videoId && activeTimestamp.videoId !== videoId) {
-          // Use pauseOtherPlayers from our registry
-          pauseOtherPlayers(null); // Passing null to pause all players
-      }
-
+      // Always pause all other players before starting a new video
+      // This ensures only one video plays at a time, especially important on mobile
+      pauseOtherPlayers(null); // Passing null to pause all players
+      
       // Always set the active timestamp which will trigger video loading
       setActiveTimestamp({ videoId, timestamp });
   };
