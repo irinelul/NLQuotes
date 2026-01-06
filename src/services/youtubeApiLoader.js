@@ -89,7 +89,20 @@ export function pauseOtherPlayers(currentPlayer) {
   playerRegistry.forEach(player => {
     if (player !== currentPlayer && player.stopVideo) {
       try {
-        player.stopVideo();
+        // Try to get player state first
+        const playerState = player.getPlayerState ? player.getPlayerState() : null;
+        // Only stop if the player is actually playing or buffering
+        if (playerState === window.YT?.PlayerState?.PLAYING || 
+            playerState === window.YT?.PlayerState?.BUFFERING ||
+            playerState === null) { // If we can't get state, assume it might be playing
+          // Use both pauseVideo and stopVideo for better mobile compatibility
+          if (player.pauseVideo && typeof player.pauseVideo === 'function') {
+            player.pauseVideo();
+          }
+          if (player.stopVideo && typeof player.stopVideo === 'function') {
+            player.stopVideo();
+          }
+        }
         // Get the container element
         const iframe = player.getIframe();
         if (iframe) {
@@ -104,6 +117,14 @@ export function pauseOtherPlayers(currentPlayer) {
         }
       } catch (e) {
         console.log('Error stopping player:', e);
+        // Fallback: try to stop anyway
+        try {
+          if (player.stopVideo && typeof player.stopVideo === 'function') {
+            player.stopVideo();
+          }
+        } catch (e2) {
+          console.log('Error in fallback stop:', e2);
+        }
       }
     }
   });
