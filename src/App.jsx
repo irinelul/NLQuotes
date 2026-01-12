@@ -31,9 +31,51 @@ function useSimpleAnalyticsPageview() {
     }, [location]);
 }
 
+// Custom hook to track page views for analytics
+function usePageViewTracking(sessionId) {
+    const location = useLocation();
+    const pageLoadTimeRef = useRef(Date.now());
+    
+    useEffect(() => {
+        // Track page view on route change
+        const currentPath = location.pathname;
+        const queryParams = Object.fromEntries(new URLSearchParams(location.search));
+        
+        console.log('usePageViewTracking: Route changed to', currentPath, 'sessionId:', sessionId);
+        
+        // Don't track if user has opted out
+        const isOptedOut = localStorage.getItem('analytics_opt_out') === 'true';
+        if (isOptedOut) {
+            console.log('Analytics skipped - user has opted out');
+            return;
+        }
+        
+        // Only send if we have a sessionId (it might be undefined on first render)
+        if (!sessionId) {
+            console.log('Waiting for sessionId...');
+            return;
+        }
+        
+        console.log('Sending page_view analytics for path:', currentPath);
+        
+        // Send page_view analytics
+        sendAnalytics('page_view', {
+            path: currentPath,
+            query_params: queryParams,
+            referrer: document.referrer,
+            start_time: new Date().toISOString(),
+            session_id: sessionId
+        });
+        
+        // Reset page load time for this route
+        pageLoadTimeRef.current = Date.now();
+    }, [location.pathname, location.search, sessionId]);
+}
+
 const App = () => {
     useSimpleAnalyticsPageview();
-    const sessionId = useAnalyticsTracker();    
+    const sessionId = useAnalyticsTracker();
+    usePageViewTracking(sessionId);    
     const { state, updateState, resetState, updateSearchParams } = useSearchState();
     const [quotes, setQuotes] = useState([]);
     const [error, setError] = useState(null);
@@ -266,7 +308,9 @@ const App = () => {
             await new Promise(resolve => setTimeout(resolve, 300));
             const responseTimeMs = Math.round(performance.now() - fetchStart);
             // Send analytics for search or pagination
+            console.log('fetchQuotes completed, sending analytics. pageNum:', pageNum, 'sessionId:', sessionId);
             if (pageNum === 1) {
+                console.log('Sending search analytics');
                 sendAnalytics('search', {
                     path: '/search',
                     search_term: searchTerm,
@@ -281,6 +325,7 @@ const App = () => {
                     game: game
                 });
             } else {
+                console.log('Sending pagination analytics');
                 sendAnalytics('pagination', {
                     path: '/search',
                     search_term: searchTerm,

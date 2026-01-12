@@ -156,7 +156,7 @@ const quoteModel = {
 
     // We only search in text now, so no need to validate searchPath
     // log search parameters
-    console.log(`🔍 PostgreSQL search with params: term="${searchTerm}", game="${gameName}", channel=${selectedValue}, year=${year}, sort=${sortOrder}, page=${page}, exactPhrase=${exactPhrase}`);
+    console.log(`PostgreSQL search with params: term="${searchTerm}", game="${gameName}", channel=${selectedValue}, year=${year}, sort=${sortOrder}, page=${page}, exactPhrase=${exactPhrase}`);
 
     // Base query structure remains similar
     let query = `

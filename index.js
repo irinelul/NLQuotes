@@ -431,15 +431,15 @@ app.get('/health', async (req, res) => {
 
 // Database status endpoint - for monitoring in beta version
 app.get('/api/db-status', async (req, res) => {
-  console.log('⚠️ Database status check requested from: ' + req.ip);
-  console.log('👉 Request URL path: ' + req.path);
-  console.log('👉 Full request URL: ' + req.originalUrl);
-  console.log('👉 Request headers:', req.headers);
+  console.log('Database status check requested from: ' + req.ip);
+  console.log('Request URL path: ' + req.path);
+  console.log('Full request URL: ' + req.originalUrl);
+  console.log('Request headers:', req.headers);
   
   try {
-    console.log('🔍 Attempting to check database health...');
+    console.log('Attempting to check database health...');
     const healthStatus = await quoteModel.checkHealth();
-    console.log('✅ Database health check complete:', healthStatus.healthy ? 'HEALTHY' : 'UNHEALTHY');
+    console.log('Database health check complete:', healthStatus.healthy ? 'HEALTHY' : 'UNHEALTHY');
     
     const response = {
       status: healthStatus.healthy ? 'connected' : 'error',
@@ -450,10 +450,10 @@ app.get('/api/db-status', async (req, res) => {
       timestamp: new Date().toISOString()
     };
     
-    console.log('📤 Sending DB status response:', response.status);
+    console.log('Sending DB status response:', response.status);
     res.json(response);
   } catch (error) {
-    console.error('❌ Error checking database status:', error);
+    console.error('Error checking database status:', error);
     res.status(500).json({
       status: 'error',
       message: 'Failed to check database status: ' + error.message,
@@ -591,7 +591,57 @@ app.get('/api/topic/:term', async (req, res) => {
   }
 });
 
+// --- Analytics endpoint ---
+// IMPORTANT: This must be registered BEFORE the SPA fallback route
+app.post('/analytics', async (req, res) => {
+    try {
+      console.log('POST /analytics hit');
+      console.log('Request body:', JSON.stringify(req.body, null, 2));
+
+      // Check if user has opted out of analytics
+      if (req.body.analytics_opted_out === true) {
+        console.log('Analytics skipped - user has opted out');
+        return res.status(204).end();
+      }
+
+      // Check database connection first
+      console.log('Checking analytics database connection...');
+      const isConnected = await analyticsModel.checkConnection();
+      if (!isConnected) {
+        console.error('Analytics database connection failed');
+        return res.status(500).json({ error: 'Database connection failed' });
+      }
+      console.log('Analytics database connection successful');
+
+      // Validate request body
+      if (!req.body || typeof req.body !== 'object') {
+        console.error('Invalid request body:', req.body);
+        return res.status(400).json({ error: 'Invalid request body' });
+      }
+
+      // Validate required field
+      if (!req.body.type) {
+        console.error('Missing required field: type');
+        return res.status(400).json({ error: 'Missing required field: type' });
+      }
+
+      // Store the analytics event
+      console.log('Attempting to store analytics event of type:', req.body.type);
+      const result = await analyticsModel.storeEvent(req.body);
+      console.log('Analytics event stored successfully with id:', result?.id);
+      res.status(204).end();
+    } catch (error) {
+      console.error('Error in analytics endpoint:', error);
+      console.error('Error stack:', error.stack);
+      res.status(500).json({ 
+        error: 'Failed to store analytics',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  });
+
 // SPA fallback for React Router with CSP header
+// This must be LAST so it doesn't catch API routes
 app.use((req, res) => {
   res.setHeader(
     'Content-Security-Policy',
@@ -620,6 +670,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     console.log('- /api/nldle (NLDLE game)');
     console.log('- /api/popular-searches (popular search terms)');
     console.log('- /api/topic/:term (topic quotes)');
+    console.log('- /analytics (POST - analytics tracking)');
     console.log('- /health (health check)');
     console.log('=================================');
 });
@@ -663,39 +714,3 @@ process.on('unhandledRejection', (reason, promise) => {
     process.exit(1);
   });
 });
-
-// --- Analytics endpoint ---
-app.post('/analytics', async (req, res) => {
-    try {
-      console.log('POST /analytics hit', req.body);
-
-      // Check if user has opted out of analytics
-      if (req.body.analytics_opted_out === true) {
-        console.log('Analytics skipped - user has opted out');
-        return res.status(204).end();
-      }
-
-      // Check database connection first
-      const isConnected = await analyticsModel.checkConnection();
-      if (!isConnected) {
-        console.error('Analytics database connection failed');
-        return res.status(500).json({ error: 'Database connection failed' });
-      }
-
-      // Validate request body
-      if (!req.body || typeof req.body !== 'object') {
-        console.error('Invalid request body:', req.body);
-        return res.status(400).json({ error: 'Invalid request body' });
-      }
-
-      // Store the analytics event
-      await analyticsModel.storeEvent(req.body);
-      res.status(204).end();
-    } catch (error) {
-      console.error('Error in analytics endpoint:', error);
-      res.status(500).json({ 
-        error: 'Failed to store analytics',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
-  });
