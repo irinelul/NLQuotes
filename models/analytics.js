@@ -2,11 +2,26 @@ import pkg from 'pg';
 const { Pool } = pkg;
 
 // Create a new pool for analytics with a separate connection string
+let analyticsConnectionString;
+if (process.env.ANALYTICS_DATABASE_URL) {
+  analyticsConnectionString = process.env.ANALYTICS_DATABASE_URL;
+  console.log('Using ANALYTICS_DATABASE_URL from environment');
+} else if (process.env.DATABASE_URL) {
+  // Replace the database name in the connection string with 'analytics'
+  analyticsConnectionString = process.env.DATABASE_URL.replace(/\/([^/]+)$/, '/analytics');
+  console.log('Using DATABASE_URL with analytics database substitution');
+} else {
+  throw new Error('Neither ANALYTICS_DATABASE_URL nor DATABASE_URL is set');
+}
+
+console.log('Analytics connection string (masked):', analyticsConnectionString.replace(/:[^:]*@/, ':****@'));
+
 const pool = new Pool({
-  connectionString: process.env.ANALYTICS_DATABASE_URL || process.env.DATABASE_URL.replace(/\/([^/]+)$/, '/analytics'),
+  connectionString: analyticsConnectionString,
   max: 20, // Maximum number of clients in the pool
   idleTimeoutMillis: 30000, // How long a client is allowed to remain idle before being closed
   connectionTimeoutMillis: 2000, // How long to wait for a connection
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 });
 
 // Track connection events
@@ -339,18 +354,24 @@ const analyticsModel = {
         throw new Error(`Unknown event type: ${eventData.type}`);
       }
 
+      console.log('Executing query with', values.length, 'parameters');
       const result = await client.query(query, values);
+      console.log('Query executed successfully, inserted row with id:', result.rows[0]?.id);
       return result.rows[0];
     } catch (error) {
-      console.error('Error storing analytics event:', error);
+      console.error(' Error storing analytics event:', error);
       console.error('Error details:', {
         message: error.message,
         code: error.code,
         detail: error.detail,
         hint: error.hint,
         position: error.position,
-        where: error.where
+        where: error.where,
+        stack: error.stack
       });
+      console.error('Event data that failed:', JSON.stringify(eventData, null, 2));
+      console.error('Query that failed:', query);
+      console.error('Values that failed:', values);
       throw error;
     } finally {
       client.release();
@@ -438,13 +459,36 @@ const analyticsModel = {
     try {
       const client = await pool.connect();
       try {
+        // First check basic connectivity
         await client.query('SELECT 1');
+        
+        // Check if track_event table exists
+        const tableCheck = await client.query(`
+          SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = 'track_event'
+          ) as table_exists
+        `);
+        
+        if (!tableCheck.rows[0].table_exists) {
+          console.error('track_event table does not exist in the database!');
+          console.error('Please create the track_event table. Check migrations or create it manually.');
+          return false;
+        }
+        
+        console.log('track_event table exists');
         return true;
       } finally {
         client.release();
       }
     } catch (error) {
       console.error('Analytics database connection check failed:', error);
+      console.error('Connection error details:', {
+        message: error.message,
+        code: error.code,
+        detail: error.detail
+      });
       return false;
     }
   }

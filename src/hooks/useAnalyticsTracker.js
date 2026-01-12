@@ -100,12 +100,8 @@ const sendAnalytics = (type, data) => {
   };
 
   const getAnalyticsUrl = () => {
-    if (
-      window.location.hostname === 'localhost' &&
-      window.location.port === '5173'
-    ) {
-      return 'http://localhost:3001/analytics';
-    }
+    // In development, Vite proxy will handle /analytics
+    // In production, it's a relative path that goes to the same server
     return '/analytics';
   };
 
@@ -116,9 +112,15 @@ const sendAnalytics = (type, data) => {
     body: JSON.stringify(payload),
     keepalive: true
   }).then(res => {
-    console.log('Analytics POST response:', res.status);
+    console.log('Analytics POST response:', res.status, res.statusText);
+    if (!res.ok) {
+      console.error(' Analytics POST failed:', res.status, res.statusText);
+      return res.text().then(text => {
+        console.error('Response body:', text);
+      });
+    }
   }).catch(err => {
-    console.error('Analytics POST error:', err);
+    console.error(' Analytics POST error:', err);
   });
 
   // navigator.sendBeacon(
