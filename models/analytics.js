@@ -400,11 +400,17 @@ const analyticsModel = {
   },
 
   // Get popular search terms for AdSense pages
-  async getPopularSearchTerms(limit = 20, timeRange = '7d') {
+  async getPopularSearchTerms({
+    limit = 20,
+    timeRange = '7d',
+    domain,
+    year,
+  } = {}) {
     const client = await pool.connect();
     try {
       let timeFilter = '';
-      let params = [limit];
+      const params = [];
+      let paramIndex = 1;
       
       // Add time-based filtering
       switch (timeRange) {
@@ -429,6 +435,19 @@ const analyticsModel = {
           break;
       }
 
+      const filters = [];
+      // Domain filter (matches your SQL: domain = 'nlquotes.com')
+      if (domain) {
+        filters.push(`domain = $${paramIndex++}`);
+        params.push(domain);
+      }
+
+      // Year filter (matches your SQL: EXTRACT(YEAR FROM created_at) = 2025)
+      if (year && Number.isFinite(Number(year))) {
+        filters.push(`EXTRACT(YEAR FROM created_at) = $${paramIndex++}`);
+        params.push(Number(year));
+      }
+
       const query = `
         SELECT 
           search_term,
@@ -438,12 +457,14 @@ const analyticsModel = {
           AND search_term IS NOT NULL 
           AND search_term != ''
           AND LENGTH(search_term) >= 2
+          ${filters.length ? `AND ${filters.join(' AND ')}` : ''}
           ${timeFilter}
         GROUP BY search_term 
         ORDER BY count DESC 
-        LIMIT $1
+        LIMIT $${paramIndex}
       `;
 
+      params.push(limit);
       const result = await client.query(query, params);
       return result.rows;
     } catch (error) {
