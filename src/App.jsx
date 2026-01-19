@@ -90,21 +90,6 @@ const App = () => {
     const [changelogModalOpen, setChangelogModalOpen] = useState(false);
     
     const strict = false;
-    // Add meta viewport tag for responsive design
-    useEffect(() => {
-        // Check if viewport meta tag exists
-        let viewportMeta = document.querySelector('meta[name="viewport"]');
-
-        // If it doesn't exist, create it
-        if (!viewportMeta) {
-            viewportMeta = document.createElement('meta');
-            viewportMeta.name = 'viewport';
-            document.getElementsByTagName('head')[0].appendChild(viewportMeta);
-        }
-
-        // Set the content
-        viewportMeta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
-    }, []);
 
     const games = useFetchGames();
 

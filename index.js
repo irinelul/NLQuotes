@@ -543,12 +543,22 @@ app.get('/api/popular-searches', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 20;
     const timeRange = req.query.timeRange || '7d';
-    const result = await analyticsModel.getPopularSearchTerms(limit, timeRange);
+    const domain = req.query.domain || undefined;
+    const year = req.query.year ? parseInt(req.query.year) : undefined;
+
+    const result = await analyticsModel.getPopularSearchTerms({
+      limit,
+      timeRange,
+      domain,
+      year
+    });
     
     res.json({ 
       terms: result,
       total: result.length,
-      timeRange
+      timeRange,
+      domain,
+      year
     });
   } catch (error) {
     console.error('Error fetching popular searches:', error);
@@ -579,16 +589,34 @@ app.get('/api/topic/:term', async (req, res) => {
       exactPhrase: false
     });
     
+    const totalPages = Math.max(1, Math.ceil((result.total || 0) / limit));
     res.json({
       data: result.data,
       total: result.total,
+      totalPages,
       totalQuotes: result.totalQuotes,
+      limit,
+      page,
       searchTerm: term
     });
   } catch (error) {
     console.error('Error fetching topic quotes:', error);
     res.status(500).json({ error: 'Failed to fetch topic quotes' });
   }
+});
+
+// Serve pre-generated static topic pages if present (lets Google crawl real HTML at /topic/:term)
+app.get('/topic/:term', (req, res, next) => {
+  try {
+    const encoded = encodeURIComponent(req.params.term);
+    const staticPath = path.resolve(__dirname, 'dist', 'topic', encoded, 'index.html');
+    if (fs.existsSync(staticPath)) {
+      return res.sendFile(staticPath);
+    }
+  } catch (e) {
+    console.error('Error serving static topic page:', e);
+  }
+  next();
 });
 
 // --- Analytics endpoint ---

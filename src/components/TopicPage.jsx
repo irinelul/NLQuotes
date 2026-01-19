@@ -11,20 +11,21 @@ export const TopicPage = () => {
   const [totalQuotes, setTotalQuotes] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [limit] = useState(10);
   const [activeTimestamp, setActiveTimestamp] = useState({ videoId: null, timestamp: null });
 
   useEffect(() => {
     const fetchTopicQuotes = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/topic/${encodeURIComponent(term)}?page=${page}`);
+        const response = await fetch(`/api/topic/${encodeURIComponent(term)}?page=${page}&limit=${limit}`);
         if (!response.ok) {
           throw new Error('Failed to fetch topic quotes');
         }
         const data = await response.json();
         setQuotes(data.data || []);
         setTotalQuotes(data.totalQuotes || 0);
-        setTotalPages(data.total || 1);
+        setTotalPages(data.totalPages || 1);
       } catch (err) {
         console.error('Error fetching topic quotes:', err);
         setError('Failed to load quotes for this topic');
@@ -36,7 +37,7 @@ export const TopicPage = () => {
     if (term) {
       fetchTopicQuotes();
     }
-  }, [term, page]);
+  }, [term, page, limit]);
 
   const handleTimestampClick = (videoId, timestamp) => {
     // If clicking a quote from a different video, stop the current video
