@@ -164,8 +164,9 @@ const quoteModel = {
     const params = [];
     let paramIndex = 1;
     // We only search in text now, so no need to validate searchPath
-    // log search parameters
-    console.log(`PostgreSQL search with params: term="${searchTerm}", game="${gameName}", channel=${selectedValue}, year=${year}, sort=${sortOrder}, page=${page}, exactPhrase=${exactPhrase}`);
+    // log search parameters with tenant info
+    const tenantId = tenant?.id || 'default';
+    console.log(`[Search] PostgreSQL search - Tenant: ${tenantId}, term="${searchTerm}", game="${gameName}", channel=${selectedValue}, year=${year}, sort=${sortOrder}, page=${page}, exactPhrase=${exactPhrase}`);
 
     // Base query structure remains similar
     let query = `
@@ -209,13 +210,25 @@ const quoteModel = {
     }
 
     if (selectedValue && selectedValue !== 'all') { // Assuming selectedValue is channel_source
-      // Whitelist approach for channel_source with case-insensitive comparison
-      const validChannels = ['librarian', 'northernlion']; // Using lowercase for consistency
+      // Tenant-aware channel validation - use tenant config if available
+      let validChannels = ['librarian', 'northernlion']; // Default fallback
+      
+      if (tenant && tenant.channels) {
+        // Extract channel IDs from tenant config (excluding 'all')
+        validChannels = tenant.channels
+          .filter(ch => ch.id !== 'all')
+          .map(ch => ch.id.toLowerCase());
+        console.log(`[Search] Using tenant channels for ${tenant.id}:`, validChannels);
+      }
+      
       const lowerSelectedValue = selectedValue.toLowerCase();
       if (validChannels.includes(lowerSelectedValue)) {
         whereClauses.push(`LOWER(q.channel_source) = $${paramIndex}`);
         params.push(lowerSelectedValue);
         paramIndex++;
+        console.log(`[Search] Applied channel filter: ${lowerSelectedValue}`);
+      } else {
+        console.warn(`[Search] Channel "${selectedValue}" not in valid channels list for tenant ${tenant?.id || 'default'}. Valid channels:`, validChannels);
       }
     }
 
@@ -326,7 +339,12 @@ if (sortOrder === 'default') {
 
     try {
       // Get a client with timeout to prevent hanging connections
+      console.log(`[Search] Getting database pool for tenant: ${tenantId}`);
       const pool = getPoolForTenant(tenant);
+      if (!pool) {
+        throw new Error(`Failed to get database pool for tenant ${tenantId}`);
+      }
+      console.log(`[Search] Database pool obtained, connecting...`);
       const clientPromise = pool.connect();
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Database connection timeout')), 5000)
@@ -349,11 +367,14 @@ if (sortOrder === 'default') {
         
         const result = await Promise.race([queryPromise, queryTimeoutPromise])
           .catch(err => {
+            console.error(`[Search] Query execution error for tenant ${tenantId}:`, err.message);
             if (err.message === 'Query execution timeout') {
               throw new Error('Query timed out after 10s');
             }
             throw err;
           });
+        
+        console.log(`[Search] Main query executed successfully, rows: ${result.rows?.length || 0}`);
         
         // Execute count query with timeout
         const countPromise = client.query(countQuery, countParams);
@@ -363,6 +384,7 @@ if (sortOrder === 'default') {
         
         const countResult = await Promise.race([countPromise, countTimeoutPromise])
           .catch(err => {
+            console.error(`[Search] Count query error for tenant ${tenantId}:`, err.message);
             if (err.message === 'Count query timeout') {
               // Return empty count result instead of failing
               return { rows: [{ total_videos: 0, total_quotes: 0 }] };
@@ -373,6 +395,8 @@ if (sortOrder === 'default') {
         // Get both total videos and total quotes
         const totalVideos = parseInt(countResult.rows[0]?.total_videos || 0, 10);
         const totalQuotes = parseInt(countResult.rows[0]?.total_quotes || 0, 10);
+        
+        console.log(`[Search] Query completed for tenant ${tenantId} - Videos: ${totalVideos}, Quotes: ${totalQuotes}, Results returned: ${result.rows?.length || 0}`);
   
         return {
           data: result.rows,
@@ -385,12 +409,22 @@ if (sortOrder === 'default') {
         client.release();
       }
     } catch (error) {
-      console.error("Database Query Error:", error);
+      console.error(`[Search] Database Query Error for tenant ${tenantId}:`, error);
+      console.error(`[Search] Error details:`, {
+        message: error.message,
+        code: error.code,
+        detail: error.detail,
+        hint: error.hint,
+        stack: error.stack?.split('\n').slice(0, 5).join('\n')
+      });
       // Provide a meaningful error without exposing details
       if (error.message.includes('timeout')) {
         throw new Error('Database query timed out. Please try again or with a more specific search.');
+      } else if (error.message.includes('permission denied') || error.code === '42501') {
+        console.error(`[Search] PERMISSION ERROR: Database user may not have required permissions for tenant ${tenantId}`);
+        throw new Error('Database permission error. Please check database user permissions.');
       } else {
-        throw new Error('Database error occurred. Please try again later.');
+        throw new Error(`Database error occurred: ${error.message}`);
       }
     }
   },
