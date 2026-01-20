@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ChannelRadioButton } from './ChannelRadioButton';
 import { Filters } from './Filters';
 import Disclaimer from './Disclaimer';
@@ -49,11 +49,20 @@ const SearchPage = ({
 }) => {
     const navigate = useNavigate();
     const { theme, toggleTheme } = useTheme();
-    const { tenant } = useTenant();
+    const { tenant, loading: tenantLoading } = useTenant();
     
     // Use tenant config with fallbacks
     const logo = tenant?.branding?.logo || '/nlquotes.svg';
     const logoFallback = tenant?.branding?.logoFallback || '/NLogo.png';
+    
+    // Debug logging
+    useEffect(() => {
+      if (tenant) {
+        console.log('[SearchPage] Tenant loaded:', tenant.id, 'Logo:', logo, 'Fallback:', logoFallback);
+      } else if (!tenantLoading) {
+        console.warn('[SearchPage] No tenant config loaded, using fallbacks');
+      }
+    }, [tenant, tenantLoading, logo, logoFallback]);
     const searchPlaceholder = tenant?.texts?.searchPlaceholder || 'Search quotes...';
     const randomQuotesText = tenant?.texts?.randomQuotesButton || 'Random Quotes';
     const totalQuotesLabel = tenant?.texts?.totalQuotesLabel || 'Total quotes found:';

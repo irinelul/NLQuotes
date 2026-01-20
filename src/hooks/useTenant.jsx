@@ -11,7 +11,9 @@ export function TenantProvider({ children }) {
   useEffect(() => {
     async function fetchTenant() {
       try {
+        console.log('[useTenant] Fetching tenant config from /api/tenant');
         const response = await axios.get('/api/tenant');
+        console.log('[useTenant] Received tenant config:', response.data);
         setTenant(response.data);
         
         // Update document metadata
@@ -43,9 +45,16 @@ export function TenantProvider({ children }) {
           }
         }
       } catch (err) {
-        console.error('Error fetching tenant config:', err);
+        console.error('[useTenant] Error fetching tenant config:', err);
+        console.error('[useTenant] Error details:', {
+          message: err.message,
+          response: err.response?.data,
+          status: err.response?.status,
+          url: err.config?.url
+        });
         setError(err);
         // Fallback to default tenant config
+        console.warn('[useTenant] Falling back to default Northernlion config');
         setTenant({
           id: 'northernlion',
           name: 'Northernlion',

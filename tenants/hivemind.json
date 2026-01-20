@@ -2,8 +2,8 @@
   "id": "hivemind",
   "name": "hivemind",
   "displayName": "HiveQuotes",
-  "hostnames": ["hivequotes.com", "api.hivequotes.com"],
-  "port": 3001,
+  "hostnames": ["hivequotes.xyz", "www.hivequotes.xyz"],
+  "port": 3002,
   "branding": {
     "logo": "/hivemind/hivemind.jpg",
     "logoFallback": "/hivemind/hivemind.jpg",
