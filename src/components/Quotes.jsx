@@ -24,6 +24,17 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
   const [retryCount, setRetryCount] = useState(0);
   const [isMobileView, setIsMobileView] = useState(window.innerWidth <= 768);
 
+  // Debug logging
+  useEffect(() => {
+    console.log('[Quotes] Component received props:', {
+      quotesLength: quotes?.length,
+      quotesType: Array.isArray(quotes) ? 'array' : typeof quotes,
+      totalQuotes,
+      searchTerm,
+      firstQuote: quotes?.[0]
+    });
+  }, [quotes, totalQuotes, searchTerm]);
+
   // Effect to handle video loading retry
   useEffect(() => {
       if (showEmbeddedVideos && retryCount < 1) {
