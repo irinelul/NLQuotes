@@ -223,6 +223,14 @@ app.get('/api/tenant', (req, res) => {
       channels: tenant.channels
     };
     
+    // Set cache-busting headers - don't cache tenant config
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'X-Content-Type-Options': 'nosniff'
+    });
+    
     res.json(config);
   } catch (error) {
     console.error('Error serving tenant config:', error);
