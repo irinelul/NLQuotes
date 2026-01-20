@@ -2,7 +2,7 @@
   "id": "hivemind",
   "name": "hivemind",
   "displayName": "HiveQuotes",
-  "hostnames": ["hivequotes.xyz", "www.hivequotes.xyz"],
+  "hostnames": ["hivequotes.xyz", "www.hivequotes.xyz", "localhost"],
   "port": 3002,
   "branding": {
     "logo": "/hivemind/hivemind.jpg",

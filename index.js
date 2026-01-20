@@ -10,7 +10,7 @@ import slowDown from 'express-slow-down';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import analyticsModel from './models/analytics.js';
-import { detectTenant, getTenantById } from './tenants/tenant-manager.js';
+import { detectTenant, getTenantById, getAllTenants } from './tenants/tenant-manager.js';
 
 // Load environment variables
 dotenv.config();
@@ -64,8 +64,41 @@ app.use((req, res, next) => {
     req.tenant = getTenantById(forcedTenantId);
     console.log(`[Tenant] Forced tenant: ${forcedTenantId} -> ${req.tenant?.id}`);
   } else {
-    req.tenant = detectTenant(hostname);
-    console.log(`[Tenant] Detected from hostname "${hostname}": ${req.tenant?.id}`);
+    // Try to detect tenant by port first
+    // Priority: 1) Port from hostname, 2) Port from socket, 3) Server's PORT env var
+    let detectedTenant = null;
+    let port = null;
+    
+    // Extract port from hostname (e.g., "localhost:3002")
+    if (hostname.includes(':')) {
+      port = parseInt(hostname.split(':')[1]);
+    } else if (req.socket && req.socket.localPort) {
+      // Get port from the socket (the port the server is listening on)
+      port = req.socket.localPort;
+    } else {
+      // Fallback to the server's PORT (from env var or tenant config)
+      port = PORT;
+    }
+    
+    // If we have a port, try to match it to a tenant
+    if (port) {
+      const allTenants = getAllTenants();
+      for (const tenant of allTenants) {
+        if (tenant.port === port) {
+          detectedTenant = tenant;
+          console.log(`[Tenant] Detected from port ${port}: ${tenant.id} (hostname: ${hostname})`);
+          break;
+        }
+      }
+    }
+    
+    // Fall back to hostname-based detection
+    if (!detectedTenant) {
+      detectedTenant = detectTenant(hostname);
+      console.log(`[Tenant] Detected from hostname "${hostname}": ${detectedTenant?.id} (server port: ${PORT})`);
+    }
+    
+    req.tenant = detectedTenant;
   }
   next();
 });
@@ -239,7 +272,8 @@ app.get('/api/tenant', (req, res) => {
 });
 
 app.get('/api', async (req, res) => {
-    // Log search request details for debugging
+    // Log search request details for debugging - THIS SHOULD ALWAYS APPEAR
+    console.log('=== SEARCH ENDPOINT HIT ===');
     const tenantId = req.tenant?.id || 'unknown';
     const hostname = req.get('host') || 'unknown';
     console.log(`[Search] Request received - Tenant: ${tenantId}, Hostname: ${hostname}`);
