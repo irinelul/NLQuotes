@@ -1,0 +1,39 @@
+{
+  "id": "hivemind",
+  "name": "hivemind",
+  "displayName": "HiveQuotes",
+  "hostnames": ["hivequotes.com", "api.hivequotes.com"],
+  "branding": {
+    "logo": "/hivemind/hivemind.jpg",
+    "logoFallback": "/hivemind/hivemind.jpg",
+    "favicon": "/hivemind/hivemind.jpg",
+    "primaryColor": "#4CAF50",
+    "theme": "northernlion"
+  },
+  "metadata": {
+    "title": "HiveQuotes - Search hivemind Quotes",
+    "description": "Search through thousands of quotes from hivemind's videos. Find memorable moments, funny quotes, and more.",
+    "keywords": "hivemind, quotes, search, videos, music, youtube",
+    "ogImage": "/HiveQuotes.png",
+    "siteName": "HiveQuotes"
+  },
+  "texts": {
+    "searchPlaceholder": "Search quotes...",
+    "randomQuotesButton": "Random Quotes",
+    "footerText": "",
+    "disclaimer": "This site is not affiliated with hivemind. All quotes are from publicly available videos.",
+    "totalQuotesLabel": "Total quotes found:",
+    "noResultsMessage": "No quotes found. Try a different search term.",
+    "loadingMessage": "Loading...",
+    "errorMessage": "Unable to connect to database."
+  },
+  "channels": [
+    { "id": "all", "name": "All Sources" },
+    { "id": "hivemindtv", "name": "hivemindtv" },
+    { "id": "hivemind", "name": "hivemind" }
+  ],
+  "database": {
+    "envVar": "DATABASE_URL_HIVEMIND",
+    "description": "PostgreSQL database for quotes"
+  }
+}

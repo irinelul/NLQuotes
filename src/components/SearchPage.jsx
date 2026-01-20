@@ -9,6 +9,7 @@ import { FeedbackModal } from './Modals/FeedbackModal';
 import { useNavigate } from 'react-router-dom';
 import GeneralFeedbackButton from './GeneralFeedbackButton';
 import { useTheme } from '../hooks/useTheme';
+import { useTenant } from '../hooks/useTenant';
 
 const SearchPage = ({
     searchInput,
@@ -48,17 +49,34 @@ const SearchPage = ({
 }) => {
     const navigate = useNavigate();
     const { theme, toggleTheme } = useTheme();
+    const { tenant } = useTenant();
+    
+    // Use tenant config with fallbacks
+    const logo = tenant?.branding?.logo || '/nlquotes.svg';
+    const logoFallback = tenant?.branding?.logoFallback || '/NLogo.png';
+    const searchPlaceholder = tenant?.texts?.searchPlaceholder || 'Search quotes...';
+    const randomQuotesText = tenant?.texts?.randomQuotesButton || 'Random Quotes';
+    const totalQuotesLabel = tenant?.texts?.totalQuotesLabel || 'Total quotes found:';
+    const loadingMessage = tenant?.texts?.loadingMessage || 'Loading...';
+    const errorMessage = tenant?.texts?.errorMessage || 'Unable to connect to database.';
+    const channels = tenant?.channels || [
+        { id: 'all', name: 'All Sources' },
+        { id: 'librarian', name: 'Librarian' },
+        { id: 'northernlion', name: 'Northernlion' }
+    ];
 
     return (
         <div className='main-container'>
             <div className="logo-section">
                 <div className="logo-container" onClick={handleLogoClick}>
                     <img 
-                        src="/nlquotes.svg" 
-                        alt="Northernlion Logo"
+                        src={logo} 
+                        alt={`${tenant?.name || 'NLQuotes'} Logo`}
+                        width={156}
+                        height={125}
                         onError={(e) => {
                             e.target.onerror = null;
-                            e.target.src = "/NLogo.png";
+                            e.target.src = logoFallback;
                         }}
                     />
                 </div>
@@ -101,14 +119,14 @@ const SearchPage = ({
                         cursor: loading ? 'not-allowed' : 'pointer',
                     }}
                 >
-                    {loading ? 'Loading...' : 'Random Quotes'}
+                    {loading ? loadingMessage : randomQuotesText}
                 </button>
                 <input
                     type="text"
                     value={searchInput}
                     onChange={(e) => setSearchInput(e.target.value)}
                     onKeyDown={handleKeyPress}
-                    placeholder="Search quotes..."
+                    placeholder={searchPlaceholder}
                     className="search-input"
                     style={{ boxSizing: "border-box" }}
                 />
@@ -123,27 +141,18 @@ const SearchPage = ({
                 </button>
             </div>
 
-            {error && <div className="error-message">{error}</div>}
+            {error && <div className="error-message">{error || errorMessage}</div>}
 
             <div className="radio-group channel-tooltip">
-                <ChannelRadioButton
-                    selectedChannel={channel}
-                    handleChannelChange={handleChannelChange}
-                    id="all"
-                    name="All Sources"
-                />
-                <ChannelRadioButton
-                    selectedChannel={channel}
-                    handleChannelChange={handleChannelChange}
-                    id="librarian"
-                    name="Librarian"
-                />
-                <ChannelRadioButton
-                    selectedChannel={channel}
-                    handleChannelChange={handleChannelChange}
-                    id="northernlion"
-                    name="Northernlion"
-                />
+                {channels.map((ch) => (
+                    <ChannelRadioButton
+                        key={ch.id}
+                        selectedChannel={channel}
+                        handleChannelChange={handleChannelChange}
+                        id={ch.id}
+                        name={ch.name}
+                    />
+                ))}
             </div>
             
             <Filters 
@@ -165,11 +174,11 @@ const SearchPage = ({
 
             {!hasSearched && <Disclaimer />}
                     
-            {loading && <div>Loading...</div>}
+            {loading && <div>{loadingMessage}</div>}
             {hasSearched && (
                 <>
                     <div className="total-quotes">
-                        Total quotes found: {numberFormatter.format(totalQuotes)}
+                        {totalQuotesLabel} {numberFormatter.format(totalQuotes)}
                     </div>
                     {quotes.length > 0 && (
                         <PaginationButtons

@@ -1,16 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import query from './services/quotes';
 import { useNavigate, Routes, Route, useSearchParams, useLocation } from 'react-router-dom';
-import Disclaimer from './components/Disclaimer';
-import { FeedbackModal } from './components/Modals/FeedbackModal';
 import { ChangelogModal } from './components/Modals/ChangelogModal';
-import { ChannelRadioButton } from './components/ChannelRadioButton';
 import './App.css';
-import { Filters } from './components/Filters';
 import { useFetchGames } from './hooks/useFetchGames';
-import { Footer } from './components/Footer';
-import { PaginationButtons } from './components/PaginationButtons';
-import { Quotes } from './components/Quotes';
 import { useSearchState } from './hooks/useSearchState';
 import Privacy from './components/Privacy';
 import SearchPage from './components/SearchPage';
@@ -18,7 +11,6 @@ import NLDLE from './components/NLDLE/NLDLE';
 import Stats from './components/Stats';
 import { PopularSearches } from './components/PopularSearches';
 import { TopicPage } from './components/TopicPage';
-import getUserHash from './utils/userHash';
 import { useAnalyticsTracker, sendAnalytics } from './hooks/useAnalyticsTracker';
 
 // Custom hook for Simple Analytics pageview
@@ -34,7 +26,7 @@ function useSimpleAnalyticsPageview() {
 // Custom hook to track page views for analytics
 function usePageViewTracking(sessionId) {
     const location = useLocation();
-    const pageLoadTimeRef = useRef(Date.now());
+    const pageLoadTimeRef = useRef(0);
     
     useEffect(() => {
         // Track page view on route change
@@ -76,7 +68,7 @@ const App = () => {
     useSimpleAnalyticsPageview();
     const sessionId = useAnalyticsTracker();
     usePageViewTracking(sessionId);    
-    const { state, updateState, resetState, updateSearchParams } = useSearchState();
+    const { resetState } = useSearchState();
     const [quotes, setQuotes] = useState([]);
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -117,7 +109,6 @@ const App = () => {
         setYearInput(year);
     }, [year]);
 
-    const prevSearchRef = useRef('');
 
     // Effect to handle URL parameter changes
     useEffect(() => {
@@ -198,7 +189,7 @@ const App = () => {
         };
         // Remove empty/default values
         const query = Object.entries(params)
-            .filter(([k, v]) => v && v !== 'all' && v !== 'default' && v !== 1 && v !== '1')
+            .filter(([, v]) => v && v !== 'all' && v !== 'default' && v !== 1 && v !== '1')
             .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
             .join('&');
         return `${basePath}?${query}`;

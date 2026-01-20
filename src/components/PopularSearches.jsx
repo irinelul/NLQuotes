@@ -62,7 +62,7 @@ export const PopularSearches = () => {
       <div className={styles.header}>
         <h1 className={styles.title}>Popular Searches</h1>
         <p className={styles.subtitle}>
-          Discover the most searched quotes and topics from Northernlion's content. 
+          Discover the most searched quotes and topics. 
           Click on any term to explore related quotes and moments.
         </p>
         

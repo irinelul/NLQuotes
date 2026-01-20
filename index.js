@@ -7,23 +7,19 @@ import axios from 'axios';
 import fs from 'fs';
 import rateLimit from 'express-rate-limit';
 import slowDown from 'express-slow-down';
-import pkg from 'pg';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import analyticsModel from './models/analytics.js';
-const { Pool } = pkg;
+import { detectTenant, getTenantById } from './tenants/tenant-manager.js';
 
 // Load environment variables
 dotenv.config();
 
-// Validate required environment variables
-const requiredEnvVars = ['DATABASE_URL'];
-const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
-
-if (missingEnvVars.length > 0) {
-  console.error('ERROR: Missing required environment variables:');
-  missingEnvVars.forEach(envVar => console.error(`- ${envVar}`));
-  console.error('Please create a .env file with these variables.');
+// Validate required environment variables (at least default DATABASE_URL)
+// Note: Per-tenant database URLs are optional and will fall back to DATABASE_URL
+if (!process.env.DATABASE_URL) {
+  console.error('ERROR: Missing required environment variable: DATABASE_URL');
+  console.error('Please create a .env file with DATABASE_URL.');
   process.exit(1);
 }
 
@@ -40,6 +36,20 @@ const PORT = process.env.PORT || 8080;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// ======= TENANT DETECTION MIDDLEWARE =======
+// Detect tenant from hostname and attach to request
+app.use((req, res, next) => {
+  const hostname = req.get('host') || req.hostname || 'localhost';
+  const forcedTenantId = process.env.TENANT_ID || req.get('x-tenant-id') || req.query?.tenant;
+
+  if (forcedTenantId) {
+    req.tenant = getTenantById(forcedTenantId);
+  } else {
+    req.tenant = detectTenant(hostname);
+  }
+  next();
+});
 
 // ======= OPTIMIZED CONNECTION HANDLING =======
 // Configure connection and security in a single middleware to prevent conflicts
@@ -148,26 +158,55 @@ app.use((req, res, next) => {
 
 // Add console logs at the start of the file to check routes loading
 
-// Cache for game titles
-let cachedGameList = null;
+// Cache for game titles per tenant
+const cachedGameLists = new Map();
 
-// Load game titles into cache on startup
-async function loadGameTitles() {
+function getDefaultTenant() {
+    const forcedTenantId = process.env.TENANT_ID;
+    return forcedTenantId ? getTenantById(forcedTenantId) : detectTenant('localhost');
+}
+
+// Load game titles into cache on startup (per tenant)
+async function loadGameTitles(tenant) {
     try {
-        const result = await quoteModel.getGameList();
-        cachedGameList = result;
-        console.log(`Loaded ${cachedGameList.length} game titles into cache`);
+        const result = await quoteModel.getGameList(tenant);
+        cachedGameLists.set(tenant.id, result);
+        console.log(`Loaded ${result.length} game titles into cache for tenant ${tenant.id}`);
     } catch (error) {
-        console.error('Error loading game titles into cache:', error);
-        cachedGameList = []; // Initialize as empty array if query fails
+        console.error(`Error loading game titles into cache for tenant ${tenant.id}:`, error);
+        cachedGameLists.set(tenant.id, []); // Initialize as empty array if query fails
     }
 }
 
-// Load game titles immediately
-loadGameTitles().then(() => {
-    console.log('Game titles cache initialized');
+// Load game titles for default tenant immediately
+const defaultTenant = getDefaultTenant();
+loadGameTitles(defaultTenant).then(() => {
+    console.log('Game titles cache initialized for default tenant');
 }).catch(err => {
     console.error('Failed to initialize game titles cache:', err);
+});
+
+// Tenant config endpoint - serves tenant configuration to frontend
+app.get('/api/tenant', (req, res) => {
+  try {
+    const tenant = req.tenant || detectTenant(req.get('host') || 'localhost');
+    
+    // Return sanitized tenant config (no database URLs)
+    const config = {
+      id: tenant.id,
+      name: tenant.name,
+      displayName: tenant.displayName,
+      branding: tenant.branding,
+      metadata: tenant.metadata,
+      texts: tenant.texts,
+      channels: tenant.channels
+    };
+    
+    res.json(config);
+  } catch (error) {
+    console.error('Error serving tenant config:', error);
+    res.status(500).json({ error: 'Failed to load tenant configuration' });
+  }
 });
 
 app.get('/api', async (req, res) => {
@@ -214,7 +253,8 @@ app.get('/api', async (req, res) => {
             year,
             sortOrder,
             page,
-            exactPhrase
+            exactPhrase,
+            tenant: req.tenant
         });
         const totalTime = Date.now() - startTime;
 
@@ -378,7 +418,7 @@ app.post('/api/flag', async (req, res) => {
 
 app.get('/api/random', async (req, res) => {
     try {
-        const result = await quoteModel.getRandom();
+        const result = await quoteModel.getRandom(req.tenant);
         res.json({ quotes: result });
     } catch (error) {
         console.error('Error fetching random quotes:', error);
@@ -388,6 +428,15 @@ app.get('/api/random', async (req, res) => {
 
 app.get('/api/games', (req, res) => {
     try {
+        const tenant = req.tenant || detectTenant(req.get('host') || 'localhost');
+        let cachedGameList = cachedGameLists.get(tenant.id);
+        
+        // Load if not cached
+        if (!cachedGameList) {
+            cachedGameList = [];
+            loadGameTitles(tenant);
+        }
+        
         // Set cache headers - cache for 1 hour on client side
         res.set({
             'Cache-Control': 'public, max-age=3600',
@@ -411,8 +460,9 @@ app.get('/health', async (req, res) => {
     };
     
     try {
-        // Check database connectivity
-        const dbHealthy = await quoteModel.checkHealth();
+        // Check database connectivity (for default tenant)
+        const defaultTenant = getDefaultTenant();
+        const dbHealthy = await quoteModel.checkHealth(defaultTenant);
         health.database = dbHealthy ? 'connected' : 'disconnected';
         
         if (!dbHealthy) {
@@ -421,7 +471,7 @@ app.get('/health', async (req, res) => {
         }
         
         res.json(health);
-    } catch (error) {
+    } catch {
         health.status = 'DOWN';
         health.error = 'Service unavailable';
         health.database = 'error';
@@ -486,7 +536,8 @@ app.use((err, req, res, next) => {
         // Try to reconnect immediately
         setTimeout(async () => {
             try {
-                await quoteModel.checkHealth();
+                const defaultTenant = getDefaultTenant();
+                await quoteModel.checkHealth(defaultTenant);
                 console.log('Database reconnection successful after error');
             } catch (e) {
                 console.error('Failed to reconnect to database:', e.message);
@@ -520,7 +571,7 @@ app.get('/api/nldle', async (req, res) => {
   try {
     const currentDate = new Date();
     console.log('Fetching game for date:', currentDate);
-    const gameData = await quoteModel.getNLDLEGame(currentDate);
+    const gameData = await quoteModel.getNLDLEGame(currentDate, req.tenant);
     console.log('Game data:', gameData);
     
     if (!gameData) {
@@ -586,7 +637,8 @@ app.get('/api/topic/:term', async (req, res) => {
       sortOrder: 'default',
       page,
       limit,
-      exactPhrase: false
+      exactPhrase: false,
+      tenant: req.tenant
     });
     
     const totalPages = Math.max(1, Math.ceil((result.total || 0) / limit));

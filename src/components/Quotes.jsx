@@ -277,8 +277,8 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                                   const pageUrl = window.location.href;
                                                   const cleanSearchTerm = searchTerm.replace(/"/g, '');
                                                   const tweetText = totalQuotes === 1 
-                                                      ? `The only Northernlion quote mentioning "${cleanSearchTerm}": ${videoUrl}\n\nFound on: ${pageUrl}`
-                                                      : `Just one of ${totalQuotes} Northernlion quotes mentioning "${cleanSearchTerm}": ${videoUrl}\n\nSee them all here! ${pageUrl}`;
+                                                      ? `The only quote mentioning "${cleanSearchTerm}": ${videoUrl}\n\nFound on: ${pageUrl}`
+                                                      : `Just one of ${totalQuotes} quotes mentioning "${cleanSearchTerm}": ${videoUrl}\n\nSee them all here! ${pageUrl}`;
                                                   window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`, '_blank');
                                               }}
                                               style={{
@@ -482,8 +482,8 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                           const pageUrl = window.location.href;
                                           const cleanSearchTerm = searchTerm.replace(/"/g, '');
                                           const tweetText = totalQuotes === 1 
-                                              ? `The only Northernlion quote mentioning "${cleanSearchTerm}": ${videoUrl}\n\nFound on: ${pageUrl}`
-                                              : `Just one of ${totalQuotes} Northernlion quotes mentioning "${cleanSearchTerm}": ${videoUrl}\n\nSee them all here! ${pageUrl}`;
+                                              ? `The only quote mentioning "${cleanSearchTerm}": ${videoUrl}\n\nFound on: ${pageUrl}`
+                                              : `Just one of ${totalQuotes} quotes mentioning "${cleanSearchTerm}": ${videoUrl}\n\nSee them all here! ${pageUrl}`;
                                           window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`, '_blank');
                                       }}
                                       style={{
