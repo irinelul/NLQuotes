@@ -3,7 +3,7 @@
   "name": "Northernlion",
   "displayName": "NLQuotes",
   "hostnames": ["nlquotes.com", "www.nlquotes.com", "api.nlquotes.com", "localhost"],
-  
+  "port": 3002,
   "branding": {
     "logo": "/nlquotes.svg",
     "logoFallback": "/NLogo.png",

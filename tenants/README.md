@@ -74,6 +74,39 @@ Tenants are detected automatically based on the request hostname. The system:
 - Analytics always uses the shared `ANALYTICS_DATABASE_URL`
 - If a tenant doesn't specify a database env var, it falls back to `DATABASE_URL`
 
+## Port Configuration
+
+Each tenant can specify a port in their config:
+```json
+{
+  "port": 3000
+}
+```
+
+**Development Mode:**
+- Set `PORT=3000` to run backend on port 3000
+- Set `VITE_API_PORT=3000` (or `API_PORT=3000`) to tell Vite proxy where backend is
+- Frontend uses relative URLs (`/api`, `/analytics`) which work with Vite proxy
+
+**Example for hivemind tenant:**
+```bash
+# Terminal 1 - Backend
+TENANT_ID=hivemind PORT=3000 npm run dev:server
+
+# Terminal 2 - Frontend  
+VITE_API_PORT=3000 npm run dev:client
+```
+
+Or use concurrently:
+```bash
+TENANT_ID=hivemind PORT=3000 VITE_API_PORT=3000 npm run dev
+```
+
+**Production:**
+- Frontend and backend typically run on same domain/port
+- Relative URLs work automatically
+- No port configuration needed
+
 ## Frontend Integration
 
 The frontend automatically fetches tenant configuration from `/api/tenant` and:

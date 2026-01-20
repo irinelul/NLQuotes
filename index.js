@@ -32,7 +32,24 @@ if (!dbUrlPattern.test(process.env.DATABASE_URL)) {
 }
 
 const app = express();
-const PORT = process.env.PORT || 8080;
+// Get port from env var, or try to detect from tenant config
+let PORT = process.env.PORT;
+if (!PORT) {
+  // Try to get port from tenant config if TENANT_ID is set
+  const forcedTenantId = process.env.TENANT_ID;
+  if (forcedTenantId) {
+    try {
+      const tenant = getTenantById(forcedTenantId);
+      PORT = tenant?.port || 8080;
+      console.log(`Using port ${PORT} from tenant config for ${forcedTenantId}`);
+    } catch (e) {
+      PORT = 8080;
+    }
+  } else {
+    PORT = 8080;
+  }
+}
+PORT = parseInt(PORT) || 8080;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -45,8 +62,10 @@ app.use((req, res, next) => {
 
   if (forcedTenantId) {
     req.tenant = getTenantById(forcedTenantId);
+    console.log(`[Tenant] Forced tenant: ${forcedTenantId} -> ${req.tenant?.id}`);
   } else {
     req.tenant = detectTenant(hostname);
+    console.log(`[Tenant] Detected from hostname "${hostname}": ${req.tenant?.id}`);
   }
   next();
 });
@@ -190,6 +209,8 @@ loadGameTitles(defaultTenant).then(() => {
 app.get('/api/tenant', (req, res) => {
   try {
     const tenant = req.tenant || detectTenant(req.get('host') || 'localhost');
+    
+    console.log(`[Tenant API] Serving config for tenant: ${tenant?.id} (hostname: ${req.get('host')})`);
     
     // Return sanitized tenant config (no database URLs)
     const config = {
