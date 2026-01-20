@@ -231,6 +231,11 @@ app.get('/api/tenant', (req, res) => {
 });
 
 app.get('/api', async (req, res) => {
+    // Log search request details for debugging
+    const tenantId = req.tenant?.id || 'unknown';
+    const hostname = req.get('host') || 'unknown';
+    console.log(`[Search] Request received - Tenant: ${tenantId}, Hostname: ${hostname}`);
+    
     // Input validation and sanitization
     let searchTerm = req.query.search || '';
     let selectedValue = req.query.channel || 'all';
@@ -239,6 +244,8 @@ app.get('/api', async (req, res) => {
     let page = parseInt(req.query.page) || 1;
     let exactPhrase = req.query.strict === 'true';
     let gameName = req.query.game || 'all';
+
+    console.log(`[Search] Parameters - term: "${searchTerm}", channel: ${selectedValue}, year: ${year}, sort: ${sortOrder}, page: ${page}, game: ${gameName}, tenant: ${tenantId}`);
 
     if (req.query.gameName) {
         try {
@@ -262,10 +269,17 @@ app.get('/api', async (req, res) => {
     const searchPath = "text";
 
     try {
-        // Add rate limiting check
-        // ... (add rate limiting code here if needed)
+        // Validate tenant is available
+        if (!req.tenant) {
+            console.error(`[Search] ERROR: No tenant detected for hostname: ${hostname}`);
+            return res.status(500).json({ 
+                error: 'Search failed',
+                details: 'Tenant configuration not found'
+            });
+        }
         
         const startTime = Date.now();
+        console.log(`[Search] Executing search query for tenant: ${tenantId}`);
         const result = await quoteModel.search({
             searchTerm,
             searchPath,
@@ -278,6 +292,7 @@ app.get('/api', async (req, res) => {
             tenant: req.tenant
         });
         const totalTime = Date.now() - startTime;
+        console.log(`[Search] Query completed - Tenant: ${tenantId}, Results: ${result.data?.length || 0}, Total: ${result.total || 0}, Time: ${totalTime}ms`);
 
         // Set security headers
         res.set({
