@@ -1,0 +1,44 @@
+{
+  "id": "northernlion",
+  "name": "Northernlion",
+  "displayName": "NLQuotes",
+  "hostnames": ["nlquotes.com", "www.nlquotes.com", "api.nlquotes.com", "localhost"],
+  
+  "branding": {
+    "logo": "/nlquotes.svg",
+    "logoFallback": "/NLogo.png",
+    "favicon": "/nlquotes.svg",
+    "primaryColor": "#4CAF50",
+    "theme": "northernlion"
+  },
+  
+  "metadata": {
+    "title": "NLQuotes - Search Northernlion Quotes",
+    "description": "Search through thousands of quotes from Northernlion's videos. Find memorable moments, funny quotes, and more.",
+    "keywords": "northernlion, quotes, search, videos, gaming, twitch, youtube",
+    "ogImage": "/NLogo.png",
+    "siteName": "NLQuotes"
+  },
+  
+  "texts": {
+    "searchPlaceholder": "Search quotes...",
+    "randomQuotesButton": "Random Quotes",
+    "footerText": "Made with passion by a fan • Generously supported by The Librarian • Contributors: Xetera, samfry13, JordanWeatherby, knakamura13",
+    "disclaimer": "This site is not affiliated with Northernlion. All quotes are from publicly available videos.",
+    "totalQuotesLabel": "Total quotes found:",
+    "noResultsMessage": "No quotes found. Try a different search term.",
+    "loadingMessage": "Loading...",
+    "errorMessage": "Unable to connect to database."
+  },
+  
+  "channels": [
+    { "id": "all", "name": "All Sources" },
+    { "id": "librarian", "name": "Librarian" },
+    { "id": "northernlion", "name": "Northernlion" }
+  ],
+  
+  "database": {
+    "envVar": "DATABASE_URL",
+    "description": "PostgreSQL database for quotes"
+  }
+}

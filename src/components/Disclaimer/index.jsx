@@ -1,5 +1,7 @@
 import styles from './Disclaimer.module.css';
 
+/* eslint-disable react/no-unescaped-entities */
+
 const Disclaimer = () => {
   return (
     <div className={styles.container}>
