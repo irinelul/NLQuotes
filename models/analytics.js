@@ -25,9 +25,7 @@ const pool = new Pool({
 });
 
 // Track connection events
-let totalConnections = 0;
 pool.on('connect', () => {
-  totalConnections++;
   console.log('Analytics database connection established');
 });
 
@@ -41,14 +39,13 @@ const analyticsModel = {
   async storeEvent(eventData) {
     console.log('Attempting to store analytics event:', eventData);
     const client = await pool.connect();
+    let query;
+    let values;
     try {
       // Validate required fields
       if (!eventData.type) {
         throw new Error('Missing required field: type');
       }
-
-      let query;
-      let values;
 
       if (eventData.type === 'page_view') {
         // Handle page view events

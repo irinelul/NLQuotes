@@ -1,43 +1,66 @@
 import dotenv from 'dotenv';
 import pg from 'pg';
+import { getTenantDatabaseUrl } from '../tenants/tenant-manager.js';
 const { Pool } = pg;
 
 dotenv.config();
 
+// Pool manager - creates and caches pools per tenant
+const pools = new Map();
 
-// Create connection pool with optimized settings
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  max: 15,
-  min: 2,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000, // Increased timeout for cold starts
-  allowExitOnIdle: false,
-  keepAlive: true,
-  keepAliveInitialDelayMillis: 5000
-});
+function getPoolForTenant(tenant) {
+  if (!tenant) {
+    // Fallback to default pool
+    const defaultId = 'default';
+    if (!pools.has(defaultId)) {
+      pools.set(defaultId, createPool(process.env.DATABASE_URL));
+    }
+    return pools.get(defaultId);
+  }
+  
+  const tenantId = tenant.id || 'default';
+  
+  if (!pools.has(tenantId)) {
+    const dbUrl = getTenantDatabaseUrl(tenant);
+    if (!dbUrl) {
+      throw new Error(`No database URL configured for tenant ${tenantId}`);
+    }
+    pools.set(tenantId, createPool(dbUrl));
+    console.log(`Created database pool for tenant: ${tenantId}`);
+  }
+  
+  return pools.get(tenantId);
+}
 
-// Better connection error handling
-pool.on('error', (err, client) => {
-  console.error('PostgreSQL Error:', err.message);
-});
+function createPool(connectionString) {
+  const pool = new Pool({
+    connectionString,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    max: 15,
+    min: 2,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000,
+    allowExitOnIdle: false,
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 5000
+  });
+  
+  // Better connection error handling
+  pool.on('error', (err) => {
+    console.error('PostgreSQL Error:', err.message);
+  });
+  
+  return pool;
+}
 
-// Track connection events
-let totalConnections = 0;
-pool.on('connect', () => {
-  totalConnections++;
-});
+// Create default pool for backward compatibility
+const defaultPool = createPool(process.env.DATABASE_URL);
+pools.set('default', defaultPool);
 
-pool.on('acquire', (client) => {
-});
-
-pool.on('remove', (client) => {
-});
-
-// Warm up the connection pool with one verified connection
+// Warm up the default connection pool
 (async () => {
   try {
+    const pool = getPoolForTenant(null);
     const client = await pool.connect();
     try {
       const tableRes = await client.query(`
@@ -60,27 +83,14 @@ pool.on('remove', (client) => {
     }
   } catch (err) {
     console.error('Initial PostgreSQL connection failed:', err.message);
-    
-    // Attempt a second connection with different SSL settings for troubleshooting
-    try {
-      const { Client } = pg;
-      const testClient = new Client({
-        connectionString: process.env.DATABASE_URL,
-        ssl: { rejectUnauthorized: false }
-      });
-      
-      await testClient.connect();
-      await testClient.end();
-    } catch (fallbackErr) {
-      console.error('Fallback connection failed:', fallbackErr.message);
-    }
   }
 })();
 
 // Health check function to verify database connectivity
-const checkDatabaseHealth = async () => {
+const checkDatabaseHealth = async (tenant = null) => {
   let client;
   try {
+    const pool = getPoolForTenant(tenant);
     client = await pool.connect();
     const startTime = Date.now();
     const result = await client.query('SELECT 1 as healthcheck, NOW() as server_time');
@@ -117,8 +127,9 @@ const quoteModel = {
   checkHealth: checkDatabaseHealth,
   
   // Get list of unique games
-  async getGameList() {
+  async getGameList(tenant = null) {
     try {
+      const pool = getPoolForTenant(tenant);
       const client = await pool.connect();
       try {
         const result = await client.query(`
@@ -138,7 +149,7 @@ const quoteModel = {
   },
   
   // Search quotes with pagination using PostgreSQL FTS
-  async search({ searchTerm, searchPath, gameName, selectedValue, year, sortOrder, page = 1, limit = 10, exactPhrase = false }) {
+  async search({ searchTerm, searchPath: _searchPath, gameName, selectedValue, year, sortOrder, page = 1, limit = 10, exactPhrase = false, tenant = null }) {
     // Validate and sanitize inputs
     // Ensure page and limit are positive integers
     page = Math.max(1, parseInt(page) || 1);
@@ -152,8 +163,6 @@ const quoteModel = {
     const offset = (page - 1) * limit;
     const params = [];
     let paramIndex = 1;
-    const ftsLanguage = 'simple'; // Use 'simple' instead of 'english' to preserve stop words
-
     // We only search in text now, so no need to validate searchPath
     // log search parameters
     console.log(`PostgreSQL search with params: term="${searchTerm}", game="${gameName}", channel=${selectedValue}, year=${year}, sort=${sortOrder}, page=${page}, exactPhrase=${exactPhrase}`);
@@ -221,7 +230,7 @@ const quoteModel = {
         } else {
           console.error("Invalid year parameter:", year);
         }
-      } catch (e) {
+      } catch {
         console.error("Invalid year parameter:", year);
         // Handle invalid year input appropriately, e.g., return error or empty result
         return { data: [], total: 0, totalQuotes: 0 };
@@ -317,6 +326,7 @@ if (sortOrder === 'default') {
 
     try {
       // Get a client with timeout to prevent hanging connections
+      const pool = getPoolForTenant(tenant);
       const clientPromise = pool.connect();
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Database connection timeout')), 5000)
@@ -331,8 +341,6 @@ if (sortOrder === 'default') {
         });
       
       try {
-        const startTime = Date.now();
-        
         // Execute main query with timeout
         const queryPromise = client.query(query, params);
         const queryTimeoutPromise = new Promise((_, reject) => 
@@ -362,8 +370,6 @@ if (sortOrder === 'default') {
             throw err;
           });
         
-        const queryTime = Date.now() - startTime;
-        
         // Get both total videos and total quotes
         const totalVideos = parseInt(countResult.rows[0]?.total_videos || 0, 10);
         const totalQuotes = parseInt(countResult.rows[0]?.total_quotes || 0, 10);
@@ -372,7 +378,7 @@ if (sortOrder === 'default') {
           data: result.rows,
           total: totalVideos,
           totalQuotes: totalQuotes,
-          queryTime: queryTime
+          queryTime: null
         };
       } finally {
         // Always release the client back to the pool
@@ -390,7 +396,7 @@ if (sortOrder === 'default') {
   },
 
   // Get stats (no changes needed, assumes indexes help GROUP BY)
-  async getStats() {
+  async getStats(tenant = null) {
     const query = `
       SELECT
         COALESCE(channel_source, 'Unknown') AS channel_source,
@@ -404,8 +410,8 @@ if (sortOrder === 'default') {
 
     let client;
     try {
+      const pool = getPoolForTenant(tenant);
       client = await pool.connect();
-      const startTime = Date.now();
       const result = await client.query(query);
       return result.rows;
     } catch (error) {
@@ -417,7 +423,7 @@ if (sortOrder === 'default') {
   },
 
   // Get random quotes (using TABLESAMPLE SYSTEM for better performance on large tables)
-  async getRandom() {
+  async getRandom(tenant = null) {
     const query = `
         SELECT
         video_id, title, upload_date, channel_source, text, line_number, timestamp_start
@@ -427,8 +433,8 @@ if (sortOrder === 'default') {
 
     let client;
     try {
+      const pool = getPoolForTenant(tenant);
       client = await pool.connect();
-      const startTime = Date.now();
       const result = await client.query(query);
       
       if (!result.rows || result.rows.length === 0) {
@@ -460,9 +466,10 @@ if (sortOrder === 'default') {
   },
 
   // Get NLDLE game data for a specific date
-  async getNLDLEGame(date = new Date()) {
+  async getNLDLEGame(date = new Date(), tenant = null) {
     try {
       console.log('Fetching NLDLE game for date:', date);
+      const pool = getPoolForTenant(tenant);
       const client = await pool.connect();
       try {
         // Convert date to UTC and format as YYYY-MM-DD

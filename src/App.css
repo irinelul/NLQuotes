@@ -8,10 +8,15 @@
         padding: 15px 0;
         z-index: 100;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        /* Prevent layout shift while tenant/logo loads */
+        min-height: 110px;
     }
 
     .logo-container img {
       height: 80px; /* Substantially increased from 55px */
+        width: auto;
+        display: block;
+        margin: 0 auto;
         cursor: pointer;
         transition: transform 0.2s ease;
     }
@@ -119,10 +124,15 @@
     .logo-container {
         margin-bottom: 2rem;
         cursor: pointer;
+        /* Prevent layout shift while tenant/logo loads */
+        min-height: 140px;
     }
 
     .logo-container img {
       height: 100px; /* Substantially increased from 70px */
+        width: auto;
+        display: block;
+        margin: 0 auto;
         transition: transform 0.2s ease;
     }
 

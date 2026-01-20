@@ -92,7 +92,7 @@ export const TopicPage = () => {
           Quotes about "{decodedTerm}"
         </h1>
         <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-          Discover memorable moments and quotes featuring "{decodedTerm}" from Northernlion's content. 
+          Discover memorable moments and quotes featuring "{decodedTerm}". 
           Click on any timestamp to jump directly to that moment in the video.
         </p>
         <div className="mt-4 text-sm text-gray-500">
