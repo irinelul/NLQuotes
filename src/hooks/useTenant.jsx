@@ -12,7 +12,14 @@ export function TenantProvider({ children }) {
     async function fetchTenant() {
       try {
         console.log('[useTenant] Fetching tenant config from /api/tenant');
-        const response = await axios.get('/api/tenant');
+        // Add cache-busting query parameter
+        const cacheBuster = `_t=${Date.now()}`;
+        const response = await axios.get(`/api/tenant?${cacheBuster}`, {
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
         console.log('[useTenant] Received tenant config:', response.data);
         setTenant(response.data);
         

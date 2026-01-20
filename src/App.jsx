@@ -259,7 +259,8 @@ const App = () => {
         window.scrollTo(0, 0);
         resetState();
         setQuotes([]);
-        navigate("/");
+        setHasSearched(false);
+        navigate("/", { replace: true });
     };
 
     // Record the time when the page was loaded
