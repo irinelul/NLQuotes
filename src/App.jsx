@@ -268,6 +268,7 @@ const App = () => {
     const fetchQuotes = async (pageNum, channel, year, sort, strictMode, game) => {
         const fetchStart = performance.now();
         try {
+            console.log('[App] fetchQuotes called with:', { searchTerm, pageNum, channel, year, sort, game });
             const response = await query.getAll(
                 searchTerm,
                 pageNum,
@@ -278,9 +279,16 @@ const App = () => {
                 sort,
                 game
             );
-            setQuotes(response.data);
-            setTotalPages(Math.ceil(response.total / 10));
+            console.log('[App] Received response:', {
+                dataLength: response.data?.length,
+                total: response.total,
+                totalQuotes: response.totalQuotes,
+                firstItem: response.data?.[0]
+            });
+            setQuotes(response.data || []);
+            setTotalPages(Math.ceil((response.total || 0) / 10));
             setTotalQuotes(response.totalQuotes || 0);
+            console.log('[App] State updated - quotes:', response.data?.length, 'totalQuotes:', response.totalQuotes);
             await new Promise(resolve => setTimeout(resolve, 300));
             const responseTimeMs = Math.round(performance.now() - fetchStart);
             // Send analytics for search or pagination

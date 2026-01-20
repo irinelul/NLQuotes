@@ -153,12 +153,29 @@ const getAll = async (searchTerm, page, strict, selectedValue, selectedMode, yea
             game: gameName || 'all'
         });
         
+        console.log('[quotes.js] API Response:', {
+            hasData: !!response.data,
+            dataType: typeof response.data,
+            dataKeys: response.data ? Object.keys(response.data) : [],
+            dataLength: response.data?.data?.length,
+            total: response.data?.total,
+            totalQuotes: response.data?.totalQuotes
+        });
+        
         // If we get here, one of the attempts succeeded
-        return {
+        const result = {
             data: response.data.data || [],
             total: response.data.total || 0,
             totalQuotes: response.data.totalQuotes || 0
         };
+        
+        console.log('[quotes.js] Returning result:', {
+            dataLength: result.data.length,
+            total: result.total,
+            totalQuotes: result.totalQuotes
+        });
+        
+        return result;
     } catch (error) {
         console.error('Error fetching quotes:', error);
         throw error;
