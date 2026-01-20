@@ -3,6 +3,7 @@
   "name": "hivemind",
   "displayName": "HiveQuotes",
   "hostnames": ["hivequotes.com", "api.hivequotes.com"],
+  "port": 3001,
   "branding": {
     "logo": "/hivemind/hivemind.jpg",
     "logoFallback": "/hivemind/hivemind.jpg",
