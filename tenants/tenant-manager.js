@@ -49,9 +49,9 @@ function loadTenantConfigs() {
       displayName: 'NLQuotes',
       hostnames: ['localhost'],
       branding: {
-        logo: '/nlquotes.svg',
-        logoFallback: '/NLogo.png',
-        favicon: '/nlquotes.svg',
+        logo: '/nlquotes/nlquotes.svg',
+        logoFallback: '/nlquotes/NLogo.png',
+        favicon: '/nlquotes/nlquotes.svg',
         primaryColor: '#4CAF50'
       },
       metadata: {

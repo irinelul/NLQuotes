@@ -52,8 +52,8 @@ const SearchPage = ({
     const { tenant, loading: tenantLoading } = useTenant();
     
     // Use tenant config with fallbacks
-    const logo = tenant?.branding?.logo || '/nlquotes.svg';
-    const logoFallback = tenant?.branding?.logoFallback || '/NLogo.png';
+    const logo = tenant?.branding?.logo || '/nlquotes/nlquotes.svg';
+    const logoFallback = tenant?.branding?.logoFallback || '/nlquotes/NLogo.png';
     
     // Debug logging
     useEffect(() => {
