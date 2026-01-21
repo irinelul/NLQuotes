@@ -5,9 +5,9 @@
   "hostnames": ["nlquotes.com", "www.nlquotes.com", "api.nlquotes.com", "localhost"],
   "port": 3002,
   "branding": {
-    "logo": "/nlquotes.svg",
-    "logoFallback": "/NLogo.png",
-    "favicon": "/nlquotes.svg",
+    "logo": "/nlquotes/nlquotes.svg",
+    "logoFallback": "/nlquotes/NLogo.png",
+    "favicon": "/nlquotes/nlquotes.svg",
     "primaryColor": "#4CAF50",
     "theme": "northernlion"
   },
@@ -16,7 +16,7 @@
     "title": "NLQuotes - Search Northernlion Quotes",
     "description": "Search through thousands of quotes from Northernlion's videos. Find memorable moments, funny quotes, and more.",
     "keywords": "northernlion, quotes, search, videos, gaming, twitch, youtube",
-    "ogImage": "/NLogo.png",
+    "ogImage": "/nlquotes/NLogo.png",
     "siteName": "NLQuotes"
   },
   
