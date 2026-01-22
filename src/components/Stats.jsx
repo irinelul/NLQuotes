@@ -137,10 +137,14 @@ const Stats = () => {
       <div className="title-section">
         <h1 className="dashboard-title">{statsTitle}</h1>
         <div className="stats-summary">
-          {!isHiveQuotes && (
+          {!isHiveQuotes && tenant?.channels && (
             <>
-              <p>Librarian has indexed 608 videos</p>
-              <p>NL has 21,112 videos</p>
+              {tenant.channels.find(c => c.id === 'librarian') && (
+                <p>Librarian has indexed 608 videos</p>
+              )}
+              {tenant.channels.find(c => c.id === 'northernlion') && (
+                <p>NL has 21,112 videos</p>
+              )}
             </>
           )}
           <button className="back-button" onClick={() => navigate('/')}>
