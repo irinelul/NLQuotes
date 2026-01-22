@@ -1,17 +1,31 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
+import { useTenant } from '../hooks/useTenant';
 import './Stats.css';
 
 const Stats = () => {
   const navigate = useNavigate();
   const { theme } = useTheme();
+  const { tenant } = useTenant();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  // Hard-coded Grafana dashboard URLs
-  const dashboardUrl = "https://stats.nlquotes.com/d/bek3z1ymfr9j4a/test?orgId=1&from=now-24h&to=now&timezone=browser&var-city_filter=$__all&var-search_term_filter=$__all&refresh=5m";
-  const mobileDashboardUrl = "https://stats.nlquotes.com/d/xek3z1ymfr9j4a/test-mobile?orgId=1&from=now-24h&to=now&timezone=browser&refresh=5m&showCategory=Graph%20styles";
+  
+  // Tenant-aware dashboard URLs
+  // For hivequotes (hivemind tenant), use localhost dashboard
+  // For nlquotes (northernlion tenant), use stats.nlquotes.com
+  const isHiveQuotes = tenant?.id === 'hivemind';
+  const dashboardUrl = isHiveQuotes 
+    ? "http://localhost:3000/public-dashboards/f333724fedb14452a37956d035e0b721"
+    : "https://stats.nlquotes.com/d/bek3z1ymfr9j4a/test?orgId=1&from=now-24h&to=now&timezone=browser&var-city_filter=$__all&var-search_term_filter=$__all&refresh=5m";
+  const mobileDashboardUrl = isHiveQuotes
+    ? "http://localhost:3000/public-dashboards/f333724fedb14452a37956d035e0b721"
+    : "https://stats.nlquotes.com/d/xek3z1ymfr9j4a/test-mobile?orgId=1&from=now-24h&to=now&timezone=browser&refresh=5m&showCategory=Graph%20styles";
+  
+  // Tenant-aware text
+  const siteName = tenant?.displayName || tenant?.metadata?.siteName || 'NLQuotes';
+  const statsTitle = `${siteName} Statistics`;
 
   // Validate and normalize dashboard URL
   const normalizeUrl = (url) => {
@@ -36,7 +50,7 @@ const Stats = () => {
   if (!normalizedDashboardUrl) {
     return (
       <div className="stats-container">
-        <h1>NLQuotes Statistics</h1>
+        <h1>{statsTitle}</h1>
         <div className="error-message">
           <p>Grafana dashboard URL is not configured or invalid. Please check your environment variables.</p>
           <p>Required environment variables:</p>
@@ -121,10 +135,14 @@ const Stats = () => {
   return (
     <div className="stats-container">
       <div className="title-section">
-        <h1 className="dashboard-title">NLQuotes Statistics</h1>
+        <h1 className="dashboard-title">{statsTitle}</h1>
         <div className="stats-summary">
-          <p>Librarian has indexed 608 videos</p>
-          <p>NL has 21,112 videos</p>
+          {!isHiveQuotes && (
+            <>
+              <p>Librarian has indexed 608 videos</p>
+              <p>NL has 21,112 videos</p>
+            </>
+          )}
           <button className="back-button" onClick={() => navigate('/')}>
             ← Back to Search
           </button>
@@ -154,7 +172,7 @@ const Stats = () => {
           height="2500px"
           frameBorder="0"
           scrolling="no"
-          title="NLQuotes Dashboard"
+          title={`${siteName} Dashboard`}
           sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-storage-access-by-user-activation allow-presentation allow-downloads allow-modals"
           loading="eager"
           referrerPolicy="no-referrer"

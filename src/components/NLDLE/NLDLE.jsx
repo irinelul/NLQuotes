@@ -2,11 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import query from '../../services/quotes';
 import { formatDate } from '../../services/dateHelpers';
+import { useTenant } from '../../hooks/useTenant';
 import './NLDLE.css';
 
 const NLDLE = () => {
+  const { tenant } = useTenant();
   const NLDLE_DISABLED = true;
   const navigate = useNavigate();
+  
+  // Tenant-aware configuration
+  const siteUrl = tenant?.hostnames?.[0] ? `https://${tenant.hostnames[0]}` : 'https://nlquotes.com';
+  const gameName = tenant?.id === 'hivemind' ? 'HivemindLE' : 'NLDLE';
+  const creatorName = tenant?.name || 'NL';
+  const defaultChannel = tenant?.channels?.[1]?.id || tenant?.channels?.[2]?.id || 'northernlion';
+  
   const handleBack = () => {
     navigate('/');
   };
@@ -193,12 +202,12 @@ const NLDLE = () => {
     const year = date.getFullYear();
     const formattedDate = `${day} ${month} ${year}`;
     
-    const resultText = `NLdle Results:
+    const resultText = `${gameName} Results:
 Score: ${score}/${wordPairs.length}
 Best Streak: ${bestStreak} 
 ${squares}
 ${formattedDate}
-https://nlquotes.com/nldle`;
+${siteUrl}/nldle`;
 
     navigator.clipboard.writeText(resultText)
       .then(() => {
@@ -320,7 +329,7 @@ https://nlquotes.com/nldle`;
         <div className="nldle-note">
           <h3 style={{ marginTop: 0 }}>How to Play</h3>
           <ol style={{ paddingLeft: '1.5rem', marginBottom: '1.5rem' }}>
-            <li>You'll be shown two phrases from NL's videos</li>
+            <li>You'll be shown two phrases from {creatorName}'s videos</li>
             <li>Guess which phrase was said more frequently</li>
             <li>Each phrase shows when it was first mentioned</li>
             <li>Pay attention to context - words can have multiple meanings</li>
@@ -491,7 +500,7 @@ https://nlquotes.com/nldle`;
                 </span>
                 <br />
                 <a 
-                  href={`https://nlquotes.com/search?q=%22${encodeURIComponent(wordPairs[currentRound].option1.text)}%22&channel=northernlion`}
+                  href={`${siteUrl}/search?q=%22${encodeURIComponent(wordPairs[currentRound].option1.text)}%22&channel=${defaultChannel}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="nldle-result-link"
@@ -509,7 +518,7 @@ https://nlquotes.com/nldle`;
                 </span>
                 <br />
                 <a 
-                  href={`https://nlquotes.com/search?q=%22${encodeURIComponent(wordPairs[currentRound].option2.text)}%22&channel=northernlion`}
+                  href={`${siteUrl}/search?q=%22${encodeURIComponent(wordPairs[currentRound].option2.text)}%22&channel=${defaultChannel}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="nldle-result-link"
