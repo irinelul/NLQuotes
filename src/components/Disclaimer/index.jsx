@@ -1,8 +1,26 @@
 import styles from './Disclaimer.module.css';
+import { useTenant } from '../../hooks/useTenant';
 
 /* eslint-disable react/no-unescaped-entities */
 
 const Disclaimer = () => {
+  const { tenant } = useTenant();
+  const isNorthernlion = tenant?.id === 'northernlion';
+  
+  // Tenant-aware examples
+  const flexibleExample1 = isNorthernlion 
+    ? '🔍 Mahdi vacation → Finds: "Mahdi is on vacation", "vacation with Mahdi"'
+    : '🔍 music video → Finds: "music in the video", "video with music"';
+  const flexibleExample2 = isNorthernlion
+    ? '🔍 egg pog → Finds: "egg pog moment", "pog egg", "egg pogging"'
+    : '🔍 best song → Finds: "best song ever", "song is the best", "best song moment"';
+  const exactExample1 = isNorthernlion
+    ? '🔍 "Mahdi vacation" → Only finds: "Mahdi vacation" (exact phrase)'
+    : '🔍 "music video" → Only finds: "music video" (exact phrase)';
+  const exactExample2 = isNorthernlion
+    ? '🔍 "egg pog" → Only finds: "egg pog" (exact phrase)'
+    : '🔍 "best song" → Only finds: "best song" (exact phrase)';
+  
   return (
     <div className={styles.container}>
       <div className={styles.title}>
@@ -24,16 +42,16 @@ const Disclaimer = () => {
                   <p className={styles.exampleTitle}>Flexible Search (Default):</p>
                   <p>Just type your keywords and find matches anywhere in the text:</p>
                   <div className={styles.exampleDescription}>
-                    <p>🔍 Mahdi vacation → Finds: "Mahdi is on vacation", "vacation with Mahdi"</p>
-                    <p>🔍 egg pog → Finds: "egg pog moment", "pog egg", "egg pogging"</p>
+                    <p>{flexibleExample1}</p>
+                    <p>{flexibleExample2}</p>
                   </div>
                 </div>
                 <div className={styles.example}>
                   <p className={styles.exampleTitle}>Exact Phrase Search:</p>
                   <p>Use double quotes for precise matches:</p>
                   <div className={styles.exampleDescription}>
-                    <p>🔍 "Mahdi vacation" → Only finds: "Mahdi vacation" (exact phrase)</p>
-                    <p>🔍 "egg pog" → Only finds: "egg pog" (exact phrase)</p>
+                    <p>{exactExample1}</p>
+                    <p>{exactExample2}</p>
                   </div>
                 </div>
               </div>
@@ -59,12 +77,12 @@ const Disclaimer = () => {
               </div>
               <div className={styles.examples}>
                 <div className={styles.example}>
-                  <p>Instead of: "Maushold family of three"</p>
-                  <p>Try: "family of three"</p>
+                  <p>Instead of: {isNorthernlion ? '"Maushold family of three"' : '"long complex phrase"'}</p>
+                  <p>Try: {isNorthernlion ? '"family of three"' : '"complex phrase"'}</p>
                 </div>
                 <div className={styles.example}>
-                  <p>Instead of: "mahdi is on vacation"</p>
-                  <p>Try: "is on vacation"</p>
+                  <p>Instead of: {isNorthernlion ? '"mahdi is on vacation"' : '"best song ever"'}</p>
+                  <p>Try: {isNorthernlion ? '"is on vacation"' : '"best song"'}</p>
                 </div>
                 <div className={styles.example}>
                   <p>Instead of: "long complex phrase"</p>

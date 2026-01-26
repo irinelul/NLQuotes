@@ -3,12 +3,54 @@ import axios from 'axios';
 
 const TenantContext = createContext(null);
 
+// Helper function to update document metadata
+function updateDocumentMetadata(tenantData) {
+  if (tenantData?.metadata) {
+    document.title = tenantData.metadata.title || 'NLQuotes';
+    
+    // Update meta tags
+    const metaDescription = document.querySelector('meta[name="description"]');
+    if (metaDescription) {
+      metaDescription.setAttribute('content', tenantData.metadata.description || '');
+    } else {
+      const meta = document.createElement('meta');
+      meta.name = 'description';
+      meta.content = tenantData.metadata.description || '';
+      document.head.appendChild(meta);
+    }
+    
+    // Update favicon
+    if (tenantData.branding?.favicon) {
+      const favicon = document.querySelector('link[rel="icon"]') || document.querySelector('link[rel="shortcut icon"]');
+      if (favicon) {
+        favicon.href = tenantData.branding.favicon;
+      } else {
+        const link = document.createElement('link');
+        link.rel = 'icon';
+        link.href = tenantData.branding.favicon;
+        document.head.appendChild(link);
+      }
+    }
+  }
+}
+
 export function TenantProvider({ children }) {
-  const [tenant, setTenant] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Check for injected tenant config first (from server-side injection)
+  const injectedConfig = typeof window !== 'undefined' ? window.__TENANT_CONFIG__ : null;
+  
+  const [tenant, setTenant] = useState(injectedConfig);
+  const [loading, setLoading] = useState(!injectedConfig);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // If we already have injected config, use it immediately and update metadata
+    if (injectedConfig) {
+      console.log('[useTenant] Using injected tenant config:', injectedConfig.id);
+      updateDocumentMetadata(injectedConfig);
+      setLoading(false);
+      return;
+    }
+
     async function fetchTenant() {
       try {
         console.log('[useTenant] Fetching tenant config from /api/tenant');
@@ -22,35 +64,7 @@ export function TenantProvider({ children }) {
         });
         console.log('[useTenant] Received tenant config:', response.data);
         setTenant(response.data);
-        
-        // Update document metadata
-        if (response.data.metadata) {
-          document.title = response.data.metadata.title || 'NLQuotes';
-          
-          // Update meta tags
-          const metaDescription = document.querySelector('meta[name="description"]');
-          if (metaDescription) {
-            metaDescription.setAttribute('content', response.data.metadata.description || '');
-          } else {
-            const meta = document.createElement('meta');
-            meta.name = 'description';
-            meta.content = response.data.metadata.description || '';
-            document.head.appendChild(meta);
-          }
-          
-          // Update favicon
-          if (response.data.branding?.favicon) {
-            const favicon = document.querySelector('link[rel="icon"]') || document.querySelector('link[rel="shortcut icon"]');
-            if (favicon) {
-              favicon.href = response.data.branding.favicon;
-            } else {
-              const link = document.createElement('link');
-              link.rel = 'icon';
-              link.href = response.data.branding.favicon;
-              document.head.appendChild(link);
-            }
-          }
-        }
+        updateDocumentMetadata(response.data);
       } catch (err) {
         console.error('[useTenant] Error fetching tenant config:', err);
         console.error('[useTenant] Error details:', {
@@ -62,7 +76,7 @@ export function TenantProvider({ children }) {
         setError(err);
         // Fallback to default tenant config
         console.warn('[useTenant] Falling back to default Northernlion config');
-        setTenant({
+        const fallbackTenant = {
           id: 'northernlion',
           name: 'Northernlion',
           displayName: 'NLQuotes',
@@ -90,7 +104,9 @@ export function TenantProvider({ children }) {
             { id: 'librarian', name: 'Librarian' },
             { id: 'northernlion', name: 'Northernlion' }
           ]
-        });
+        };
+        setTenant(fallbackTenant);
+        updateDocumentMetadata(fallbackTenant);
       } finally {
         setLoading(false);
       }
