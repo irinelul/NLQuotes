@@ -21,6 +21,10 @@ ARG VITE_GRAFANA_DASHBOARD_URL_MOBILE
 ENV VITE_GRAFANA_DASHBOARD_URL=$VITE_GRAFANA_DASHBOARD_URL
 ENV VITE_GRAFANA_DASHBOARD_URL_MOBILE=$VITE_GRAFANA_DASHBOARD_URL_MOBILE
 
+# Skip static topic generation during Docker build (can be done post-deployment)
+# This prevents build timeouts when database is not available during build
+ENV SKIP_STATIC_TOPICS=true
+
 # Build the application (Vite will pick up the env vars)
 RUN npm run build
 

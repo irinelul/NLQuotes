@@ -1,10 +1,13 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAnalyticsOptOut } from '../hooks/useAnalyticsOptOut';
+import { useTenant } from '../hooks/useTenant';
 
 const Privacy = () => {
   const navigate = useNavigate();
   const { isOptedOut, toggleOptOut } = useAnalyticsOptOut();
+  const { tenant } = useTenant();
+  const siteName = tenant?.displayName || tenant?.metadata?.siteName || 'NL Quotes';
 
   const handleBack = () => {
     navigate('/');
@@ -23,7 +26,7 @@ const Privacy = () => {
       <p><strong>Last updated: April 26, 2025</strong></p>
 
       <p>
-        Your privacy is critically important to us at NL Quotes. Our guiding principle is to collect the absolute minimum information necessary and to be transparent about it. This policy explains what we collect and why.
+        Your privacy is critically important to us at {siteName}. Our guiding principle is to collect the absolute minimum information necessary and to be transparent about it. This policy explains what we collect and why.
       </p>
 
       <h3>Analytics Collection</h3>
@@ -71,7 +74,7 @@ const Privacy = () => {
 
       <h3>Information We Collect (Anonymous In-House Analytics)</h3>
       <p>
-        We collect limited anonymous data to understand basic usage patterns and improve NL Quotes, while fully respecting your privacy.
+        We collect limited anonymous data to understand basic usage patterns and improve {siteName}, while fully respecting your privacy.
       </p>
       <ul>
         <li>

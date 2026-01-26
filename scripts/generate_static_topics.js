@@ -142,9 +142,28 @@ function renderTopicHtml({ term, totalQuotes, videoGroups, siteBaseUrl }) {
 </html>`;
 }
 
+// Helper function to close all database pools
+// Note: Since pools aren't exported from the models, we use process.exit() to force cleanup
+async function closeDatabasePools() {
+  try {
+    console.log('[static-topics] Closing database connections...');
+    // The pools will be closed when the process exits
+    // For a build script, forcing exit is acceptable
+  } catch (e) {
+    // Ignore errors during cleanup
+    console.warn('[static-topics] Error during pool cleanup (non-fatal):', e.message);
+  }
+}
+
 async function main() {
   // Ensure env is available when running as part of `npm run build`
   dotenv.config();
+
+  // Skip static topic generation if SKIP_STATIC_TOPICS is set (useful for Docker builds)
+  if (process.env.SKIP_STATIC_TOPICS === 'true' || process.env.SKIP_STATIC_TOPICS === '1') {
+    console.log('[static-topics] Skipping static topic generation (SKIP_STATIC_TOPICS is set)');
+    return;
+  }
 
   const distDir = getArg('outDir', path.resolve(__dirname, '..', 'dist'));
   const limit = Number(getArg('limit', '20'));
@@ -171,6 +190,7 @@ async function main() {
     const msg = `[static-topics] Unable to initialize DB models (missing env vars?): ${e.message}`;
     if (strict) throw new Error(msg);
     console.warn(msg);
+    console.warn('[static-topics] Skipping static topic generation. Set SKIP_STATIC_TOPICS=true to suppress this warning.');
     return;
   }
 
@@ -179,11 +199,19 @@ async function main() {
 
   let terms;
   try {
-    terms = await analyticsModel.getPopularSearchTerms({ limit, timeRange, domain, year });
+    // Add timeout to prevent hanging during build
+    const queryTimeout = 30000; // 30 seconds
+    terms = await Promise.race([
+      analyticsModel.getPopularSearchTerms({ limit, timeRange, domain, year }),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error(`Query timeout after ${queryTimeout}ms`)), queryTimeout)
+      )
+    ]);
   } catch (e) {
     const msg = `[static-topics] Failed to fetch popular terms: ${e.message}`;
     if (strict) throw new Error(msg);
     console.warn(msg);
+    console.warn('[static-topics] Skipping static topic generation. Set SKIP_STATIC_TOPICS=true to suppress this warning.');
     return;
   }
 
@@ -198,17 +226,24 @@ async function main() {
     let topicData;
     try {
       // Keep it lightweight: first "page" only.
-      topicData = await quoteModel.search({
-        searchTerm: term,
-        searchPath: 'text',
-        gameName: 'all',
-        selectedValue: 'all',
-        year: '',
-        sortOrder: 'default',
-        page: 1,
-        limit: 10,
-        exactPhrase: false
-      });
+      // Add timeout to prevent hanging during build
+      const searchTimeout = 15000; // 15 seconds per search
+      topicData = await Promise.race([
+        quoteModel.search({
+          searchTerm: term,
+          searchPath: 'text',
+          gameName: 'all',
+          selectedValue: 'all',
+          year: '',
+          sortOrder: 'default',
+          page: 1,
+          limit: 10,
+          exactPhrase: false
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error(`Search timeout after ${searchTimeout}ms`)), searchTimeout)
+        )
+      ]);
     } catch (e) {
       console.warn(`[static-topics] Skipping "${term}" due to quote query error: ${e.message}`);
       continue;
@@ -261,8 +296,24 @@ async function main() {
   console.log(`[static-topics] Done. Generated ${written.length} topic pages.`);
 }
 
-main().catch((err) => {
-  console.error('[static-topics] Fatal:', err);
-  process.exit(1);
-});
+// Wrap main to ensure cleanup and proper exit
+async function run() {
+  let exitCode = 0;
+  try {
+    await main();
+  } catch (err) {
+    console.error('[static-topics] Fatal:', err);
+    exitCode = 1;
+  } finally {
+    // Close all database pools to allow clean exit
+    await closeDatabasePools();
+    
+    // Force immediate exit - this is a build script, so forcing exit is acceptable
+    // The database pools will be closed by the OS when the process terminates
+    console.log('[static-topics] Exiting...');
+    process.exit(exitCode);
+  }
+}
+
+run();
 

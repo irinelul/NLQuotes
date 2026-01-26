@@ -812,7 +812,67 @@ app.use((req, res) => {
     "object-src 'none'"
   );
 
-  res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
+  // Inject tenant config into HTML before serving
+  try {
+    const tenant = req.tenant || detectTenant(req.get('host') || 'localhost');
+    const indexPath = path.resolve(__dirname, 'dist', 'index.html');
+    
+    if (fs.existsSync(indexPath)) {
+      let html = fs.readFileSync(indexPath, 'utf8');
+      
+      // Create sanitized tenant config (no database URLs)
+      const tenantConfig = {
+        id: tenant.id,
+        name: tenant.name,
+        displayName: tenant.displayName,
+        branding: tenant.branding,
+        metadata: tenant.metadata,
+        texts: tenant.texts,
+        channels: tenant.channels,
+        hostnames: tenant.hostnames
+      };
+      
+      // Inject tenant config as a script tag before the main script
+      const tenantScript = `<script>window.__TENANT_CONFIG__ = ${JSON.stringify(tenantConfig)};</script>`;
+      
+      // Insert before the main script tag
+      html = html.replace(
+        '<script type="module" src="/src/main.jsx"></script>',
+        `${tenantScript}\n<script type="module" src="/src/main.jsx"></script>`
+      );
+      
+      // Also update meta tags in HTML if tenant is not northernlion
+      if (tenant.id !== 'northernlion' && tenant.metadata) {
+        // Update title
+        html = html.replace(
+          /<title>.*?<\/title>/,
+          `<title>${tenant.metadata.title || 'HiveQuotes'}</title>`
+        );
+        
+        // Update description
+        html = html.replace(
+          /<meta name="description" content="[^"]*"\/>/,
+          `<meta name="description" content="${(tenant.metadata.description || '').replace(/"/g, '&quot;')}" />`
+        );
+        
+        // Update favicon if different
+        if (tenant.branding?.favicon) {
+          html = html.replace(
+            /<link rel="icon"[^>]*>/g,
+            `<link rel="icon" href="${tenant.branding.favicon}" type="image/png" />`
+          );
+        }
+      }
+      
+      res.send(html);
+    } else {
+      res.sendFile(indexPath);
+    }
+  } catch (error) {
+    console.error('Error injecting tenant config:', error);
+    // Fallback to normal file serving
+    res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
+  }
 });
 
 

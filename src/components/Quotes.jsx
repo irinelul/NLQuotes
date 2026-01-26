@@ -4,12 +4,14 @@ import { YouTubePlayer } from './YoutubePlayer';
 import { FlagModal } from './Modals/FlagModal';
 import { backdateTimestamp, formatDate, formatTimestamp } from '../services/dateHelpers';
 import { useState, useEffect } from 'react';
+import { useTenant } from '../hooks/useTenant';
 import query from '../services/quotes';
 
 // `b` is returned from ts_headline when a match is found
 const ALLOWED_TAGS = ['b'];
 
 export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
+  const { tenant } = useTenant();
   const [flagging, setFlagging] = useState({});
   const [modalState, setModalState] = useState({
       isOpen: false,
@@ -23,6 +25,9 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
   const [showEmbeddedVideos] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
   const [isMobileView, setIsMobileView] = useState(window.innerWidth <= 768);
+  
+  // Get tenant-aware site URL
+  const siteUrl = tenant?.hostnames?.[0] ? `https://${tenant.hostnames[0]}` : 'https://nlquotes.com';
 
   // Debug logging
   useEffect(() => {
@@ -91,7 +96,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
           setModalState(prev => ({ ...prev, isOpen: false }));
       } catch (error) {
           console.error('Error flagging quote:', error);
-          alert('Unable to flag quote due to database connection issues. If you\'re on the deployed site, please try the main site at nlquotes.com.');
+          alert(`Unable to flag quote due to database connection issues. If you're on the deployed site, please try the main site at ${siteUrl}.`);
       } finally {
           setFlagging(prev => ({ ...prev, [`${modalState.video_id}-${modalState.timestamp}`]: false }));
       }
