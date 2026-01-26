@@ -7,7 +7,7 @@
     "dev:server": "nodemon index.js",
     "dev:client": "vite",
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
-    "build": "vite build && node scripts/generate_static_topics.js --domain nlquotes.com --year 2025 --timeRange all --limit 20",
+    "build": "vite build && (node scripts/generate_static_topics.js --domain nlquotes.com --year 2025 --timeRange all --limit 20 || echo 'Static topic generation skipped or failed')",
     "predeploy": "npm ci",
     "lint": "eslint .",
     "preview": "vite preview",
