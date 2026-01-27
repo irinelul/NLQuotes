@@ -1,0 +1,51 @@
+{
+    "id": "vinesauce",
+    "name": "vinesauce",
+    "displayName": "Vinesauce",
+    "hostnames": ["vinesauce.com", "www.vinesauce.com", "localhost"],
+    "port": 3002,
+    "branding": {
+      "logo": "/vinesauce/vinesauce.jpg",
+      "logoFallback": "/vinesauce/vinesauce.jpg",
+      "favicon": "/vinesauce/vinesauce.jpg",
+      "primaryColor": "#4CAF50",
+      "theme": "northernlion"
+    },
+    "metadata": {
+      "title": "Vinesauce - Search Vinesauce Quotes",
+      "description": "Search through thousands of quotes from Vinesauce's videos. Find memorable moments, funny quotes, and more.",
+      "keywords": "Vinesauce, quotes, search, videos, music, youtube",
+      "ogImage": "/Vinesauce.jpg",
+      "siteName": "Vinesauce"
+    },
+    "texts": {
+      "searchPlaceholder": "Search quotes...",
+      "randomQuotesButton": "Random Quotes",
+      "footerText": "",
+      "disclaimer": "This site is not affiliated with Vinesauce. All quotes are from publicly available videos.",
+      "totalQuotesLabel": "Total quotes found:",
+      "noResultsMessage": "No quotes found. Try a different search term.",
+      "loadingMessage": "Loading...",
+      "errorMessage": "Unable to connect to database."
+    },
+    "channels": [
+      { "id": "all", "name": "All Sources" },
+      { "id": "VINESAUCE", "name": "Vinesauce" }
+    ],
+    "database": {
+      "envVar": "DATABASE_URL_VINESAUCE",
+      "description": "PostgreSQL database for quotes"
+    },
+    "grafana": {
+      "dashboardUrl": "https://stats.nlquotes.com/public-dashboards/03922ecbf3eb4154aa432d291d75b817",
+      "mobileDashboardUrl": "https://stats.nlquotes.com/public-dashboards/03922ecbf3eb4154aa432d291d75b817",
+      "useHostname": true
+    },
+    "gameFilter": {
+      "enabled": false,
+      "label": "Series",
+      "tooltipText": "Filter by Series (type to search).",
+      "resetTooltipText": "Reset Series filter"
+    }
+  }
+  

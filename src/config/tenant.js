@@ -14,12 +14,14 @@ const TENANT_ID = import.meta.env.VITE_TENANT_ID || 'northernlion';
 import northernlionConfig from '../../tenants/northernlion.json';
 import hivemindConfig from '../../tenants/hivemind.json';
 import jrequotesConfig from '../../tenants/jrequotes.json';
+import vinesauceConfig from '../../tenants/vinesauce.json';
 
 // Map tenant IDs to their configs
 const tenantConfigs = {
   northernlion: northernlionConfig,
   hivemind: hivemindConfig,
   jrequotes: jrequotesConfig,
+  vinesauce: vinesauceConfig,
 };
 
 // Get the current tenant config (resolved at build time)
@@ -39,7 +41,14 @@ if (TENANT_ID === 'hivemind') {
   logo = '/jrequotes/jre.webp';
   logoFallback = '/jrequotes/jre.webp';
   favicon = '/jrequotes/jre.webp';
-} else {
+} else if (TENANT_ID === 'vinesauce') {
+  // Import vinesauce assets
+  logo = '/vinesauce/vinesauce.jpg';
+  logoFallback = '/vinesauce/vinesauce.jpg';
+  favicon = '/vinesauce/vinesauce.jpg';
+} 
+
+else {
   // Import northernlion assets (default)
   logo = '/nlquotes/nlquotes.svg';
   logoFallback = '/nlquotes/NLogo.png';
@@ -69,6 +78,7 @@ export const TENANT = {
 export const IS_NORTHERNLION = TENANT_ID === 'northernlion';
 export const IS_HIVEMIND = TENANT_ID === 'hivemind';
 export const IS_JREQUOTES = TENANT_ID === 'jrequotes';
+export const IS_VINESAUCE = TENANT_ID === 'vinesauce';
 
 // Export hard-bound assets
 export { logo, logoFallback, favicon };
