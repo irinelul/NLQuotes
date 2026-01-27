@@ -30,11 +30,22 @@
   },
   "channels": [
     { "id": "all", "name": "All Sources" },
-    { "id": "hivemindtv", "name": "hivemindtv" },
-    { "id": "hivemind", "name": "hivemind" }
+    { "id": "HIVEMINDTV", "name": "HivemindTV" },
+    { "id": "HIVEMINDUNLIMITED", "name": "HivemindUNLIMITED" }
   ],
   "database": {
     "envVar": "DATABASE_URL_HIVEMIND",
     "description": "PostgreSQL database for quotes"
+  },
+  "grafana": {
+    "dashboardUrl": "https://stats.nlquotes.com/public-dashboards/03922ecbf3eb4154aa432d291d75b817",
+    "mobileDashboardUrl": "https://stats.nlquotes.com/public-dashboards/03922ecbf3eb4154aa432d291d75b817",
+    "useHostname": true
+  },
+  "gameFilter": {
+    "enabled": true,
+    "label": "Series",
+    "tooltipText": "Filter by Series (type to search).",
+    "resetTooltipText": "Reset Series filter"
   }
 }

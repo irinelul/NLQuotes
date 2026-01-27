@@ -253,7 +253,9 @@ app.get('/api/tenant', (req, res) => {
       branding: tenant.branding,
       metadata: tenant.metadata,
       texts: tenant.texts,
-      channels: tenant.channels
+      channels: tenant.channels,
+      grafana: tenant.grafana,
+      gameFilter: tenant.gameFilter
     };
     
     // Set cache-busting headers - don't cache tenant config
@@ -829,7 +831,9 @@ app.use((req, res) => {
         metadata: tenant.metadata,
         texts: tenant.texts,
         channels: tenant.channels,
-        hostnames: tenant.hostnames
+        hostnames: tenant.hostnames,
+        grafana: tenant.grafana,
+        gameFilter: tenant.gameFilter
       };
       
       // Inject tenant config as a script tag before the main script

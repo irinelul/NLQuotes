@@ -59,6 +59,7 @@ const SearchPage = ({
     useEffect(() => {
       if (tenant) {
         console.log('[SearchPage] Tenant loaded:', tenant.id, 'Logo:', logo, 'Fallback:', logoFallback);
+        console.log('[SearchPage] gameFilter config:', tenant?.gameFilter);
       } else if (!tenantLoading) {
         console.warn('[SearchPage] No tenant config loaded, using fallbacks');
       }
@@ -179,6 +180,7 @@ const SearchPage = ({
                 strict={strict} 
                 yearInput={yearInput}
                 setYearInput={setYearInput}
+                gameFilterConfig={tenant?.gameFilter}
             />
 
             {!hasSearched && <Disclaimer />}

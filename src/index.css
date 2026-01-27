@@ -533,7 +533,7 @@ button:disabled {
 }
 
 .game-tooltip::before {
-    content: "Filter by game (type to search).";
+    content: var(--game-tooltip-text, "Filter by game (type to search).");
     position: absolute;
     bottom: 100%;
     left: 50%;
