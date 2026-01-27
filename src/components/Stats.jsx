@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { useTenant } from '../hooks/useTenant';
+import { TENANT as TENANT_CONFIG, IS_HIVEMIND } from '../config/tenant';
 import './Stats.css';
 
 const Stats = () => {
@@ -46,10 +47,11 @@ const Stats = () => {
     ? getGrafanaUrl(grafanaConfig.mobileDashboardUrl)
     : dashboardUrl; // Fallback to desktop URL if mobile not specified
   
-  // Tenant-aware text
-  const siteName = tenant?.displayName || tenant?.metadata?.siteName || 'NLQuotes';
+  // Tenant-aware text (use hard-bound config for static text to prevent flickering)
+  // Note: We still use useTenant for Grafana URLs which may need runtime hostname resolution
+  const siteName = TENANT_CONFIG.displayName || TENANT_CONFIG.metadata?.siteName || 'NLQuotes';
   const statsTitle = `${siteName} Statistics`;
-  const isHiveQuotes = tenant?.id === 'hivemind';
+  const isHiveQuotes = IS_HIVEMIND;
 
   // Validate and normalize dashboard URL
   const normalizeUrl = (url) => {
