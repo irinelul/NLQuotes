@@ -1,0 +1,53 @@
+{
+    "id": "lttquotes",
+    "name": "lttquotes",
+    "displayName": "LTTQuotes",
+    "hostnames": ["lttquotes.org", "www.lttquotes.org", "localhost"],
+    "port": 3002,
+    "branding": {
+      "logo": "/lttquotes/ltt.webp",
+      "logoFallback": "/lttquotes/ltt.webp",
+      "favicon": "/lttquotes/ltt.webp",
+      "primaryColor": "#4CAF50",
+      "theme": "northernlion"
+    },
+    "metadata": {
+      "title": "LTTQuotes - Search Linus Tech Tips Quotes",
+      "description": "Search through thousands of quotes from Linus Tech Tips's videos. Find memorable moments, funny quotes, and more.",
+      "keywords": "Linus Tech Tips, LTT, quotes, search, videos, music, youtube",
+      "ogImage": "/lttquotes/ltt.webp",
+      "siteName": "LTTQuotes"
+    },
+    "texts": {
+      "searchPlaceholder": "Search quotes...",
+      "randomQuotesButton": "Random Quotes",
+      "footerText": "",
+      "disclaimer": "This site is not affiliated with Linus Tech Tips. All quotes are from publicly available videos.",
+      "totalQuotesLabel": "Total quotes found:",
+      "noResultsMessage": "No quotes found. Try a different search term.",
+      "loadingMessage": "Loading...",
+      "errorMessage": "Unable to connect to database."
+    },
+    "channels": [
+      { "id": "all", "name": "All Sources" },
+      { "id": "ltt", "name": "Linus Tech Tips" },
+      { "id": "shortcircuit", "name": "Short Circuit" },
+      { "id": "techlinked", "name": "Tech Linked" }
+    ],
+    "database": {
+      "envVar": "DATABASE_URL_LTT",
+      "description": "PostgreSQL database for quotes"
+    },
+    "grafana": {
+      "dashboardUrl": "https://stats.nlquotes.com/public-dashboards/03922ecbf3eb4154aa432d291d75b817",
+      "mobileDashboardUrl": "https://stats.nlquotes.com/public-dashboards/03922ecbf3eb4154aa432d291d75b817",
+      "useHostname": true
+    },
+    "gameFilter": {
+      "enabled": false,
+      "label": "Series",
+      "tooltipText": "Filter by Series (type to search).",
+      "resetTooltipText": "Reset Series filter"
+    }
+  }
+  
