@@ -52,6 +52,7 @@ export default defineConfig({
     assetsDir: 'assets',
     sourcemap: true,
     manifest: true,
+    emptyOutDir: true, // Ensure dist folder is cleaned before each build
     rollupOptions: {
       output: {
         manualChunks: undefined,

@@ -670,33 +670,33 @@ app.get('/api/nldle', async (req, res) => {
   }
 });
 
-// Popular searches endpoint
-app.get('/api/popular-searches', async (req, res) => {
-  try {
-    const limit = parseInt(req.query.limit) || 20;
-    const timeRange = req.query.timeRange || '7d';
-    const domain = req.query.domain || undefined;
-    const year = req.query.year ? parseInt(req.query.year) : undefined;
+// Popular searches endpoint - DISABLED
+// app.get('/api/popular-searches', async (req, res) => {
+//   try {
+//     const limit = parseInt(req.query.limit) || 20;
+//     const timeRange = req.query.timeRange || '7d';
+//     const domain = req.query.domain || undefined;
+//     const year = req.query.year ? parseInt(req.query.year) : undefined;
 
-    const result = await analyticsModel.getPopularSearchTerms({
-      limit,
-      timeRange,
-      domain,
-      year
-    });
+//     const result = await analyticsModel.getPopularSearchTerms({
+//       limit,
+//       timeRange,
+//       domain,
+//       year
+//     });
     
-    res.json({ 
-      terms: result,
-      total: result.length,
-      timeRange,
-      domain,
-      year
-    });
-  } catch (error) {
-    console.error('Error fetching popular searches:', error);
-    res.status(500).json({ error: 'Failed to fetch popular searches' });
-  }
-});
+//     res.json({ 
+//       terms: result,
+//       total: result.length,
+//       timeRange,
+//       domain,
+//       year
+//     });
+//   } catch (error) {
+//     console.error('Error fetching popular searches:', error);
+//     res.status(500).json({ error: 'Failed to fetch popular searches' });
+//   }
+// });
 
 // Topic quotes endpoint
 app.get('/api/topic/:term', async (req, res) => {
@@ -891,7 +891,6 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     console.log('- /api/games (game list)');
     console.log('- /api/flag (flag quotes)');
     console.log('- /api/nldle (NLDLE game)');
-    console.log('- /api/popular-searches (popular search terms)');
     console.log('- /api/topic/:term (topic quotes)');
     console.log('- /analytics (POST - analytics tracking)');
     console.log('- /health (health check)');
