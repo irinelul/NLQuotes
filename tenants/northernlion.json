@@ -40,5 +40,16 @@
   "database": {
     "envVar": "DATABASE_URL",
     "description": "PostgreSQL database for quotes"
+  },
+  "grafana": {
+    "dashboardUrl": "https://stats.nlquotes.com/d/bek3z1ymfr9j4a/test?orgId=1&from=now-24h&to=now&timezone=browser&var-city_filter=$__all&var-search_term_filter=$__all&refresh=5m",
+    "mobileDashboardUrl": "https://stats.nlquotes.com/d/xek3z1ymfr9j4a/test-mobile?orgId=1&from=now-24h&to=now&timezone=browser&refresh=5m&showCategory=Graph%20styles",
+    "useHostname": false
+  },
+  "gameFilter": {
+    "enabled": true,
+    "label": "game",
+    "tooltipText": "Filter by game (type to search).",
+    "resetTooltipText": "Reset game filter"
   }
 }

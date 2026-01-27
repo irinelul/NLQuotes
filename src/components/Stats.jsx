@@ -7,40 +7,49 @@ import './Stats.css';
 const Stats = () => {
   const navigate = useNavigate();
   const { theme } = useTheme();
-  const { tenant } = useTenant();
+  const { tenant, loading: tenantLoading } = useTenant();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // Tenant-aware dashboard URLs
-  // For hivequotes (hivemind tenant), use current hostname with port 3000
-  // For nlquotes (northernlion tenant), use stats.nlquotes.com
-  const isHiveQuotes = tenant?.id === 'hivemind';
+  // Wait for tenant to load before rendering
+  if (tenantLoading) {
+    return (
+      <div className="stats-container">
+        <h1>Loading...</h1>
+      </div>
+    );
+  }
   
-  // For hivequotes, use the current hostname (works for both localhost and production)
-  const getHiveQuotesDashboardUrl = () => {
-    const hostname = window.location.hostname;
-    // Grafana on port 3000 is typically HTTP, even if main site is HTTPS
-    // Use HTTP for Grafana to avoid mixed content issues
-    const grafanaProtocol = 'http:';
+  // Get Grafana URLs from tenant config
+  const getGrafanaUrl = (urlTemplate) => {
+    if (!urlTemplate) return null;
     
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return `${grafanaProtocol}//localhost:3000/public-dashboards/f333724fedb14452a37956d035e0b721`;
+    // If URL uses {hostname} placeholder, replace it with current hostname
+    if (urlTemplate.includes('{hostname}')) {
+      const hostname = window.location.hostname;
+      // For localhost, use localhost explicitly
+      const replacementHostname = (hostname === 'localhost' || hostname === '127.0.0.1') 
+        ? 'localhost' 
+        : hostname;
+      return urlTemplate.replace(/{hostname}/g, replacementHostname);
     }
-    // For production, use current hostname with HTTP on port 3000
-    return `${grafanaProtocol}//${hostname}:3000/public-dashboards/f333724fedb14452a37956d035e0b721`;
+    
+    return urlTemplate;
   };
   
-  const dashboardUrl = isHiveQuotes 
-    ? getHiveQuotesDashboardUrl()
-    : "https://stats.nlquotes.com/d/bek3z1ymfr9j4a/test?orgId=1&from=now-24h&to=now&timezone=browser&var-city_filter=$__all&var-search_term_filter=$__all&refresh=5m";
-  const mobileDashboardUrl = isHiveQuotes
-    ? getHiveQuotesDashboardUrl()
-    : "https://stats.nlquotes.com/d/xek3z1ymfr9j4a/test-mobile?orgId=1&from=now-24h&to=now&timezone=browser&refresh=5m&showCategory=Graph%20styles";
+  const grafanaConfig = tenant?.grafana;
+  const dashboardUrl = grafanaConfig?.dashboardUrl 
+    ? getGrafanaUrl(grafanaConfig.dashboardUrl)
+    : null;
+  const mobileDashboardUrl = grafanaConfig?.mobileDashboardUrl
+    ? getGrafanaUrl(grafanaConfig.mobileDashboardUrl)
+    : dashboardUrl; // Fallback to desktop URL if mobile not specified
   
   // Tenant-aware text
   const siteName = tenant?.displayName || tenant?.metadata?.siteName || 'NLQuotes';
   const statsTitle = `${siteName} Statistics`;
+  const isHiveQuotes = tenant?.id === 'hivemind';
 
   // Validate and normalize dashboard URL
   const normalizeUrl = (url) => {

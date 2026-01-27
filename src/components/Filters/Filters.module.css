@@ -104,7 +104,7 @@
     }
 
     &::before {
-        content: "Reset game filter";
+        content: var(--reset-tooltip-text, "Reset game filter");
         position: absolute;
         top: 100%;
         left: 50%;
