@@ -127,7 +127,6 @@ function renderTopicHtml({ term, totalQuotes, videoGroups, siteBaseUrl }) {
         </div>
         <div class="actions">
           <a class="btn" href="${siteBaseUrl}/search?q=${encodeURIComponent(term)}">Open interactive search</a>
-          <a class="btn" href="${siteBaseUrl}/popular-searches">Popular searches</a>
           <a class="btn" href="${siteBaseUrl}/">Home</a>
         </div>
       </div>
@@ -270,7 +269,6 @@ async function main() {
   const today = new Date().toISOString().slice(0, 10);
   const urls = [
     { loc: `${siteBaseUrl}/`, priority: '1.0' },
-    { loc: `${siteBaseUrl}/popular-searches`, priority: '0.7' },
     ...written.map((p) => ({ loc: `${siteBaseUrl}${p.url}`, priority: '0.6' })),
   ];
 

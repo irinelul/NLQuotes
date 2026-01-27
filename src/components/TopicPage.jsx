@@ -214,17 +214,7 @@ export const TopicPage = () => {
       {/* Navigation Links */}
       <div className="flex justify-center space-x-4 mt-8">
         <Link
-          to="/popular-searches"
-          className="inline-flex items-center px-4 py-2 bg-green-600 text-white font-medium rounded hover:bg-green-700 transition-colors duration-200"
-        >
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-          </svg>
-          Popular Searches
-        </Link>
-        
-        <Link
-          to="/search"
+          to="/"
           className="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded hover:bg-blue-700 transition-colors duration-200"
         >
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
