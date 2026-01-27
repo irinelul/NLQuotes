@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom'
-import { useTenant } from '../hooks/useTenant'
+import { TENANT } from '../config/tenant'
 
 export const Footer = ({ onChangelogClick }) => {
-    const { tenant } = useTenant();
-    const footerText = tenant?.texts?.footerText || 'Made with passion by a fan';
+    // Use hard-bound tenant config (resolved at build time, no flickering)
+    const footerText = TENANT.texts?.footerText || 'Made with passion by a fan';
     
     return (
         <div className="footer-message">

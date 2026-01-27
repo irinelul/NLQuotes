@@ -1,13 +1,13 @@
 import styles from './Disclaimer.module.css';
-import { useTenant } from '../../hooks/useTenant';
+import { IS_NORTHERNLION } from '../../config/tenant';
 
 /* eslint-disable react/no-unescaped-entities */
 
 const Disclaimer = () => {
-  const { tenant } = useTenant();
-  const isNorthernlion = tenant?.id === 'northernlion';
+  // Use hard-bound tenant config (resolved at build time, no flickering)
+  const isNorthernlion = IS_NORTHERNLION;
   
-  // Tenant-aware examples
+  // Tenant-aware examples (hard-bound at import time)
   const flexibleExample1 = isNorthernlion 
     ? '🔍 Mahdi vacation → Finds: "Mahdi is on vacation", "vacation with Mahdi"'
     : '🔍 music video → Finds: "music in the video", "video with music"';

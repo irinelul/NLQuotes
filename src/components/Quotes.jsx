@@ -4,14 +4,13 @@ import { YouTubePlayer } from './YoutubePlayer';
 import { FlagModal } from './Modals/FlagModal';
 import { backdateTimestamp, formatDate, formatTimestamp } from '../services/dateHelpers';
 import { useState, useEffect } from 'react';
-import { useTenant } from '../hooks/useTenant';
+import { TENANT } from '../config/tenant';
 import query from '../services/quotes';
 
 // `b` is returned from ts_headline when a match is found
 const ALLOWED_TAGS = ['b'];
 
 export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
-  const { tenant } = useTenant();
   const [flagging, setFlagging] = useState({});
   const [modalState, setModalState] = useState({
       isOpen: false,
@@ -26,8 +25,8 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
   const [retryCount, setRetryCount] = useState(0);
   const [isMobileView, setIsMobileView] = useState(window.innerWidth <= 768);
   
-  // Get tenant-aware site URL
-  const siteUrl = tenant?.hostnames?.[0] ? `https://${tenant.hostnames[0]}` : 'https://nlquotes.com';
+  // Get tenant-aware site URL (hard-bound at import time, no flickering)
+  const siteUrl = TENANT.hostnames?.[0] ? `https://${TENANT.hostnames[0]}` : 'https://nlquotes.com';
 
   // Debug logging
   useEffect(() => {

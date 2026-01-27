@@ -1,9 +1,9 @@
-import { useTenant } from '../hooks/useTenant';
+import { TENANT } from '../config/tenant';
 
 const BetaDisclaimer = () => {
-  const { tenant } = useTenant();
-  const siteName = tenant?.displayName || tenant?.metadata?.siteName || 'NLQuotes';
-  const siteUrl = tenant?.hostnames?.[0] ? `https://${tenant.hostnames[0]}` : 'https://nlquotes.com';
+  // Use hard-bound tenant config (resolved at build time, no flickering)
+  const siteName = TENANT.displayName || TENANT.metadata?.siteName || 'NLQuotes';
+  const siteUrl = TENANT.hostnames?.[0] ? `https://${TENANT.hostnames[0]}` : 'https://nlquotes.com';
   
   return (
     <div className="beta-disclaimer">
