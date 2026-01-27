@@ -105,12 +105,6 @@ const SearchPage = ({
                         📊 Stats
                     </button>
                     <button
-                        onClick={() => navigate('/popular-searches')}
-                        className="logo-nav-button popular-searches-button"
-                    >
-                        🔥 Popular
-                    </button>
-                    <button
                         onClick={onChangelogClick}
                         className="logo-nav-button"
                         style={{ background: '#4CAF50' }}
