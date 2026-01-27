@@ -245,7 +245,7 @@ app.get('/api/tenant', (req, res) => {
     
     console.log(`[Tenant API] Serving config for tenant: ${tenant?.id} (hostname: ${req.get('host')})`);
     
-    // Return sanitized tenant config (no database URLs)
+    // Return sanitized tenant config (no database URLs or port)
     const config = {
       id: tenant.id,
       name: tenant.name,
@@ -254,6 +254,7 @@ app.get('/api/tenant', (req, res) => {
       metadata: tenant.metadata,
       texts: tenant.texts,
       channels: tenant.channels,
+      hostnames: tenant.hostnames,
       grafana: tenant.grafana,
       gameFilter: tenant.gameFilter
     };
