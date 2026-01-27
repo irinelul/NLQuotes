@@ -1,0 +1,51 @@
+{
+    "id": "jrequotes",
+    "name": "jrequotes",
+    "displayName": "JREQuotes",
+    "hostnames": ["jrequotes.org", "www.jrequotes.com", "localhost"],
+    "port": 3002,
+    "branding": {
+      "logo": "/jrequotes/jre.webp",
+      "logoFallback": "/jrequotes/jre.webp",
+      "favicon": "/jrequotes/jre.webp",
+      "primaryColor": "#4CAF50",
+      "theme": "northernlion"
+    },
+    "metadata": {
+      "title": "Jrequotes - Search Joe Rogan Experience Quotes",
+      "description": "Search through thousands of quotes from Joe Rogan's videos. Find memorable moments, funny quotes, and more.",
+      "keywords": "Joe Rogan, JRE, quotes, search, videos, music, youtube",
+      "ogImage": "/jrequotes/jre.webp",
+      "siteName": "JREQuotes"
+    },
+    "texts": {
+      "searchPlaceholder": "Search quotes...",
+      "randomQuotesButton": "Random Quotes",
+      "footerText": "",
+      "disclaimer": "This site is not affiliated with Joe Rogan. All quotes are from publicly available videos.",
+      "totalQuotesLabel": "Total quotes found:",
+      "noResultsMessage": "No quotes found. Try a different search term.",
+      "loadingMessage": "Loading...",
+      "errorMessage": "Unable to connect to database."
+    },
+    "channels": [
+      { "id": "all", "name": "All Sources" },
+      { "id": "jrequotes", "name": "JREQuotes" }
+    ],
+    "database": {
+      "envVar": "DATABASE_URL_JRE",
+      "description": "PostgreSQL database for quotes"
+    },
+    "grafana": {
+      "dashboardUrl": "https://stats.nlquotes.com/public-dashboards/03922ecbf3eb4154aa432d291d75b817",
+      "mobileDashboardUrl": "https://stats.nlquotes.com/public-dashboards/03922ecbf3eb4154aa432d291d75b817",
+      "useHostname": true
+    },
+    "gameFilter": {
+      "enabled": false,
+      "label": "Series",
+      "tooltipText": "Filter by Series (type to search).",
+      "resetTooltipText": "Reset Series filter"
+    }
+  }
+  
