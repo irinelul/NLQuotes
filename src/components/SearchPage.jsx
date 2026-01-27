@@ -9,7 +9,7 @@ import { FeedbackModal } from './Modals/FeedbackModal';
 import { useNavigate } from 'react-router-dom';
 import GeneralFeedbackButton from './GeneralFeedbackButton';
 import { useTheme } from '../hooks/useTheme';
-import { useTenant } from '../hooks/useTenant';
+import { TENANT, logo, logoFallback } from '../config/tenant';
 
 const SearchPage = ({
     searchInput,
@@ -49,27 +49,14 @@ const SearchPage = ({
 }) => {
     const navigate = useNavigate();
     const { theme, toggleTheme } = useTheme();
-    const { tenant, loading: tenantLoading } = useTenant();
     
-    // Use tenant config with fallbacks
-    const logo = tenant?.branding?.logo || '/nlquotes/nlquotes.svg';
-    const logoFallback = tenant?.branding?.logoFallback || '/nlquotes/NLogo.png';
-    
-    // Debug logging
-    useEffect(() => {
-      if (tenant) {
-        console.log('[SearchPage] Tenant loaded:', tenant.id, 'Logo:', logo, 'Fallback:', logoFallback);
-        console.log('[SearchPage] gameFilter config:', tenant?.gameFilter);
-      } else if (!tenantLoading) {
-        console.warn('[SearchPage] No tenant config loaded, using fallbacks');
-      }
-    }, [tenant, tenantLoading, logo, logoFallback]);
-    const searchPlaceholder = tenant?.texts?.searchPlaceholder || 'Search quotes...';
-    const randomQuotesText = tenant?.texts?.randomQuotesButton || 'Random Quotes';
-    const totalQuotesLabel = tenant?.texts?.totalQuotesLabel || 'Total quotes found:';
-    const loadingMessage = tenant?.texts?.loadingMessage || 'Loading...';
-    const errorMessage = tenant?.texts?.errorMessage || 'Unable to connect to database.';
-    const channels = tenant?.channels || [
+    // Use hard-bound tenant config (resolved at build time, no flickering)
+    const searchPlaceholder = TENANT.texts?.searchPlaceholder || 'Search quotes...';
+    const randomQuotesText = TENANT.texts?.randomQuotesButton || 'Random Quotes';
+    const totalQuotesLabel = TENANT.texts?.totalQuotesLabel || 'Total quotes found:';
+    const loadingMessage = TENANT.texts?.loadingMessage || 'Loading...';
+    const errorMessage = TENANT.texts?.errorMessage || 'Unable to connect to database.';
+    const channels = TENANT.channels || [
         { id: 'all', name: 'All Sources' },
         { id: 'librarian', name: 'Librarian' },
         { id: 'northernlion', name: 'Northernlion' }
@@ -81,7 +68,7 @@ const SearchPage = ({
                 <div className="logo-container" onClick={handleLogoClick}>
                     <img 
                         src={logo} 
-                        alt={`${tenant?.name || 'NLQuotes'} Logo`}
+                        alt={`${TENANT.name || 'NLQuotes'} Logo`}
                         width={156}
                         height={125}
                         onError={(e) => {
@@ -174,7 +161,7 @@ const SearchPage = ({
                 strict={strict} 
                 yearInput={yearInput}
                 setYearInput={setYearInput}
-                gameFilterConfig={tenant?.gameFilter}
+                gameFilterConfig={TENANT.gameFilter}
             />
 
             {!hasSearched && <Disclaimer />}

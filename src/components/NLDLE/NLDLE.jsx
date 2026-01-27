@@ -2,19 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import query from '../../services/quotes';
 import { formatDate } from '../../services/dateHelpers';
-import { useTenant } from '../../hooks/useTenant';
+import { TENANT, IS_HIVEMIND } from '../../config/tenant';
 import './NLDLE.css';
 
 const NLDLE = () => {
-  const { tenant } = useTenant();
   const NLDLE_DISABLED = true;
   const navigate = useNavigate();
   
-  // Tenant-aware configuration
-  const siteUrl = tenant?.hostnames?.[0] ? `https://${tenant.hostnames[0]}` : 'https://nlquotes.com';
-  const gameName = tenant?.id === 'hivemind' ? 'HivemindLE' : 'NLDLE';
-  const creatorName = tenant?.name || 'NL';
-  const defaultChannel = tenant?.channels?.[1]?.id || tenant?.channels?.[2]?.id || 'northernlion';
+  // Tenant-aware configuration (hard-bound at import time, no flickering)
+  const siteUrl = TENANT.hostnames?.[0] ? `https://${TENANT.hostnames[0]}` : 'https://nlquotes.com';
+  const gameName = IS_HIVEMIND ? 'HivemindLE' : 'NLDLE';
+  const creatorName = TENANT.name || 'NL';
+  const defaultChannel = TENANT.channels?.[1]?.id || TENANT.channels?.[2]?.id || 'northernlion';
   
   const handleBack = () => {
     navigate('/');

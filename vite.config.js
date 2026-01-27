@@ -31,8 +31,15 @@ if (!API_PORT) {
 API_PORT = parseInt(API_PORT) || 8080;
 console.log(`[Vite] Proxy target: http://localhost:${API_PORT}`);
 
+// Get tenant ID from env (for build-time injection)
+const TENANT_ID = process.env.TENANT_ID || 'northernlion';
+
 export default defineConfig({
   plugins: [react()],
+  define: {
+    // Inject TENANT_ID as a build-time constant accessible via import.meta.env
+    'import.meta.env.VITE_TENANT_ID': JSON.stringify(TENANT_ID),
+  },
   server: {
     proxy: {
       '/api': {

@@ -1,13 +1,13 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAnalyticsOptOut } from '../hooks/useAnalyticsOptOut';
-import { useTenant } from '../hooks/useTenant';
+import { TENANT } from '../config/tenant';
 
 const Privacy = () => {
   const navigate = useNavigate();
   const { isOptedOut, toggleOptOut } = useAnalyticsOptOut();
-  const { tenant } = useTenant();
-  const siteName = tenant?.displayName || tenant?.metadata?.siteName || 'NL Quotes';
+  // Use hard-bound tenant config (resolved at build time, no flickering)
+  const siteName = TENANT.displayName || TENANT.metadata?.siteName || 'NL Quotes';
 
   const handleBack = () => {
     navigate('/');
