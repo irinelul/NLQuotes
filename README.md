@@ -2,6 +2,8 @@
 
 A system that processes Northernlion's YouTube videos to extract, transcribe, and serve memorable quotes.
 
+https://nlquotes.com/
+
 ## Features
 
 - Extracts audio from YouTube videos
