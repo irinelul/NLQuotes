@@ -6,11 +6,13 @@ import { backdateTimestamp, formatDate, formatTimestamp } from '../services/date
 import { useState, useEffect } from 'react';
 import { TENANT } from '../config/tenant';
 import query from '../services/quotes';
+import { usePostHog } from '../hooks/usePostHog';
 
 // `b` is returned from ts_headline when a match is found
 const ALLOWED_TAGS = ['b'];
 
 export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
+  const posthog = usePostHog();
   const [flagging, setFlagging] = useState({});
   const [modalState, setModalState] = useState({
       isOpen: false,
@@ -60,6 +62,15 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
   }, []);
 
   const handleTimestampClick = (videoId, timestamp) => {
+      // Track timestamp click (video play)
+      if (posthog) {
+          posthog.capture('quote_timestamp_clicked', {
+              video_id: videoId,
+              timestamp: timestamp,
+              search_term: searchTerm,
+          });
+      }
+      
       // Always pause all other players before starting a new video
       // This ensures only one video plays at a time, especially important on mobile
       pauseOtherPlayers(null); // Passing null to pause all players
@@ -69,6 +80,15 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
   };
 
   const handleFlagClick = (quote, videoId, title, channel, timestamp) => {
+      // Track flag modal opened
+      if (posthog) {
+          posthog.capture('quote_flag_opened', {
+              video_id: videoId,
+              channel: channel,
+              search_term: searchTerm,
+          });
+      }
+      
       setModalState({
           isOpen: true,
           quote,
@@ -262,7 +282,17 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                           </button>
 
                                           <button
-                                              onClick={() => window.open(`https://www.youtube.com/watch?v=${quoteGroup.video_id}&t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`, '_blank')}
+                                              onClick={() => {
+                                                  // Track YouTube link click
+                                                  if (posthog) {
+                                                      posthog.capture('youtube_link_clicked', {
+                                                          video_id: quoteGroup.video_id,
+                                                          timestamp: backdateTimestamp(quote.timestamp_start),
+                                                          search_term: searchTerm,
+                                                      });
+                                                  }
+                                                  window.open(`https://www.youtube.com/watch?v=${quoteGroup.video_id}&t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`, '_blank');
+                                              }}
                                               style={{
                                                   backgroundColor: 'transparent',
                                                   color: '#4A90E2',
@@ -477,7 +507,17 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                   </button>
 
                                   <button
-                                      onClick={() => window.open(`https://www.youtube.com/watch?v=${quoteGroup.video_id}&t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`, '_blank')}
+                                      onClick={() => {
+                                          // Track YouTube link click
+                                          if (posthog) {
+                                              posthog.capture('youtube_link_clicked', {
+                                                  video_id: quoteGroup.video_id,
+                                                  timestamp: backdateTimestamp(quote.timestamp_start),
+                                                  search_term: searchTerm,
+                                              });
+                                          }
+                                          window.open(`https://www.youtube.com/watch?v=${quoteGroup.video_id}&t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`, '_blank');
+                                      }}
                                       style={{
                                           backgroundColor: 'transparent',
                                           color: '#4A90E2',

@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import GeneralFeedbackButton from './GeneralFeedbackButton';
 import { useTheme } from '../hooks/useTheme';
 import { TENANT, logo, logoFallback } from '../config/tenant';
+import { usePostHog } from '../hooks/usePostHog';
 
 const SearchPage = ({
     searchInput,
@@ -47,6 +48,7 @@ const SearchPage = ({
     handlePageChange,
     onChangelogClick,
 }) => {
+    const posthog = usePostHog();
     const navigate = useNavigate();
     const { theme, toggleTheme } = useTheme();
     
@@ -86,13 +88,25 @@ const SearchPage = ({
                         {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
                     </button>
                     <button
-                        onClick={() => navigate('/stats')}
+                        onClick={() => {
+                            // Track stats page navigation
+                            if (posthog) {
+                                posthog.capture('stats_page_clicked');
+                            }
+                            navigate('/stats');
+                        }}
                         className="logo-nav-button stats-button"
                     >
                         📊 Stats
                     </button>
                     <button
-                        onClick={onChangelogClick}
+                        onClick={() => {
+                            // Track changelog modal opened
+                            if (posthog) {
+                                posthog.capture('changelog_opened');
+                            }
+                            onChangelogClick();
+                        }}
                         className="logo-nav-button"
                         style={{ background: '#4CAF50' }}
                         title="View Changelog"
@@ -195,7 +209,13 @@ const SearchPage = ({
 
             {/* Improved desktop-only feedback button */}
             <GeneralFeedbackButton
-                onClick={() => setFeedbackModalOpen(true)}
+                onClick={() => {
+                    // Track feedback modal opened
+                    if (posthog) {
+                        posthog.capture('feedback_modal_opened');
+                    }
+                    setFeedbackModalOpen(true);
+                }}
                 disabled={submittingFeedback}
             />
 

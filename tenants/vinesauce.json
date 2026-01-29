@@ -30,7 +30,8 @@
     },
     "channels": [
       { "id": "all", "name": "All Sources" },
-      { "id": "VINESAUCE", "name": "Vinesauce" }
+      { "id": "VINESAUCE", "name": "Vinesauce" },
+      { "id": "VINESAUCEfull", "name": "Vinesauce Full" }
     ],
     "database": {
       "envVar": "DATABASE_URL_VINESAUCE",

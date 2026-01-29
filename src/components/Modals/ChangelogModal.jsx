@@ -2,6 +2,14 @@ import styles from './Modals.module.css';
 
 const changelogEntries = [
     {
+        date: 'January 2025',
+        items: [
+            'Added PostHog analytics for non-NL tenants',
+            'Enhanced analytics tracking: filter usage, quote interactions, feature usage',
+            'Improved privacy policy transparency'
+        ]
+    },
+    {
         date: 'November 30, 2025',
         items: [
             'Added Changelog',
