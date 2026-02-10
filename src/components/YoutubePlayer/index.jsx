@@ -101,32 +101,54 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
         };
     }, [isPlaying, videoId, currentTimestamp]);
 
-    // Handle timestamp changes
+    // Handle timestamp changes - use a ref to track previous values
+    const prevTimestampRef = React.useRef(null);
+    const prevVideoIdRef = React.useRef(null);
+    
     useEffect(() => {
+        const timestampChanged = prevTimestampRef.current !== timestamp;
+        const videoIdChanged = prevVideoIdRef.current !== videoId;
+        
+        // Update refs
+        prevTimestampRef.current = timestamp;
+        prevVideoIdRef.current = videoId;
+        
         if (timestamp !== null && !isPlaying) {
             // Pause all other players before starting a new video
             pauseOtherPlayers(null);
             setCurrentTimestamp(timestamp);
             setIsPlaying(true);
             console.log(`Auto-playing video ${videoId} at timestamp ${timestamp}`);
-        } else if (timestamp !== null && playerRef.current) {
-            setCurrentTimestamp(timestamp);
-            try {
-                // Pause all other players before loading new video
-                pauseOtherPlayers(playerRef.current);
-                // Always reload the video when timestamp changes
-                playerRef.current.loadVideoById({
-                    videoId: videoId,
-                    startSeconds: timestamp
-                });
-                playerRef.current.playVideo();
-                // Also pause after playVideo in case timing is off
-                setTimeout(() => {
+        } else if (timestamp !== null && playerRef.current && isPlaying) {
+            // Video is already playing - reload if timestamp or video changed
+            if (timestampChanged || videoIdChanged) {
+                setCurrentTimestamp(timestamp);
+                try {
+                    // Pause all other players before loading new video
                     pauseOtherPlayers(playerRef.current);
-                }, 100);
-                console.log(`Loading video ${videoId} at timestamp ${timestamp}`);
+                    // Always reload the video when timestamp changes
+                    playerRef.current.loadVideoById({
+                        videoId: videoId,
+                        startSeconds: timestamp
+                    });
+                    playerRef.current.playVideo();
+                    // Also pause after playVideo in case timing is off
+                    setTimeout(() => {
+                        pauseOtherPlayers(playerRef.current);
+                    }, 100);
+                    console.log(`Reloading video ${videoId} at timestamp ${timestamp}`);
+                } catch (err) {
+                    console.error('Error loading video:', err);
+                }
+            }
+        } else if (timestamp === null && isPlaying && playerRef.current) {
+            // If timestamp is set to null, pause the video
+            try {
+                playerRef.current.pauseVideo();
+                setIsPlaying(false);
+                setCurrentTimestamp(null);
             } catch (err) {
-                console.error('Error loading video:', err);
+                console.error('Error pausing video:', err);
             }
         }
     }, [timestamp, videoId, isPlaying]);

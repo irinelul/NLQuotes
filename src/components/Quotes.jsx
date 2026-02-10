@@ -75,7 +75,8 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
       // This ensures only one video plays at a time, especially important on mobile
       pauseOtherPlayers(null); // Passing null to pause all players
       
-      // Always set the active timestamp which will trigger video loading
+      // Always set the active timestamp - this will trigger video loading/change
+      // The YouTubePlayer component will handle stopping previous videos
       setActiveTimestamp({ videoId, timestamp });
   };
 
