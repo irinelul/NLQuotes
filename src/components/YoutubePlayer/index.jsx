@@ -9,6 +9,9 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
     const [currentTimestamp, setCurrentTimestamp] = useState(timestamp);
     const iframeRef = React.useRef(null);
     const playerRef = React.useRef(null);
+    const isMountedRef = React.useRef(true);
+    const containerRef = React.useRef(null);
+    const iframeContainerIdRef = React.useRef(`yt-player-${Math.random().toString(36).substr(2, 9)}`);
 
     // Handle window resize and orientation changes to resize player
     useEffect(() => {
@@ -42,13 +45,62 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
         };
     }, [isPlaying]);
 
+    // Track previous videoId to detect changes
+    const prevVideoIdForCleanupRef = React.useRef(videoId);
+    
     // Initialize YouTube player when iframe is loaded
     useEffect(() => {
-        if (isPlaying && iframeRef.current) {
+        // If videoId changed, we need to clean up the old player first
+        if (prevVideoIdForCleanupRef.current !== videoId && playerRef.current) {
+            try {
+                // Destroy the old player completely
+                if (typeof playerRef.current.pauseVideo === 'function') {
+                    playerRef.current.pauseVideo();
+                }
+                if (typeof playerRef.current.destroy === 'function') {
+                    playerRef.current.destroy();
+                }
+                unregisterPlayer(playerRef.current);
+                playerRef.current = null;
+                
+                // Reset playing state - this will trigger a remount
+                setIsPlaying(false);
+                setError(null);
+                setCurrentTimestamp(null);
+                
+                // Create a new container ID to force fresh iframe
+                iframeContainerIdRef.current = `yt-player-${Math.random().toString(36).substr(2, 9)}`;
+            } catch (err) {
+                console.error('Error cleaning up old player:', err);
+            }
+        }
+        
+        // Update the ref
+        prevVideoIdForCleanupRef.current = videoId;
+        
+        if (isPlaying && containerRef.current) {
+            // Pause all other players immediately before starting this one
+            pauseOtherPlayers(null);
+            
+            // Ensure we have a fresh iframe container
+            let iframeContainer = containerRef.current.querySelector(`#${iframeContainerIdRef.current}`);
+            if (!iframeContainer) {
+                // Create new iframe container
+                iframeContainer = document.createElement('div');
+                iframeContainer.id = iframeContainerIdRef.current;
+                iframeContainer.className = styles.iframeContainer;
+                containerRef.current.appendChild(iframeContainer);
+            }
+            iframeRef.current = iframeContainer;
+            
             ensureApiReady().then(() => {
+                // Check if component is still mounted and videoId hasn't changed
+                if (!isMountedRef.current || !iframeRef.current || !containerRef.current || prevVideoIdForCleanupRef.current !== videoId) {
+                    return;
+                }
+                
                 // Get container dimensions for responsive sizing
-                // Use container's actual size or fallback to defaults
-                const container = iframeRef.current.parentElement;
+                const container = containerRef.current;
                 const width = container ? (container.offsetWidth || container.clientWidth || 616) : 616;
                 const height = container ? (container.offsetHeight || container.clientHeight || 346) : 346;
                 
@@ -64,6 +116,15 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                     },
                     events: {
                         onReady: (event) => {
+                            // Double-check videoId hasn't changed
+                            if (!isMountedRef.current || prevVideoIdForCleanupRef.current !== videoId) {
+                                try {
+                                    event.target.destroy();
+                                } catch (e) {
+                                    // Ignore
+                                }
+                                return;
+                            }
                             playerRef.current = event.target;
                             registerPlayer(event.target);
                             // Pause other players before starting this one
@@ -71,22 +132,27 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                             event.target.playVideo();
                             // Also pause after playVideo to ensure other players are stopped
                             setTimeout(() => {
-                                pauseOtherPlayers(event.target);
+                                if (isMountedRef.current && playerRef.current && prevVideoIdForCleanupRef.current === videoId) {
+                                    pauseOtherPlayers(playerRef.current);
+                                }
                             }, 100);
                         },
                         onStateChange: (event) => {
+                            if (!isMountedRef.current || prevVideoIdForCleanupRef.current !== videoId) return;
                             if (event.data === window.YT.PlayerState.PLAYING) {
                                 // Pause other players when this one starts playing
                                 pauseOtherPlayers(event.target);
                             }
                         },
                         onError: () => {
+                            if (!isMountedRef.current || prevVideoIdForCleanupRef.current !== videoId) return;
                             setError('Failed to load video');
                             setIsPlaying(false);
                         }
                     }
                 });
             }).catch(err => {
+                if (!isMountedRef.current || prevVideoIdForCleanupRef.current !== videoId) return;
                 console.error('Error initializing YouTube player:', err);
                 setError('Failed to initialize video player');
                 setIsPlaying(false);
@@ -94,9 +160,40 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
         }
 
         return () => {
-            if (playerRef.current) {
-                unregisterPlayer(playerRef.current);
+            // Cleanup: destroy player and unregister
+            const cleanupPlayer = playerRef.current;
+            const cleanupContainerId = iframeContainerIdRef.current;
+            
+            if (cleanupPlayer) {
+                // Clear the ref immediately to prevent other code from using it
                 playerRef.current = null;
+                
+                try {
+                    // Check if player still has valid methods before calling
+                    if (cleanupPlayer && typeof cleanupPlayer.getPlayerState === 'function') {
+                        try {
+                            cleanupPlayer.getPlayerState(); // Test if player is still valid
+                        } catch (e) {
+                            // Player is already destroyed, skip cleanup
+                            return;
+                        }
+                    }
+                    
+                    // Pause the video before destroying
+                    if (typeof cleanupPlayer.pauseVideo === 'function') {
+                        cleanupPlayer.pauseVideo();
+                    }
+                    // Destroy the player - this will remove the iframe from DOM
+                    if (typeof cleanupPlayer.destroy === 'function') {
+                        cleanupPlayer.destroy();
+                    }
+                    unregisterPlayer(cleanupPlayer);
+                    // Don't try to remove the iframe container - YouTube's destroy() already did that
+                    // and React will handle the container cleanup
+                } catch (err) {
+                    // Ignore cleanup errors - DOM might already be gone or player already destroyed
+                    console.log('Cleanup error (safe to ignore):', err.message);
+                }
             }
         };
     }, [isPlaying, videoId, currentTimestamp]);
@@ -106,6 +203,8 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
     const prevVideoIdRef = React.useRef(null);
     
     useEffect(() => {
+        if (!isMountedRef.current) return;
+        
         const timestampChanged = prevTimestampRef.current !== timestamp;
         const videoIdChanged = prevVideoIdRef.current !== videoId;
         
@@ -114,27 +213,50 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
         prevVideoIdRef.current = videoId;
         
         if (timestamp !== null && !isPlaying) {
-            // Pause all other players before starting a new video
+            // Pause all other players IMMEDIATELY before starting a new video
             pauseOtherPlayers(null);
             setCurrentTimestamp(timestamp);
             setIsPlaying(true);
             console.log(`Auto-playing video ${videoId} at timestamp ${timestamp}`);
         } else if (timestamp !== null && playerRef.current && isPlaying) {
             // Video is already playing - reload if timestamp or video changed
-            if (timestampChanged || videoIdChanged) {
+            if (videoIdChanged) {
+                // Video ID changed - need to reset and let the initialization effect handle it
+                try {
+                    // Destroy the old player
+                    if (typeof playerRef.current.destroy === 'function') {
+                        playerRef.current.destroy();
+                    }
+                    unregisterPlayer(playerRef.current);
+                    playerRef.current = null;
+                } catch (err) {
+                    console.error('Error destroying old player:', err);
+                }
+                // Reset state to trigger new player creation
+                setIsPlaying(false);
+                setCurrentTimestamp(timestamp);
+                // Small delay to ensure cleanup completes
+                setTimeout(() => {
+                    if (isMountedRef.current) {
+                        setIsPlaying(true);
+                    }
+                }, 100);
+            } else if (timestampChanged) {
+                // Same video, different timestamp - just reload
+                pauseOtherPlayers(playerRef.current);
                 setCurrentTimestamp(timestamp);
                 try {
-                    // Pause all other players before loading new video
-                    pauseOtherPlayers(playerRef.current);
                     // Always reload the video when timestamp changes
                     playerRef.current.loadVideoById({
                         videoId: videoId,
                         startSeconds: timestamp
                     });
                     playerRef.current.playVideo();
-                    // Also pause after playVideo in case timing is off
+                    // Also pause after playVideo to ensure other players are stopped
                     setTimeout(() => {
-                        pauseOtherPlayers(playerRef.current);
+                        if (isMountedRef.current && playerRef.current) {
+                            pauseOtherPlayers(playerRef.current);
+                        }
                     }, 100);
                     console.log(`Reloading video ${videoId} at timestamp ${timestamp}`);
                 } catch (err) {
@@ -152,6 +274,30 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
             }
         }
     }, [timestamp, videoId, isPlaying]);
+    
+    // Cleanup on unmount
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+            // Pause all players when this component unmounts
+            pauseOtherPlayers(null);
+            if (playerRef.current) {
+                try {
+                    if (typeof playerRef.current.pauseVideo === 'function') {
+                        playerRef.current.pauseVideo();
+                    }
+                    if (typeof playerRef.current.destroy === 'function') {
+                        playerRef.current.destroy();
+                    }
+                    unregisterPlayer(playerRef.current);
+                } catch (err) {
+                    // Ignore errors during cleanup
+                }
+                playerRef.current = null;
+            }
+        };
+    }, []);
 
     // Handle play button click - load video with iframe
     const handlePlayClick = () => {
@@ -203,12 +349,14 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
     }
 
     // Direct iframe embed - most reliable approach
+    // Don't create the iframe container in JSX - let YouTube API create it
     return (
         <div
             className={styles.videoContainer}
             data-video-id={videoId}
+            ref={containerRef}
         >
-            <div className={styles.iframeContainer} ref={iframeRef} />
+            {/* Container will be created by YouTube API */}
         </div>
     );
 };
