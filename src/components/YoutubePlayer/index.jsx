@@ -117,23 +117,57 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                 
                 // Get origin - handle Coolify/reverse proxy scenarios
                 // Coolify might be behind a proxy, so use the actual hostname from the request
-                const origin = window.location.origin || `${window.location.protocol}//${window.location.hostname}`;
+                // Try to get origin from headers first (for reverse proxy), then fall back to window.location
+                let origin = window.location.origin;
                 
-                console.log(`Initializing YouTube player for ${videoId} at ${currentTimestamp}, origin: ${origin}`);
+                // For Coolify/reverse proxy, try to detect the actual origin
+                // Check if we're behind a proxy by looking at X-Forwarded headers
+                if (document.querySelector('meta[http-equiv="X-Forwarded-Host"]')) {
+                    const forwardedHost = document.querySelector('meta[http-equiv="X-Forwarded-Host"]')?.content;
+                    const forwardedProto = document.querySelector('meta[http-equiv="X-Forwarded-Proto"]')?.content || window.location.protocol.replace(':', '');
+                    if (forwardedHost) {
+                        origin = `${forwardedProto}://${forwardedHost}`;
+                    }
+                }
+                
+                // Fallback if origin is still invalid
+                if (!origin || origin === 'null' || origin.includes('undefined')) {
+                    origin = `${window.location.protocol}//${window.location.hostname}${window.location.port ? ':' + window.location.port : ''}`;
+                }
+                
+                console.log(`[YouTubePlayer] Initializing player:`, {
+                    videoId,
+                    timestamp: currentTimestamp,
+                    origin,
+                    windowOrigin: window.location.origin,
+                    protocol: window.location.protocol,
+                    hostname: window.location.hostname,
+                    port: window.location.port,
+                    ytApiReady: !!(window.YT && window.YT.Player),
+                    containerExists: !!iframeRef.current,
+                    containerId: iframeContainerIdRef.current
+                });
+                
+                // Try without origin parameter first - YouTube can auto-detect it
+                // Only add origin if it's a valid URL
+                const playerVars = {
+                    autoplay: 1,
+                    start: currentTimestamp,
+                    enablejsapi: 1,
+                    rel: 0,
+                    modestbranding: 1
+                };
+                
+                // Only add origin if it's valid (YouTube requires a valid origin)
+                if (origin && origin.startsWith('http')) {
+                    playerVars.origin = origin;
+                }
                 
                 const player = new window.YT.Player(iframeRef.current, {
                     width: width,
                     height: height,
                     videoId,
-                    playerVars: {
-                        autoplay: 1,
-                        start: currentTimestamp,
-                        enablejsapi: 1,
-                        origin: origin,
-                        // Add additional parameters for better compatibility
-                        rel: 0,
-                        modestbranding: 1
-                    },
+                    playerVars: playerVars,
                     events: {
                         onReady: (event) => {
                             // Double-check videoId hasn't changed
@@ -177,17 +211,35 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                 });
             }).catch(err => {
                 if (!isMountedRef.current || prevVideoIdForCleanupRef.current !== videoId) return;
-                console.error('Error initializing YouTube player:', err);
-                console.error('Error details:', {
+                console.error('[YouTubePlayer] Error initializing YouTube player:', err);
+                console.error('[YouTubePlayer] Error details:', {
                     message: err.message,
                     stack: err.stack,
                     videoId,
                     origin: window.location.origin,
                     iframeContainer: !!iframeRef.current,
                     containerRef: !!containerRef.current,
-                    ytApiReady: !!(window.YT && window.YT.Player)
+                    ytApiReady: !!(window.YT && window.YT.Player),
+                    ytObjectExists: !!window.YT
                 });
-                setError(`Failed to initialize video player: ${err.message || 'Unknown error'}`);
+                
+                // Check CSP violations
+                if (err.message && err.message.includes('CSP')) {
+                    console.error('[YouTubePlayer] CSP violation detected!');
+                    console.error('[YouTubePlayer] Check browser console for CSP violation reports');
+                }
+                
+                // More user-friendly error message
+                let errorMsg = 'Failed to initialize video player';
+                if (err.message && err.message.includes('CSP')) {
+                    errorMsg = 'Video player blocked by security policy. Please check CSP headers.';
+                } else if (!window.YT || !window.YT.Player) {
+                    errorMsg = 'YouTube API failed to load. Check browser console for details.';
+                } else {
+                    errorMsg = `Failed to initialize: ${err.message || 'Unknown error'}`;
+                }
+                
+                setError(errorMsg);
                 setIsPlaying(false);
             });
         }

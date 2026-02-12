@@ -22,36 +22,77 @@ export function ensureApiReady() {
     return loadingPromise;
   }
 
-  loadingPromise = new Promise((resolve) => {
+  loadingPromise = new Promise((resolve, reject) => {
     waitingQueue.push(resolve); // Add to queue
 
     if (!window.onYouTubeIframeAPIReady) {
        // Define the global callback *only once*
        window.onYouTubeIframeAPIReady = () => {
-         console.log('YouTube IFrame API is ready');
+         console.log('[YouTubeAPI] YouTube IFrame API is ready');
          // Give a small delay for the API to be fully initialized
          setTimeout(() => {
            signalReady();
          }, 100);
        };
 
+       // Add timeout to detect if script never loads (CSP blocking)
+       const timeout = setTimeout(() => {
+         if (!window.YT || !window.YT.Player) {
+           console.error('[YouTubeAPI] Timeout waiting for YouTube API to load');
+           console.error('[YouTubeAPI] This usually means CSP is blocking the script');
+           console.error('[YouTubeAPI] Check browser console for CSP violation errors');
+           console.error('[YouTubeAPI] Current CSP:', document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.content || 'Not found in meta tag');
+           
+           // Check actual CSP header via fetch
+           fetch(window.location.href, { method: 'HEAD' })
+             .then(res => {
+               const csp = res.headers.get('Content-Security-Policy');
+               console.error('[YouTubeAPI] CSP Header:', csp);
+               if (csp && !csp.includes('www.youtube.com')) {
+                 console.error('[YouTubeAPI] CSP is missing www.youtube.com in script-src!');
+               }
+             })
+             .catch(() => {});
+           
+           loadingPromise = null;
+           waitingQueue.forEach(rej => rej(new Error('YouTube API failed to load - likely CSP blocking')));
+           waitingQueue.length = 0;
+         }
+       }, 10000); // 10 second timeout
+
        // Load the script *only once*
        const tag = document.createElement('script');
        tag.src = 'https://www.youtube.com/iframe_api';
+       tag.async = true;
+       tag.defer = true;
        tag.onerror = () => {
-         console.error('Failed to load YouTube IFrame API script');
+         clearTimeout(timeout);
+         console.error('[YouTubeAPI] Failed to load YouTube IFrame API script');
+         console.error('[YouTubeAPI] Script src:', tag.src);
+         console.error('[YouTubeAPI] CSP might be blocking - check Content-Security-Policy header');
+         console.error('[YouTubeAPI] Check Network tab to see if script request was blocked');
          // Reject the promise if script fails to load
          loadingPromise = null;
-         waitingQueue.forEach(reject => reject(new Error('Failed to load YouTube API')));
+         waitingQueue.forEach(rej => rej(new Error('Failed to load YouTube API - check CSP headers')));
          waitingQueue.length = 0;
        };
-       document.body.appendChild(tag);
+       tag.onload = () => {
+         clearTimeout(timeout);
+         console.log('[YouTubeAPI] Script tag loaded successfully');
+       };
+       console.log('[YouTubeAPI] Attempting to load YouTube IFrame API from:', tag.src);
+       const firstScript = document.getElementsByTagName('script')[0];
+       if (firstScript && firstScript.parentNode) {
+         firstScript.parentNode.insertBefore(tag, firstScript);
+       } else {
+         document.body.appendChild(tag);
+       }
     } else {
        // If callback exists but API not ready, maybe it's loading?
        // Or maybe it loaded before this code ran? Check YT object.
        if (window.YT && window.YT.Player) {
          // If API is already there, signal immediately.
-         console.log('YouTube API already loaded');
+         console.log('[YouTubeAPI] YouTube API already loaded');
          signalReady();
        }
        // Otherwise, the existing onYouTubeIframeAPIReady will eventually call signalReady.
