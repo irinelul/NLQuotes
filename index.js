@@ -339,12 +339,11 @@ app.get('/api', async (req, res) => {
         const totalTime = Date.now() - startTime;
         console.log(`[Search] Query completed - Tenant: ${tenantId}, Results: ${result.data?.length || 0}, Total: ${result.total || 0}, Time: ${totalTime}ms`);
 
-        // Set security headers
+        // Set security headers (no CSP needed for API responses)
         res.set({
             'X-Response-Time': `${totalTime}ms`,
             'X-Content-Type-Options': 'nosniff',
             'X-Frame-Options': 'DENY',
-            'Content-Security-Policy': "default-src 'self'; script-src 'self'; object-src 'none'",
             'Strict-Transport-Security': 'max-age=31536000; includeSubDomains'
         });
 
@@ -804,14 +803,19 @@ app.post('/analytics', async (req, res) => {
 // SPA fallback for React Router with CSP header
 // This must be LAST so it doesn't catch API routes
 app.use((req, res) => {
+  // Get tenant hostname for CSP
+  const tenantHostname = req.tenant?.hostnames?.[0] || 'nlquotes.com';
+  const tenantDomain = `https://${tenantHostname}`;
+  
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' https://api.nlquotes.com https://www.youtube.com https://pagead2.googlesyndication.com https://securepubads.g.doubleclick.net; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.nlquotes.com https://*.youtube.com https://*.youtube-nocookie.com https://*.googlevideo.com https://*.googleapis.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com; " +
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-    "img-src 'self' https://nlquotes.com https://api.nlquotes.com https://img.youtube.com https://www.youtube.com https://pagead2.googlesyndication.com https://tpc.googlesyndication.com data:; " +
-    "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://stats.nlquotes.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; " +
-    "connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net; " +
+    "img-src 'self' " + tenantDomain + " https://api.nlquotes.com https://*.youtube.com https://*.youtube-nocookie.com https://*.googlevideo.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com data: blob:; " +
+    "frame-src 'self' https://*.youtube.com https://*.youtube-nocookie.com https://stats.nlquotes.com https://*.doubleclick.net https://*.googlesyndication.com; " +
+    "connect-src 'self' https://*.youtube.com https://*.youtube-nocookie.com https://*.googlevideo.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com; " +
+    "media-src 'self' https://*.youtube.com https://*.youtube-nocookie.com https://*.googlevideo.com; " +
     "object-src 'none'"
   );
 
