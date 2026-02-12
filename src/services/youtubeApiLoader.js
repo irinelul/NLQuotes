@@ -127,22 +127,73 @@ export function registerPlayer(player) {
 }
 
 export function unregisterPlayer(player) {
+  if (!player) return;
   const index = playerRegistry.indexOf(player);
   if (index !== -1) {
     playerRegistry.splice(index, 1);
+    console.log(`[PlayerRegistry] Unregistered player, registry size: ${playerRegistry.length}`);
   }
 }
 
-export function pauseOtherPlayers(currentPlayer) {
+// Clean up stale/destroyed players from registry
+export function cleanupRegistry() {
+  const validPlayers = [];
   playerRegistry.forEach(player => {
-    if (player !== currentPlayer && player.stopVideo) {
+    if (player && typeof player.getPlayerState === 'function') {
       try {
+        // Try to get player state - if it works, player is still valid
+        player.getPlayerState();
+        validPlayers.push(player);
+      } catch (e) {
+        // Player is destroyed/invalid, don't keep it
+        console.log('[PlayerRegistry] Removing destroyed player from registry');
+      }
+    } else {
+      // Player doesn't have expected methods, remove it
+      console.log('[PlayerRegistry] Removing invalid player from registry');
+    }
+  });
+  
+  const removed = playerRegistry.length - validPlayers.length;
+  if (removed > 0) {
+    console.log(`[PlayerRegistry] Cleaned up ${removed} stale player(s)`);
+  }
+  
+  playerRegistry.length = 0;
+  playerRegistry.push(...validPlayers);
+}
+
+export function pauseOtherPlayers(currentPlayer) {
+  // Clean up stale players first
+  cleanupRegistry();
+  
+  console.log(`[PlayerRegistry] Pausing other players, registry size: ${playerRegistry.length}, current: ${currentPlayer ? 'has' : 'none'}`);
+  
+  playerRegistry.forEach(player => {
+    if (player !== currentPlayer) {
+      try {
+        // Validate player is still functional
+        if (!player || typeof player.getPlayerState !== 'function') {
+          // Invalid player, remove from registry
+          unregisterPlayer(player);
+          return;
+        }
+        
         // Try to get player state first
-        const playerState = player.getPlayerState ? player.getPlayerState() : null;
+        let playerState;
+        try {
+          playerState = player.getPlayerState();
+        } catch (e) {
+          // Player is destroyed, remove from registry
+          console.log('[PlayerRegistry] Player destroyed, removing from registry');
+          unregisterPlayer(player);
+          return;
+        }
+        
         // Only stop if the player is actually playing or buffering
         if (playerState === window.YT?.PlayerState?.PLAYING || 
-            playerState === window.YT?.PlayerState?.BUFFERING ||
-            playerState === null) { // If we can't get state, assume it might be playing
+            playerState === window.YT?.PlayerState?.BUFFERING) {
+          console.log('[PlayerRegistry] Stopping playing player');
           // Use both pauseVideo and stopVideo for better mobile compatibility
           if (player.pauseVideo && typeof player.pauseVideo === 'function') {
             player.pauseVideo();
@@ -151,29 +202,20 @@ export function pauseOtherPlayers(currentPlayer) {
             player.stopVideo();
           }
         }
-        // Get the container element
-        const iframe = player.getIframe();
-        if (iframe) {
-          const container = iframe.parentElement;
-          if (container && container.__reactProps$) {
-            // Access the React props and call setState
-            const setIsPlaying = container.__reactProps$.children.props.setIsPlaying;
-            if (typeof setIsPlaying === 'function') {
-              setIsPlaying(false);
-            }
-          }
-        }
       } catch (e) {
-        console.log('Error stopping player:', e);
-        // Fallback: try to stop anyway
-        try {
-          if (player.stopVideo && typeof player.stopVideo === 'function') {
-            player.stopVideo();
-          }
-        } catch (e2) {
-          console.log('Error in fallback stop:', e2);
-        }
+        console.log('[PlayerRegistry] Error stopping player, removing from registry:', e.message);
+        // Player is invalid, remove from registry
+        unregisterPlayer(player);
       }
     }
   });
+}
+
+// Export registry for debugging
+export function getRegistrySize() {
+  return playerRegistry.length;
+}
+
+export function getRegistry() {
+  return [...playerRegistry];
 }
