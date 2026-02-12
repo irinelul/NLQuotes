@@ -11,3 +11,8 @@ dist/
 
 # Large uncompressed backup files (use archived versions instead)
 backup/*.sql
+
+backup/
+*.dump
+*.rar
+*.csv
