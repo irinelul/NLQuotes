@@ -41,6 +41,23 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
     });
   }, [quotes, totalQuotes, searchTerm]);
 
+  // Reset active timestamp when quotes change (new search) to prevent old videos from playing
+  useEffect(() => {
+    // Only reset if we have new quotes and the active timestamp doesn't match any current quote
+    if (quotes && quotes.length > 0) {
+      const currentVideoIds = new Set(quotes.map(q => q.video_id || (q.quotes && q.quotes[0]?.video_id)).filter(Boolean));
+      // If active timestamp is for a video not in current results, reset it
+      if (activeTimestamp.videoId && !currentVideoIds.has(activeTimestamp.videoId)) {
+        pauseOtherPlayers(null);
+        setActiveTimestamp({ videoId: null, timestamp: null });
+      }
+    } else if (quotes && quotes.length === 0 && activeTimestamp.videoId) {
+      // If quotes are cleared, reset active timestamp
+      pauseOtherPlayers(null);
+      setActiveTimestamp({ videoId: null, timestamp: null });
+    }
+  }, [quotes, searchTerm]); // Reset when quotes or searchTerm changes
+
   // Effect to handle video loading retry
   useEffect(() => {
       if (showEmbeddedVideos && retryCount < 1) {

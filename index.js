@@ -807,15 +807,16 @@ app.use((req, res) => {
   const tenantHostname = req.tenant?.hostnames?.[0] || 'nlquotes.com';
   const tenantDomain = `https://${tenantHostname}`;
   
+  // CSP with explicit YouTube domains (wildcards might not work in Coolify)
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.nlquotes.com https://*.youtube.com https://*.youtube-nocookie.com https://*.googlevideo.com https://*.googleapis.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.nlquotes.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googlevideo.com https://googlevideo.com https://www.googleapis.com https://apis.google.com https://www.googlesyndication.com https://googlesyndication.com https://www.doubleclick.net https://doubleclick.net https://www.google.com https://google.com https://googleads.g.doubleclick.net; " +
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-    "img-src 'self' " + tenantDomain + " https://api.nlquotes.com https://*.youtube.com https://*.youtube-nocookie.com https://*.googlevideo.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com data: blob:; " +
-    "frame-src 'self' https://*.youtube.com https://*.youtube-nocookie.com https://stats.nlquotes.com https://*.doubleclick.net https://*.googlesyndication.com; " +
-    "connect-src 'self' https://*.youtube.com https://*.youtube-nocookie.com https://*.googlevideo.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com; " +
-    "media-src 'self' https://*.youtube.com https://*.youtube-nocookie.com https://*.googlevideo.com; " +
+    "img-src 'self' " + tenantDomain + " https://api.nlquotes.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://i.ytimg.com https://img.youtube.com https://www.googlevideo.com https://googlevideo.com https://www.googlesyndication.com https://googlesyndication.com https://www.doubleclick.net https://doubleclick.net https://www.google.com https://google.com https://tpc.googlesyndication.com https://pagead2.googlesyndication.com data: blob:; " +
+    "frame-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://stats.nlquotes.com https://www.doubleclick.net https://doubleclick.net https://www.googlesyndication.com https://googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; " +
+    "connect-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googlevideo.com https://googlevideo.com https://www.googlesyndication.com https://googlesyndication.com https://www.doubleclick.net https://doubleclick.net https://www.google.com https://google.com https://googleads.g.doubleclick.net; " +
+    "media-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googlevideo.com https://googlevideo.com; " +
     "object-src 'none'"
   );
 

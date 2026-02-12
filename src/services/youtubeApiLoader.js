@@ -38,6 +38,13 @@ export function ensureApiReady() {
        // Load the script *only once*
        const tag = document.createElement('script');
        tag.src = 'https://www.youtube.com/iframe_api';
+       tag.onerror = () => {
+         console.error('Failed to load YouTube IFrame API script');
+         // Reject the promise if script fails to load
+         loadingPromise = null;
+         waitingQueue.forEach(reject => reject(new Error('Failed to load YouTube API')));
+         waitingQueue.length = 0;
+       };
        document.body.appendChild(tag);
     } else {
        // If callback exists but API not ready, maybe it's loading?

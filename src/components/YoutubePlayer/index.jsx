@@ -34,14 +34,25 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
 
         // Listen for resize and orientation changes
         window.addEventListener('resize', updatePlayerSize);
-        window.addEventListener('orientationchange', () => {
+        
+        let orientationTimeout;
+        const handleOrientationChange = () => {
+            // Clear any pending timeout
+            if (orientationTimeout) {
+                clearTimeout(orientationTimeout);
+            }
             // Delay to allow layout to settle after orientation change
-            setTimeout(updatePlayerSize, 200);
-        });
+            orientationTimeout = setTimeout(updatePlayerSize, 200);
+        };
+        window.addEventListener('orientationchange', handleOrientationChange);
 
         return () => {
             window.removeEventListener('resize', updatePlayerSize);
-            window.removeEventListener('orientationchange', updatePlayerSize);
+            window.removeEventListener('orientationchange', handleOrientationChange);
+            // Clear any pending timeout
+            if (orientationTimeout) {
+                clearTimeout(orientationTimeout);
+            }
         };
     }, [isPlaying]);
 
@@ -104,6 +115,12 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                 const width = container ? (container.offsetWidth || container.clientWidth || 616) : 616;
                 const height = container ? (container.offsetHeight || container.clientHeight || 346) : 346;
                 
+                // Get origin - handle Coolify/reverse proxy scenarios
+                // Coolify might be behind a proxy, so use the actual hostname from the request
+                const origin = window.location.origin || `${window.location.protocol}//${window.location.hostname}`;
+                
+                console.log(`Initializing YouTube player for ${videoId} at ${currentTimestamp}, origin: ${origin}`);
+                
                 const player = new window.YT.Player(iframeRef.current, {
                     width: width,
                     height: height,
@@ -112,7 +129,10 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                         autoplay: 1,
                         start: currentTimestamp,
                         enablejsapi: 1,
-                        origin: window.location.origin
+                        origin: origin,
+                        // Add additional parameters for better compatibility
+                        rel: 0,
+                        modestbranding: 1
                     },
                     events: {
                         onReady: (event) => {
@@ -131,11 +151,15 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                             pauseOtherPlayers(event.target);
                             event.target.playVideo();
                             // Also pause after playVideo to ensure other players are stopped
-                            setTimeout(() => {
+                            const pauseTimeout = setTimeout(() => {
                                 if (isMountedRef.current && playerRef.current && prevVideoIdForCleanupRef.current === videoId) {
                                     pauseOtherPlayers(playerRef.current);
                                 }
                             }, 100);
+                            // Store timeout ID for cleanup (if needed)
+                            if (playerRef.current) {
+                                playerRef.current._pauseTimeout = pauseTimeout;
+                            }
                         },
                         onStateChange: (event) => {
                             if (!isMountedRef.current || prevVideoIdForCleanupRef.current !== videoId) return;
@@ -154,7 +178,16 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
             }).catch(err => {
                 if (!isMountedRef.current || prevVideoIdForCleanupRef.current !== videoId) return;
                 console.error('Error initializing YouTube player:', err);
-                setError('Failed to initialize video player');
+                console.error('Error details:', {
+                    message: err.message,
+                    stack: err.stack,
+                    videoId,
+                    origin: window.location.origin,
+                    iframeContainer: !!iframeRef.current,
+                    containerRef: !!containerRef.current,
+                    ytApiReady: !!(window.YT && window.YT.Player)
+                });
+                setError(`Failed to initialize video player: ${err.message || 'Unknown error'}`);
                 setIsPlaying(false);
             });
         }
@@ -162,9 +195,16 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
         return () => {
             // Cleanup: destroy player and unregister
             const cleanupPlayer = playerRef.current;
-            const cleanupContainerId = iframeContainerIdRef.current;
             
             if (cleanupPlayer) {
+                // Clear any pending timeouts
+                if (cleanupPlayer._pauseTimeout) {
+                    clearTimeout(cleanupPlayer._pauseTimeout);
+                }
+                if (cleanupPlayer._reloadPauseTimeout) {
+                    clearTimeout(cleanupPlayer._reloadPauseTimeout);
+                }
+                
                 // Clear the ref immediately to prevent other code from using it
                 playerRef.current = null;
                 
@@ -253,11 +293,15 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                     });
                     playerRef.current.playVideo();
                     // Also pause after playVideo to ensure other players are stopped
-                    setTimeout(() => {
+                    const reloadPauseTimeout = setTimeout(() => {
                         if (isMountedRef.current && playerRef.current) {
                             pauseOtherPlayers(playerRef.current);
                         }
                     }, 100);
+                    // Store timeout ID for cleanup
+                    if (playerRef.current) {
+                        playerRef.current._reloadPauseTimeout = reloadPauseTimeout;
+                    }
                     console.log(`Reloading video ${videoId} at timestamp ${timestamp}`);
                 } catch (err) {
                     console.error('Error loading video:', err);

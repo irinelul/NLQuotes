@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { YouTubePlayer } from './YoutubePlayer';
 import { formatDate } from '../services/dateHelpers';
+import { pauseOtherPlayers } from '../services/youtubeApiLoader';
 
 export const TopicPage = () => {
   const { term } = useParams();
@@ -40,12 +41,9 @@ export const TopicPage = () => {
   }, [term, page, limit]);
 
   const handleTimestampClick = (videoId, timestamp) => {
-    // If clicking a quote from a different video, stop the current video
-    if (activeTimestamp.videoId && activeTimestamp.videoId !== videoId) {
-      // This would need to be implemented with your video player management
-      console.log('Pausing other videos');
-    }
-
+    // Always pause all other players before starting a new video
+    pauseOtherPlayers(null);
+    
     // Set the active timestamp which will trigger video loading
     setActiveTimestamp({ videoId, timestamp });
   };
