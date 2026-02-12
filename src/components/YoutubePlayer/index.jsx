@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ensureApiReady, registerPlayer, unregisterPlayer, pauseOtherPlayers } from '../../services/youtubeApiLoader';
+import { ensureApiReady, registerPlayer, unregisterPlayer, pauseOtherPlayers, registerInitializingPlayer, unregisterInitializingPlayer } from '../../services/youtubeApiLoader';
 import styles from './YoutubePlayer.module.css';
 
 // Simpler approach with minimal DOM manipulation
@@ -91,6 +91,7 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
         
         if (isPlaying && containerRef.current) {
             // Pause all other players immediately before starting this one
+            // Do this synchronously to prevent race conditions
             pauseOtherPlayers(null);
             
             // Ensure we have a fresh iframe container
@@ -163,7 +164,8 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                     playerVars.origin = origin;
                 }
                 
-                const player = new window.YT.Player(iframeRef.current, {
+                // Create player instance - mark as initializing
+                const playerInstance = new window.YT.Player(iframeRef.current, {
                     width: width,
                     height: height,
                     videoId,
@@ -174,6 +176,7 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                             if (!isMountedRef.current || prevVideoIdForCleanupRef.current !== videoId) {
                                 try {
                                     event.target.destroy();
+                                    unregisterInitializingPlayer(event.target);
                                 } catch (e) {
                                     // Ignore
                                 }
@@ -181,6 +184,7 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                             }
                             playerRef.current = event.target;
                             registerPlayer(event.target);
+                            unregisterInitializingPlayer(event.target);
                             console.log(`[YouTubePlayer] Player registered for ${videoId}`);
                             // Pause other players before starting this one
                             pauseOtherPlayers(event.target);
@@ -210,6 +214,9 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                         }
                     }
                 });
+                
+                // Mark player as initializing so it can be stopped if needed
+                registerInitializingPlayer(playerInstance);
             }).catch(err => {
                 if (!isMountedRef.current || prevVideoIdForCleanupRef.current !== videoId) return;
                 console.error('[YouTubePlayer] Error initializing YouTube player:', err);
@@ -320,6 +327,7 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
         
         if (timestamp !== null && !isPlaying) {
             // Pause all other players IMMEDIATELY before starting a new video
+            // This must happen synchronously before state updates
             pauseOtherPlayers(null);
             setCurrentTimestamp(timestamp);
             setIsPlaying(true);

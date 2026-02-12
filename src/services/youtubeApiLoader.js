@@ -120,10 +120,23 @@ export function ensurePlayerContainer(containerId, width = '480px', height = '27
 
 // Global registry for players to manage multiple instances
 const playerRegistry = [];
+// Track players that are initializing (before onReady)
+const initializingPlayers = new Set();
+// Global lock to prevent multiple players from starting at once
+let isStoppingPlayers = false;
 
 export function registerPlayer(player) {
   playerRegistry.push(player);
+  initializingPlayers.delete(player); // Remove from initializing once registered
   return player;
+}
+
+export function registerInitializingPlayer(player) {
+  initializingPlayers.add(player);
+}
+
+export function unregisterInitializingPlayer(player) {
+  initializingPlayers.delete(player);
 }
 
 export function unregisterPlayer(player) {
@@ -164,36 +177,33 @@ export function cleanupRegistry() {
 }
 
 export function pauseOtherPlayers(currentPlayer) {
-  // Clean up stale players first
-  cleanupRegistry();
+  // Prevent re-entrancy
+  if (isStoppingPlayers) {
+    console.log('[PlayerRegistry] Already stopping players, skipping');
+    return;
+  }
   
-  console.log(`[PlayerRegistry] Pausing other players, registry size: ${playerRegistry.length}, current: ${currentPlayer ? 'has' : 'none'}`);
+  isStoppingPlayers = true;
   
-  playerRegistry.forEach(player => {
-    if (player !== currentPlayer) {
-      try {
-        // Validate player is still functional
-        if (!player || typeof player.getPlayerState !== 'function') {
-          // Invalid player, remove from registry
-          unregisterPlayer(player);
-          return;
-        }
-        
-        // Try to get player state first
-        let playerState;
+  try {
+    // Clean up stale players first
+    cleanupRegistry();
+    
+    console.log(`[PlayerRegistry] Pausing other players, registry size: ${playerRegistry.length}, initializing: ${initializingPlayers.size}, current: ${currentPlayer ? 'has' : 'none'}`);
+    
+    // Stop all registered players - be aggressive, don't check state
+    playerRegistry.forEach(player => {
+      if (player !== currentPlayer) {
         try {
-          playerState = player.getPlayerState();
-        } catch (e) {
-          // Player is destroyed, remove from registry
-          console.log('[PlayerRegistry] Player destroyed, removing from registry');
-          unregisterPlayer(player);
-          return;
-        }
-        
-        // Only stop if the player is actually playing or buffering
-        if (playerState === window.YT?.PlayerState?.PLAYING || 
-            playerState === window.YT?.PlayerState?.BUFFERING) {
-          console.log('[PlayerRegistry] Stopping playing player');
+          // Validate player is still functional
+          if (!player || typeof player.getPlayerState !== 'function') {
+            // Invalid player, remove from registry
+            unregisterPlayer(player);
+            return;
+          }
+          
+          // Stop regardless of state - be aggressive
+          console.log('[PlayerRegistry] Force stopping player');
           // Use both pauseVideo and stopVideo for better mobile compatibility
           if (player.pauseVideo && typeof player.pauseVideo === 'function') {
             player.pauseVideo();
@@ -201,14 +211,30 @@ export function pauseOtherPlayers(currentPlayer) {
           if (player.stopVideo && typeof player.stopVideo === 'function') {
             player.stopVideo();
           }
+        } catch (e) {
+          console.log('[PlayerRegistry] Error stopping player, removing from registry:', e.message);
+          // Player is invalid, remove from registry
+          unregisterPlayer(player);
+        }
+      }
+    });
+    
+    // Also try to stop players that are still initializing
+    // These are iframe elements that haven't called onReady yet
+    initializingPlayers.forEach(player => {
+      try {
+        if (player && typeof player.destroy === 'function') {
+          console.log('[PlayerRegistry] Destroying initializing player');
+          player.destroy();
         }
       } catch (e) {
-        console.log('[PlayerRegistry] Error stopping player, removing from registry:', e.message);
-        // Player is invalid, remove from registry
-        unregisterPlayer(player);
+        console.log('[PlayerRegistry] Error destroying initializing player:', e.message);
       }
-    }
-  });
+    });
+    initializingPlayers.clear();
+  } finally {
+    isStoppingPlayers = false;
+  }
 }
 
 // Export registry for debugging
