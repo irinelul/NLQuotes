@@ -297,22 +297,37 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
     useEffect(() => {
         if (!isMountedRef.current) return;
         
-        const timestampChanged = prevTimestampRef.current !== timestamp;
-        const videoIdChanged = prevVideoIdRef.current !== videoId;
+        // CRITICAL: Check for changes BEFORE updating refs
+        // Only consider it changed if both values exist and are different
+        const timestampChanged = prevTimestampRef.current !== null && 
+                                 timestamp !== null && 
+                                 prevTimestampRef.current !== timestamp;
+        const videoIdChanged = prevVideoIdRef.current !== null && 
+                               videoId !== null && 
+                               prevVideoIdRef.current !== videoId;
         
-        // Update refs
-        prevTimestampRef.current = timestamp;
-        prevVideoIdRef.current = videoId;
+        console.log('[YouTubePlayer] Timestamp effect triggered:', {
+            timestamp,
+            prevTimestamp: prevTimestampRef.current,
+            timestampChanged,
+            videoId,
+            prevVideoId: prevVideoIdRef.current,
+            videoIdChanged,
+            isPlaying,
+            hasPlayer: !!playerRef.current
+        });
         
         if (timestamp !== null && !isPlaying) {
             // Pause all other players IMMEDIATELY before starting a new video
             pauseOtherPlayers(null);
             setCurrentTimestamp(timestamp);
             setIsPlaying(true);
-            console.log(`Auto-playing video ${videoId} at timestamp ${timestamp}`);
-        } else if (timestamp !== null && playerRef.current && isPlaying) {
+            console.log(`[YouTubePlayer] Auto-playing video ${videoId} at timestamp ${timestamp}`);
+        } else if (timestamp !== null && playerRef.current) {
+            // Player exists - check if we need to reload for timestamp change
             // Video is already playing - reload if timestamp or video changed
             if (videoIdChanged) {
+                console.log(`[YouTubePlayer] Video ID changed from ${prevVideoIdRef.current} to ${videoId}`);
                 // Video ID changed - need to reset and let the initialization effect handle it
                 try {
                     // Destroy the old player
@@ -335,29 +350,40 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                 }, 100);
             } else if (timestampChanged) {
                 // Same video, different timestamp - just reload
+                console.log(`[YouTubePlayer] Timestamp changed from ${prevTimestampRef.current} to ${timestamp}, reloading...`);
                 pauseOtherPlayers(playerRef.current);
                 setCurrentTimestamp(timestamp);
+                // Ensure playing state is set
+                if (!isPlaying) {
+                    setIsPlaying(true);
+                }
                 try {
                     // Always reload the video when timestamp changes
-                    playerRef.current.loadVideoById({
-                        videoId: videoId,
-                        startSeconds: timestamp
-                    });
-                    playerRef.current.playVideo();
-                    // Also pause after playVideo to ensure other players are stopped
-                    const reloadPauseTimeout = setTimeout(() => {
-                        if (isMountedRef.current && playerRef.current) {
-                            pauseOtherPlayers(playerRef.current);
+                    if (playerRef.current && typeof playerRef.current.loadVideoById === 'function') {
+                        playerRef.current.loadVideoById({
+                            videoId: videoId,
+                            startSeconds: timestamp
+                        });
+                        playerRef.current.playVideo();
+                        // Also pause after playVideo to ensure other players are stopped
+                        const reloadPauseTimeout = setTimeout(() => {
+                            if (isMountedRef.current && playerRef.current) {
+                                pauseOtherPlayers(playerRef.current);
+                            }
+                        }, 100);
+                        // Store timeout ID for cleanup
+                        if (playerRef.current) {
+                            playerRef.current._reloadPauseTimeout = reloadPauseTimeout;
                         }
-                    }, 100);
-                    // Store timeout ID for cleanup
-                    if (playerRef.current) {
-                        playerRef.current._reloadPauseTimeout = reloadPauseTimeout;
+                        console.log(`[YouTubePlayer] Reloading video ${videoId} at timestamp ${timestamp}`);
+                    } else {
+                        console.error('[YouTubePlayer] Player exists but loadVideoById is not available');
                     }
-                    console.log(`Reloading video ${videoId} at timestamp ${timestamp}`);
                 } catch (err) {
-                    console.error('Error loading video:', err);
+                    console.error('[YouTubePlayer] Error loading video:', err);
                 }
+            } else {
+                console.log('[YouTubePlayer] No changes detected, skipping reload');
             }
         } else if (timestamp === null && isPlaying && playerRef.current) {
             // If timestamp is set to null, pause the video
@@ -369,6 +395,10 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                 console.error('Error pausing video:', err);
             }
         }
+        
+        // Update refs AFTER processing
+        prevTimestampRef.current = timestamp;
+        prevVideoIdRef.current = videoId;
     }, [timestamp, videoId, isPlaying]);
     
     // Cleanup on unmount
