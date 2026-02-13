@@ -848,11 +848,11 @@ app.use((req, res) => {
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.nlquotes.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googlevideo.com https://googlevideo.com https://www.googleapis.com https://apis.google.com https://www.googlesyndication.com https://googlesyndication.com https://pagead2.googlesyndication.com https://www.doubleclick.net https://doubleclick.net https://www.google.com https://google.com https://googleads.g.doubleclick.net; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.nlquotes.com https://umami.nlquotes.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googlevideo.com https://googlevideo.com https://www.googleapis.com https://apis.google.com https://www.googlesyndication.com https://googlesyndication.com https://pagead2.googlesyndication.com https://www.doubleclick.net https://doubleclick.net https://www.google.com https://google.com https://googleads.g.doubleclick.net; " +
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
     "img-src 'self' " + tenantDomain + " https://api.nlquotes.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://i.ytimg.com https://img.youtube.com https://www.googlevideo.com https://googlevideo.com https://www.googlesyndication.com https://googlesyndication.com https://www.doubleclick.net https://doubleclick.net https://www.google.com https://google.com https://tpc.googlesyndication.com https://pagead2.googlesyndication.com data: blob:; " +
     "frame-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://stats.nlquotes.com https://www.doubleclick.net https://doubleclick.net https://www.googlesyndication.com https://googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; " +
-    "connect-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googlevideo.com https://googlevideo.com https://www.googlesyndication.com https://googlesyndication.com https://www.doubleclick.net https://doubleclick.net https://www.google.com https://google.com https://googleads.g.doubleclick.net; " +
+    "connect-src 'self' https://umami.nlquotes.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googlevideo.com https://googlevideo.com https://www.googlesyndication.com https://googlesyndication.com https://www.doubleclick.net https://doubleclick.net https://www.google.com https://google.com https://googleads.g.doubleclick.net; " +
     "media-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googlevideo.com https://googlevideo.com; " +
     "object-src 'none'"
   );
@@ -898,11 +898,26 @@ app.use((req, res) => {
           const safeScriptUrl = scriptUrl.replace(/"/g, '&quot;');
           const safeWebsiteId = websiteId.replace(/"/g, '&quot;');
           const umamiScript = `<script defer src="${safeScriptUrl}" data-website-id="${safeWebsiteId}"></script>`;
-          // Insert after charset meta tag in head
-          html = html.replace(
-            /(<meta charset="UTF-8" \/>)/,
-            `$1\n    ${umamiScript}`
-          );
+          // Insert after charset meta tag in head (handle both dev and production formats)
+          // Try multiple patterns to match different HTML formats
+          if (html.includes('<meta charset="UTF-8" />')) {
+            html = html.replace(
+              /(<meta charset="UTF-8" \/>)/,
+              `$1\n    ${umamiScript}`
+            );
+          } else if (html.includes('<meta charset="UTF-8">')) {
+            html = html.replace(
+              /(<meta charset="UTF-8">)/,
+              `$1\n    ${umamiScript}`
+            );
+          } else {
+            // Fallback: insert after first <head> tag
+            html = html.replace(
+              /(<head[^>]*>)/i,
+              `$1\n    ${umamiScript}`
+            );
+          }
+          console.log(`[Umami] Injected script for tenant ${tenant.id}`);
         } else {
           console.warn(`[Umami] Invalid scriptUrl or websiteId for tenant ${tenant.id}, skipping injection`);
         }
