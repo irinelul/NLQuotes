@@ -120,29 +120,90 @@ export function ensurePlayerContainer(containerId, width = '480px', height = '27
 
 // Global registry for players to manage multiple instances
 const playerRegistry = [];
+// Track players that are initializing (before onReady)
+const initializingPlayers = new Set();
+// Global lock to prevent multiple players from starting at once
+let isStoppingPlayers = false;
 
 export function registerPlayer(player) {
   playerRegistry.push(player);
+  initializingPlayers.delete(player); // Remove from initializing once registered
   return player;
 }
 
+export function registerInitializingPlayer(player) {
+  initializingPlayers.add(player);
+}
+
+export function unregisterInitializingPlayer(player) {
+  initializingPlayers.delete(player);
+}
+
 export function unregisterPlayer(player) {
+  if (!player) return;
   const index = playerRegistry.indexOf(player);
   if (index !== -1) {
     playerRegistry.splice(index, 1);
+    console.log(`[PlayerRegistry] Unregistered player, registry size: ${playerRegistry.length}`);
   }
 }
 
-export function pauseOtherPlayers(currentPlayer) {
+// Clean up stale/destroyed players from registry
+export function cleanupRegistry() {
+  const validPlayers = [];
   playerRegistry.forEach(player => {
-    if (player !== currentPlayer && player.stopVideo) {
+    if (player && typeof player.getPlayerState === 'function') {
       try {
-        // Try to get player state first
-        const playerState = player.getPlayerState ? player.getPlayerState() : null;
-        // Only stop if the player is actually playing or buffering
-        if (playerState === window.YT?.PlayerState?.PLAYING || 
-            playerState === window.YT?.PlayerState?.BUFFERING ||
-            playerState === null) { // If we can't get state, assume it might be playing
+        // Try to get player state - if it works, player is still valid
+        player.getPlayerState();
+        validPlayers.push(player);
+      } catch (e) {
+        // Player is destroyed/invalid, don't keep it
+        console.log('[PlayerRegistry] Removing destroyed player from registry');
+      }
+    } else {
+      // Player doesn't have expected methods, remove it
+      console.log('[PlayerRegistry] Removing invalid player from registry');
+    }
+  });
+  
+  const removed = playerRegistry.length - validPlayers.length;
+  if (removed > 0) {
+    console.log(`[PlayerRegistry] Cleaned up ${removed} stale player(s)`);
+  }
+  
+  playerRegistry.length = 0;
+  playerRegistry.push(...validPlayers);
+}
+
+export function pauseOtherPlayers(currentPlayer) {
+  // Prevent re-entrancy
+  if (isStoppingPlayers) {
+    console.log('[PlayerRegistry] Already stopping players, skipping');
+    return;
+  }
+  
+  isStoppingPlayers = true;
+  
+  try {
+    // Clean up stale players first
+    cleanupRegistry();
+    
+    console.log(`[PlayerRegistry] Pausing other players, registry size: ${playerRegistry.length}, initializing: ${initializingPlayers.size}, current: ${currentPlayer ? 'has' : 'none'}`);
+    
+    // Stop all registered players - be aggressive, don't check state
+    playerRegistry.forEach(player => {
+      if (player !== currentPlayer) {
+        try {
+          // Validate player is still functional
+          if (!player || typeof player.getPlayerState !== 'function') {
+            // Invalid player, remove from registry
+            unregisterPlayer(player);
+            return;
+          }
+          
+          // Stop regardless of state - be aggressive
+          console.log('[PlayerRegistry] Force stopping player');
           // Use both pauseVideo and stopVideo for better mobile compatibility
           if (player.pauseVideo && typeof player.pauseVideo === 'function') {
             player.pauseVideo();
@@ -150,30 +211,37 @@ export function pauseOtherPlayers(currentPlayer) {
           if (player.stopVideo && typeof player.stopVideo === 'function') {
             player.stopVideo();
           }
-        }
-        // Get the container element
-        const iframe = player.getIframe();
-        if (iframe) {
-          const container = iframe.parentElement;
-          if (container && container.__reactProps$) {
-            // Access the React props and call setState
-            const setIsPlaying = container.__reactProps$.children.props.setIsPlaying;
-            if (typeof setIsPlaying === 'function') {
-              setIsPlaying(false);
-            }
-          }
-        }
-      } catch (e) {
-        console.log('Error stopping player:', e);
-        // Fallback: try to stop anyway
-        try {
-          if (player.stopVideo && typeof player.stopVideo === 'function') {
-            player.stopVideo();
-          }
-        } catch (e2) {
-          console.log('Error in fallback stop:', e2);
+        } catch (e) {
+          console.log('[PlayerRegistry] Error stopping player, removing from registry:', e.message);
+          // Player is invalid, remove from registry
+          unregisterPlayer(player);
         }
       }
-    }
-  });
+    });
+    
+    // Also try to stop players that are still initializing
+    // These are iframe elements that haven't called onReady yet
+    initializingPlayers.forEach(player => {
+      try {
+        if (player && typeof player.destroy === 'function') {
+          console.log('[PlayerRegistry] Destroying initializing player');
+          player.destroy();
+        }
+      } catch (e) {
+        console.log('[PlayerRegistry] Error destroying initializing player:', e.message);
+      }
+    });
+    initializingPlayers.clear();
+  } finally {
+    isStoppingPlayers = false;
+  }
+}
+
+// Export registry for debugging
+export function getRegistrySize() {
+  return playerRegistry.length;
+}
+
+export function getRegistry() {
+  return [...playerRegistry];
 }
