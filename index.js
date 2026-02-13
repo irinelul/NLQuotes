@@ -274,6 +274,31 @@ app.get('/api/tenant', (req, res) => {
   }
 });
 
+// Dynamic ads.txt endpoint - serves tenant-specific ads.txt
+// Based on Google AdSense best practices: https://support.google.com/adsense/answer/12171612
+app.get('/ads.txt', (req, res) => {
+  try {
+    const tenant = req.tenant || detectTenant(req.get('host') || 'localhost');
+    
+    // Only serve ads.txt for tenants that should have ads (exclude nlquotes/northernlion)
+    // But we'll still serve it for all tenants so Google can verify it exists
+    const publisherId = 'pub-3762231556668854';
+    const adsTxtContent = `google.com, ${publisherId}, DIRECT, f08c47fec0942fa0`;
+    
+    // Set appropriate headers for ads.txt
+    res.set({
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+      'X-Content-Type-Options': 'nosniff'
+    });
+    
+    res.send(adsTxtContent);
+  } catch (error) {
+    console.error('Error serving ads.txt:', error);
+    res.status(500).send('# Error generating ads.txt');
+  }
+});
+
 app.get('/api', async (req, res) => {
     // Log search request details for debugging - THIS SHOULD ALWAYS APPEAR
     console.log('=== SEARCH ENDPOINT HIT ===');
@@ -755,7 +780,9 @@ app.get('/topic/:term', (req, res, next) => {
 // IMPORTANT: This must be registered BEFORE the SPA fallback route
 app.post('/analytics', async (req, res) => {
     try {
-      console.log('POST /analytics hit');
+      console.log('[Analytics] POST /analytics hit');
+      console.log('[Analytics] Method:', req.method);
+      console.log('[Analytics] Path:', req.path);
       console.log('Request body:', JSON.stringify(req.body, null, 2));
 
       // Check if user has opted out of analytics
@@ -800,6 +827,15 @@ app.post('/analytics', async (req, res) => {
     }
   });
 
+// 404 handler for API routes (must come before SPA fallback)
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/') || req.path === '/analytics' || req.path === '/health') {
+    console.log(`[404] API route not found: ${req.method} ${req.path}`);
+    return res.status(404).json({ error: 'API endpoint not found' });
+  }
+  next();
+});
+
 // SPA fallback for React Router with CSP header
 // This must be LAST so it doesn't catch API routes
 app.use((req, res) => {
@@ -811,7 +847,7 @@ app.use((req, res) => {
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.nlquotes.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googlevideo.com https://googlevideo.com https://www.googleapis.com https://apis.google.com https://www.googlesyndication.com https://googlesyndication.com https://www.doubleclick.net https://doubleclick.net https://www.google.com https://google.com https://googleads.g.doubleclick.net; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.nlquotes.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googlevideo.com https://googlevideo.com https://www.googleapis.com https://apis.google.com https://www.googlesyndication.com https://googlesyndication.com https://pagead2.googlesyndication.com https://www.doubleclick.net https://doubleclick.net https://www.google.com https://google.com https://googleads.g.doubleclick.net; " +
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
     "img-src 'self' " + tenantDomain + " https://api.nlquotes.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://i.ytimg.com https://img.youtube.com https://www.googlevideo.com https://googlevideo.com https://www.googlesyndication.com https://googlesyndication.com https://www.doubleclick.net https://doubleclick.net https://www.google.com https://google.com https://tpc.googlesyndication.com https://pagead2.googlesyndication.com data: blob:; " +
     "frame-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://stats.nlquotes.com https://www.doubleclick.net https://doubleclick.net https://www.googlesyndication.com https://googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; " +

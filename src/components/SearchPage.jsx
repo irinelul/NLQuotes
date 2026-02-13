@@ -11,6 +11,7 @@ import GeneralFeedbackButton from './GeneralFeedbackButton';
 import { useTheme } from '../hooks/useTheme';
 import { TENANT, logo, logoFallback } from '../config/tenant';
 import { usePostHog } from '../hooks/usePostHog';
+import { AdSense } from './AdSense';
 
 const SearchPage = ({
     searchInput,
@@ -179,6 +180,11 @@ const SearchPage = ({
             />
 
             {!hasSearched && <Disclaimer />}
+            
+            {/* Ad after filters, before results - non-intrusive horizontal banner */}
+            {hasSearched && (
+                <AdSense format="horizontal" style={{ marginTop: '1rem', marginBottom: '1rem' }} />
+            )}
                     
             {loading && <div>{loadingMessage}</div>}
             {hasSearched && (
@@ -203,6 +209,11 @@ const SearchPage = ({
                     totalPages={totalPages}
                     handlePageChange={handlePageChange}
                 />
+            )}
+            
+            {/* Ad after results, before footer - non-intrusive horizontal banner */}
+            {hasSearched && quotes.length > 0 && (
+                <AdSense format="horizontal" style={{ marginTop: '1rem', marginBottom: '1rem' }} />
             )}
 
             <Footer onChangelogClick={onChangelogClick} />
