@@ -47,6 +47,10 @@
       "label": "Series",
       "tooltipText": "Filter by Series (type to search).",
       "resetTooltipText": "Reset Series filter"
+    },
+    "umami": {
+      "scriptUrl": "https://umami.nlquotes.com/script.js",
+      "websiteId": "ad0b56f3-3648-4ecd-872f-d57d3a0f3782"
     }
   }
   

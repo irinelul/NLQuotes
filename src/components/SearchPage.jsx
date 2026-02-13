@@ -10,7 +10,6 @@ import { useNavigate } from 'react-router-dom';
 import GeneralFeedbackButton from './GeneralFeedbackButton';
 import { useTheme } from '../hooks/useTheme';
 import { TENANT, logo, logoFallback } from '../config/tenant';
-import { usePostHog } from '../hooks/usePostHog';
 import { AdSense } from './AdSense';
 
 const SearchPage = ({
@@ -49,7 +48,6 @@ const SearchPage = ({
     handlePageChange,
     onChangelogClick,
 }) => {
-    const posthog = usePostHog();
     const navigate = useNavigate();
     const { theme, toggleTheme } = useTheme();
     
@@ -90,10 +88,6 @@ const SearchPage = ({
                     </button>
                     <button
                         onClick={() => {
-                            // Track stats page navigation
-                            if (posthog) {
-                                posthog.capture('stats_page_clicked');
-                            }
                             navigate('/stats');
                         }}
                         className="logo-nav-button stats-button"
@@ -102,10 +96,6 @@ const SearchPage = ({
                     </button>
                     <button
                         onClick={() => {
-                            // Track changelog modal opened
-                            if (posthog) {
-                                posthog.capture('changelog_opened');
-                            }
                             onChangelogClick();
                         }}
                         className="logo-nav-button"
@@ -221,10 +211,6 @@ const SearchPage = ({
             {/* Improved desktop-only feedback button */}
             <GeneralFeedbackButton
                 onClick={() => {
-                    // Track feedback modal opened
-                    if (posthog) {
-                        posthog.capture('feedback_modal_opened');
-                    }
                     setFeedbackModalOpen(true);
                 }}
                 disabled={submittingFeedback}

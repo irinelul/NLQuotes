@@ -51,5 +51,9 @@
     "label": "game",
     "tooltipText": "Filter by game (type to search).",
     "resetTooltipText": "Reset game filter"
+  },
+  "umami": {
+    "scriptUrl": "https://umami.nlquotes.com/script.js",
+    "websiteId": "e357d8bf-1892-4c3f-92ea-b25b0a39e7c8"
   }
 }

@@ -11,7 +11,6 @@ import NLDLE from './components/NLDLE/NLDLE';
 import Stats from './components/Stats';
 import { TopicPage } from './components/TopicPage';
 import { useAnalyticsTracker, sendAnalytics } from './hooks/useAnalyticsTracker';
-import { usePostHog } from './hooks/usePostHog';
 
 // Custom hook for Simple Analytics pageview
 function useSimpleAnalyticsPageview() {
@@ -24,7 +23,7 @@ function useSimpleAnalyticsPageview() {
 }
 
 // Custom hook to track page views for analytics
-function usePageViewTracking(sessionId, posthog) {
+function usePageViewTracking(sessionId) {
     const location = useLocation();
     const pageLoadTimeRef = useRef(0);
     
@@ -58,42 +57,16 @@ function usePageViewTracking(sessionId, posthog) {
             start_time: new Date().toISOString(),
             session_id: sessionId
         });
-
-        // Track page view in PostHog (if initialized for non-NL tenants)
-        // For SPAs, we need to explicitly pass the full URL so PostHog recognizes it as a page
-        if (posthog) {
-            // Construct full URL including path and query string
-            const fullUrl = `${window.location.origin}${currentPath}${location.search}`;
-            
-            // Extract search parameters for better analytics visibility
-            const searchTerm = queryParams.q || null;
-            const pageNum = queryParams.page || null;
-            const channel = queryParams.channel || null;
-            const year = queryParams.year || null;
-            
-            posthog.capture('$pageview', {
-                $current_url: fullUrl,
-                path: currentPath,
-                search: location.search,
-                referrer: document.referrer,
-                // Include search parameters as properties so they're visible in PostHog
-                ...(searchTerm && { search_term: searchTerm }),
-                ...(pageNum && { page: pageNum }),
-                ...(channel && { channel }),
-                ...(year && { year }),
-            });
-        }
         
         // Reset page load time for this route
         pageLoadTimeRef.current = Date.now();
-    }, [location.pathname, location.search, sessionId, posthog]);
+    }, [location.pathname, location.search, sessionId]);
 }
 
 const App = () => {
     useSimpleAnalyticsPageview();
     const sessionId = useAnalyticsTracker();
-    const posthog = usePostHog();
-    usePageViewTracking(sessionId, posthog);    
+    usePageViewTracking(sessionId);    
     const { resetState } = useSearchState();
     const [quotes, setQuotes] = useState([]);
     const [error, setError] = useState(null);
@@ -153,13 +126,6 @@ const App = () => {
     }, [searchTerm, page, channel, year, sort, game]);
 
     const handleChannelChange = (channelId) => {
-        // Track channel filter change
-        if (posthog) {
-            posthog.capture('filter_changed', {
-                filter_type: 'channel',
-                filter_value: channelId,
-            });
-        }
         navigate(buildSearchUrl({ channel: channelId, page: 1 }));
     };
 
@@ -167,26 +133,12 @@ const App = () => {
         const value = e.target.value;
         setYearInput(value);
         if (value.length === 4 && /^\d{4}$/.test(value)) {
-            // Track year filter change
-            if (posthog) {
-                posthog.capture('filter_changed', {
-                    filter_type: 'year',
-                    filter_value: value,
-                });
-            }
             navigate(buildSearchUrl({ year: value, page: 1 }));
         }
     };
 
     const handleSortChange = (e) => {
         const value = e.target.value;
-        // Track sort order change
-        if (posthog) {
-            posthog.capture('filter_changed', {
-                filter_type: 'sort',
-                filter_value: value,
-            });
-        }
         navigate(buildSearchUrl({ sort: value, page: 1 }));
     };
 
@@ -216,25 +168,10 @@ const App = () => {
     };
     const handleGameChange = (e) => {
         const value = e.target.value;
-        // Track game filter change
-        if (posthog) {
-            posthog.capture('filter_changed', {
-                filter_type: 'game',
-                filter_value: value,
-            });
-        }
         navigate(buildSearchUrl({ game: value, page: 1 }));
     };
 
     const handleGameReset = () => {
-        // Track game filter reset
-        if (posthog) {
-            posthog.capture('filter_changed', {
-                filter_type: 'game',
-                filter_value: 'all',
-                action: 'reset',
-            });
-        }
         navigate(buildSearchUrl({ game: 'all', page: 1 }));
     };
 
@@ -258,11 +195,6 @@ const App = () => {
     }
 
     const handleRandomQuotes = async () => {
-        // Track random quotes button click
-        if (posthog) {
-            posthog.capture('random_quotes_clicked');
-        }
-        
         setLoading(true);
         setError(null);
         setHasSearched(true);
@@ -377,19 +309,6 @@ const App = () => {
                     game: game
                 });
 
-                // Track search in PostHog (if initialized for non-NL tenants)
-                if (posthog) {
-                    posthog.capture('search', {
-                        search_term: searchTerm,
-                        channel,
-                        year,
-                        sort_order: sort,
-                        game,
-                        total_results: response.total,
-                        total_pages: Math.ceil(response.total / 10),
-                        response_time_ms: responseTimeMs,
-                    });
-                }
             } else {
                 console.log('Sending pagination analytics');
                 sendAnalytics('pagination', {
@@ -406,19 +325,6 @@ const App = () => {
                     game: game
                 });
 
-                // Track pagination in PostHog (if initialized for non-NL tenants)
-                if (posthog) {
-                    posthog.capture('pagination', {
-                        search_term: searchTerm,
-                        channel,
-                        year,
-                        sort_order: sort,
-                        game,
-                        page: pageNum,
-                        total_pages: Math.ceil(response.total / 10),
-                        response_time_ms: responseTimeMs,
-                    });
-                }
             }
         } catch (error) {
             console.error('Error fetching quotes:', error);
@@ -484,10 +390,6 @@ const App = () => {
                 fetchQuotes={fetchQuotes}
                 handlePageChange={handlePageChange}
                 onChangelogClick={() => {
-                    // Track changelog modal opened
-                    if (posthog) {
-                        posthog.capture('changelog_opened');
-                    }
                     setChangelogModalOpen(true);
                 }}
             />} />
@@ -527,10 +429,6 @@ const App = () => {
                 fetchQuotes={fetchQuotes}
                 handlePageChange={handlePageChange}
                 onChangelogClick={() => {
-                    // Track changelog modal opened
-                    if (posthog) {
-                        posthog.capture('changelog_opened');
-                    }
                     setChangelogModalOpen(true);
                 }}
             />} />

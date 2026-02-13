@@ -4,7 +4,8 @@ const changelogEntries = [
     {
         date: 'January 2025',
         items: [
-            'Added PostHog analytics for non-NL tenants',
+            'Transitioned to Umami analytics for privacy-focused tracking',
+            'Added time-on-page tracking and user engagement metrics',
             'Enhanced analytics tracking: filter usage, quote interactions, feature usage',
             'Improved privacy policy transparency'
         ]

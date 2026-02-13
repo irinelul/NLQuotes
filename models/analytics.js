@@ -347,6 +347,60 @@ const analyticsModel = {
           eventData.session_id || null,
           eventData.response_time_ms || null
         ];
+      } else if (eventData.type === 'time_on_page' || eventData.type === 'time_on_page_heartbeat') {
+        // Handle time_on_page events (time spent tracking)
+        if (!eventData.path || !eventData.time_spent_seconds) {
+          throw new Error('Missing required fields for time_on_page: path and time_spent_seconds are required');
+        }
+
+        query = `
+          INSERT INTO track_event (
+            type,
+            path,
+            query_params,
+            referrer,
+            user_hash,
+            start_time,
+            duration_seconds,
+            created_at,
+            device,
+            os,
+            browser,
+            screen_width,
+            screen_height,
+            pixel_ratio,
+            language,
+            timezone,
+            region,
+            city,
+            domain,
+            session_id
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+          RETURNING id
+        `;
+
+        values = [
+          eventData.type,
+          eventData.path,
+          eventData.query_params || null,
+          eventData.referrer || null,
+          eventData.user_hash,
+          eventData.start_time || new Date().toISOString(),
+          eventData.time_spent_seconds, // Use time_spent_seconds as duration_seconds
+          eventData.timestamp || eventData.end_time || new Date().toISOString(),
+          eventData.device || null,
+          eventData.os || null,
+          eventData.browser || null,
+          eventData.screen?.width || null,
+          eventData.screen?.height || null,
+          eventData.screen?.pixelRatio || null,
+          eventData.language || null,
+          eventData.timezone || null,
+          eventData.region || null,
+          eventData.city || null,
+          eventData.domain || null,
+          eventData.session_id || null
+        ];
       } else {
         throw new Error(`Unknown event type: ${eventData.type}`);
       }

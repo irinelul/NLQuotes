@@ -879,6 +879,35 @@ app.use((req, res) => {
         gameFilter: tenant.gameFilter
       };
       
+      // Inject Umami tracking script in <head> if configured for this tenant
+      if (tenant.umami?.scriptUrl && tenant.umami?.websiteId) {
+        // Validate and sanitize script URL and website ID to prevent XSS
+        const scriptUrl = String(tenant.umami.scriptUrl).trim();
+        const websiteId = String(tenant.umami.websiteId).trim();
+        
+        // Basic validation: ensure URL is https and website ID is a valid UUID format
+        const isValidUrl = scriptUrl.startsWith('https://') && 
+                          !scriptUrl.includes('<') && 
+                          !scriptUrl.includes('>') && 
+                          !scriptUrl.includes('"') && 
+                          !scriptUrl.includes("'");
+        const isValidWebsiteId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(websiteId);
+        
+        if (isValidUrl && isValidWebsiteId) {
+          // Escape any special characters in URL and ID (extra safety)
+          const safeScriptUrl = scriptUrl.replace(/"/g, '&quot;');
+          const safeWebsiteId = websiteId.replace(/"/g, '&quot;');
+          const umamiScript = `<script defer src="${safeScriptUrl}" data-website-id="${safeWebsiteId}"></script>`;
+          // Insert after charset meta tag in head
+          html = html.replace(
+            /(<meta charset="UTF-8" \/>)/,
+            `$1\n    ${umamiScript}`
+          );
+        } else {
+          console.warn(`[Umami] Invalid scriptUrl or websiteId for tenant ${tenant.id}, skipping injection`);
+        }
+      }
+      
       // Inject tenant config as a script tag before the main script
       const tenantScript = `<script>window.__TENANT_CONFIG__ = ${JSON.stringify(tenantConfig)};</script>`;
       
