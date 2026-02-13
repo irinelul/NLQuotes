@@ -171,6 +171,32 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '250kb' })); // Limit payload size
 
+// ======= DYNAMIC ADS.TXT ENDPOINT =======
+// Must be BEFORE express.static() to ensure it's served dynamically
+// Based on Google AdSense best practices: https://support.google.com/adsense/answer/12171612
+app.get('/ads.txt', (req, res) => {
+  try {
+    const tenant = req.tenant || detectTenant(req.get('host') || 'localhost');
+    
+    // Only serve ads.txt for tenants that should have ads (exclude nlquotes/northernlion)
+    // But we'll still serve it for all tenants so Google can verify it exists
+    const publisherId = 'pub-3762231556668854';
+    const adsTxtContent = `google.com, ${publisherId}, DIRECT, f08c47fec0942fa0`;
+    
+    // Set appropriate headers for ads.txt
+    res.set({
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+      'X-Content-Type-Options': 'nosniff'
+    });
+    
+    res.send(adsTxtContent);
+  } catch (error) {
+    console.error('Error serving ads.txt:', error);
+    res.status(500).send('# Error generating ads.txt');
+  }
+});
+
 // ======= STREAMLINED STATIC FILE SERVING =======
 app.use(express.static(path.resolve(__dirname, 'dist')));
 
@@ -271,31 +297,6 @@ app.get('/api/tenant', (req, res) => {
   } catch (error) {
     console.error('Error serving tenant config:', error);
     res.status(500).json({ error: 'Failed to load tenant configuration' });
-  }
-});
-
-// Dynamic ads.txt endpoint - serves tenant-specific ads.txt
-// Based on Google AdSense best practices: https://support.google.com/adsense/answer/12171612
-app.get('/ads.txt', (req, res) => {
-  try {
-    const tenant = req.tenant || detectTenant(req.get('host') || 'localhost');
-    
-    // Only serve ads.txt for tenants that should have ads (exclude nlquotes/northernlion)
-    // But we'll still serve it for all tenants so Google can verify it exists
-    const publisherId = 'pub-3762231556668854';
-    const adsTxtContent = `google.com, ${publisherId}, DIRECT, f08c47fec0942fa0`;
-    
-    // Set appropriate headers for ads.txt
-    res.set({
-      'Content-Type': 'text/plain; charset=utf-8',
-      'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
-      'X-Content-Type-Options': 'nosniff'
-    });
-    
-    res.send(adsTxtContent);
-  } catch (error) {
-    console.error('Error serving ads.txt:', error);
-    res.status(500).send('# Error generating ads.txt');
   }
 });
 
