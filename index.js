@@ -860,6 +860,7 @@ app.use((req, res) => {
   // Inject tenant config into HTML before serving
   try {
     const tenant = req.tenant || detectTenant(req.get('host') || 'localhost');
+    console.log(`[HTML Injection] Tenant detected: ${tenant?.id}, has umami: ${!!tenant?.umami}`);
     const indexPath = path.resolve(__dirname, 'dist', 'index.html');
     
     if (fs.existsSync(indexPath)) {
@@ -926,11 +927,31 @@ app.use((req, res) => {
       // Inject tenant config as a script tag before the main script
       const tenantScript = `<script>window.__TENANT_CONFIG__ = ${JSON.stringify(tenantConfig)};</script>`;
       
-      // Insert before the main script tag
-      html = html.replace(
-        '<script type="module" src="/src/main.jsx"></script>',
-        `${tenantScript}\n<script type="module" src="/src/main.jsx"></script>`
-      );
+      // Insert before the main script tag (handle both dev and production builds)
+      // Production: <script type="module" crossorigin src="/assets/index-*.js"></script>
+      // Dev: <script type="module" src="/src/main.jsx"></script>
+      const productionScriptPattern = /<script type="module"[^>]*src="\/assets\/index-[^"]+\.js"[^>]*><\/script>/;
+      const devScriptPattern = /<script type="module" src="\/src\/main\.jsx"><\/script>/;
+      
+      if (productionScriptPattern.test(html)) {
+        // Production build - inject before the first module script
+        html = html.replace(
+          productionScriptPattern,
+          `${tenantScript}\n$&`
+        );
+      } else if (devScriptPattern.test(html)) {
+        // Dev build
+        html = html.replace(
+          devScriptPattern,
+          `${tenantScript}\n$&`
+        );
+      } else {
+        // Fallback: inject before closing </head> tag
+        html = html.replace(
+          /<\/head>/i,
+          `    ${tenantScript}\n</head>`
+        );
+      }
       
       // Also update meta tags in HTML if tenant is not northernlion
       if (tenant.id !== 'northernlion' && tenant.metadata) {
