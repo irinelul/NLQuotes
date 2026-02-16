@@ -30,13 +30,14 @@ ENV SKIP_STATIC_TOPICS=true
 # Build the application (Vite will pick up the env vars)
 RUN npm run build
 
-# Set environment variables for backend (if needed)
-ENV PORT=8080
+# Accept PORT from Coolify (or default to 8080)
+ARG PORT=8080
+ENV PORT=${PORT}
 ENV NODE_ENV=production
 ENV DATABASE_URL=${DATABASE_URL}
 
-# Expose the port
-EXPOSE 8080
+# Expose the port (must match PORT)
+EXPOSE ${PORT}
 
 # Start the server with proper error handling
 CMD ["node", "--trace-warnings", "index.js"]
