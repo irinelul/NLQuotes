@@ -1,0 +1,12 @@
+node_modules
+dist
+.env
+.env.*
+.git
+.gitignore
+*.md
+cypress
+backup
+*.dump
+*.rar
+*.csv

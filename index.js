@@ -125,9 +125,14 @@ app.use((req, res, next) => {
     res.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }
   
-  // Conditionally set cache headers for static assets
-  if (req.path.startsWith('/assets/') || req.path.includes('.')) {
-    res.set('Cache-Control', 'public, max-age=86400'); // 24 hours for static assets
+  // Cache headers: long cache for hashed assets, no cache for HTML
+  if (req.path.startsWith('/assets/')) {
+    // Hashed filenames in /assets/ can be cached aggressively (1 year)
+    res.set('Cache-Control', 'public, max-age=31536000, immutable');
+  } else if (req.path === '/' || req.path.endsWith('.html')) {
+    // NEVER cache index.html — it contains references to hashed assets
+    // Stale HTML after redeployment causes MIME type errors
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
   }
   
   next();
@@ -198,7 +203,11 @@ app.get('/ads.txt', (req, res) => {
 });
 
 // ======= STREAMLINED STATIC FILE SERVING =======
-app.use(express.static(path.resolve(__dirname, 'dist')));
+// Serve static assets from dist/, but skip index.html so the SPA fallback
+// handles it (with tenant injection + proper no-cache headers)
+app.use(express.static(path.resolve(__dirname, 'dist'), {
+  index: false  // Don't serve index.html for '/' — let SPA fallback handle it
+}));
 
 // ======= REDUCED LOGGING =======
 // Only log essential information to reduce overhead
@@ -839,7 +848,12 @@ app.use((req, res, next) => {
 
 // SPA fallback for React Router with CSP header
 // This must be LAST so it doesn't catch API routes
-app.use((req, res) => {
+app.use((req, res, next) => {
+  // Don't serve index.html for missing static assets (prevents MIME type errors)
+  const staticExtensions = /\.(js|css|map|png|jpg|jpeg|gif|svg|webp|woff|woff2|ttf|eot|ico|json)$/i;
+  if (staticExtensions.test(req.path)) {
+    return res.status(404).end();
+  }
   // Get tenant hostname for CSP
   const tenantHostname = req.tenant?.hostnames?.[0] || 'nlquotes.com';
   const tenantDomain = `https://${tenantHostname}`;
@@ -976,13 +990,17 @@ app.use((req, res) => {
         }
       }
       
+      // Never cache index.html — stale HTML causes MIME type errors after redeployment
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.send(html);
     } else {
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.sendFile(indexPath);
     }
   } catch (error) {
     console.error('Error injecting tenant config:', error);
     // Fallback to normal file serving
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
   }
 });

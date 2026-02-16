@@ -16,10 +16,12 @@ COPY . .
 # Accept build arguments for Vite environment variables
 ARG VITE_GRAFANA_DASHBOARD_URL
 ARG VITE_GRAFANA_DASHBOARD_URL_MOBILE
+ARG TENANT_ID=northernlion
 
 # Set them as environment variables for the build
 ENV VITE_GRAFANA_DASHBOARD_URL=$VITE_GRAFANA_DASHBOARD_URL
 ENV VITE_GRAFANA_DASHBOARD_URL_MOBILE=$VITE_GRAFANA_DASHBOARD_URL_MOBILE
+ENV TENANT_ID=$TENANT_ID
 
 # Skip static topic generation during Docker build (can be done post-deployment)
 # This prevents build timeouts when database is not available during build
