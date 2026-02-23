@@ -9,7 +9,6 @@ const Stats = () => {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const { tenant, loading: tenantLoading } = useTenant();
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   
@@ -22,141 +21,36 @@ const Stats = () => {
     );
   }
   
-  // Get Grafana URLs from tenant config
-  const getGrafanaUrl = (urlTemplate) => {
-    if (!urlTemplate) return null;
-    
-    // If URL uses {hostname} placeholder, replace it with current hostname
-    if (urlTemplate.includes('{hostname}')) {
-      const hostname = window.location.hostname;
-      // For localhost, use localhost explicitly
-      const replacementHostname = (hostname === 'localhost' || hostname === '127.0.0.1') 
-        ? 'localhost' 
-        : hostname;
-      return urlTemplate.replace(/{hostname}/g, replacementHostname);
-    }
-    
-    return urlTemplate;
-  };
-  
+  // Get dashboard URL from tenant config
   const grafanaConfig = tenant?.grafana;
-  const dashboardUrl = grafanaConfig?.dashboardUrl 
-    ? getGrafanaUrl(grafanaConfig.dashboardUrl)
-    : null;
-  const mobileDashboardUrl = grafanaConfig?.mobileDashboardUrl
-    ? getGrafanaUrl(grafanaConfig.mobileDashboardUrl)
-    : dashboardUrl; // Fallback to desktop URL if mobile not specified
+  const dashboardUrl = grafanaConfig?.dashboardUrl || null;
   
-  // Tenant-aware text (use hard-bound config for static text to prevent flickering)
-  // Note: We still use useTenant for Grafana URLs which may need runtime hostname resolution
+  // Tenant-aware text
   const siteName = TENANT_CONFIG.displayName || TENANT_CONFIG.metadata?.siteName || 'NLQuotes';
   const statsTitle = `${siteName} Statistics`;
   const isHiveQuotes = IS_HIVEMIND;
 
-  // Validate and normalize dashboard URL
-  const normalizeUrl = (url) => {
-    if (!url) return null;
-    try {
-      const urlObj = new URL(url);
-      // Ensure the URL has a protocol
-      if (!urlObj.protocol) {
-        urlObj.protocol = window.location.protocol;
-      }
-      return urlObj.toString();
-    } catch (e) {
-      console.error('Invalid dashboard URL:', e);
-      return null;
-    }
-  };
-
-  const normalizedDashboardUrl = normalizeUrl(dashboardUrl);
-  const normalizedMobileUrl = normalizeUrl(mobileDashboardUrl);
-
-  // Check if URLs are configured
-  if (!normalizedDashboardUrl) {
+  // Check if URL is configured
+  if (!dashboardUrl) {
     return (
       <div className="stats-container">
         <h1>{statsTitle}</h1>
         <div className="error-message">
-          <p>Grafana dashboard URL is not configured or invalid. Please check your environment variables.</p>
-          <p>Required environment variables:</p>
-          <ul>
-            <li>VITE_GRAFANA_DASHBOARD_URL</li>
-            <li>VITE_GRAFANA_DASHBOARD_URL_MOBILE (optional)</li>
-          </ul>
+          <p>Dashboard URL is not configured. Please check the tenant configuration.</p>
         </div>
       </div>
     );
   }
 
-  // Handle window resize
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // Use mobile URL if available and on mobile device
-  const baseUrl = isMobile && normalizedMobileUrl ? normalizedMobileUrl : normalizedDashboardUrl;
-  
-  // Add more URL parameters for better dashboard configuration
-  const urlParams = new URLSearchParams({
-    theme: theme,
-    refresh: '5m',
-    from: 'now-7d',
-    to: 'now',
-    orgId: '1',
-    edit: 'false',
-    timezone: 'browser',
-    cache: 'false',
-    mobile: isMobile ? 'true' : 'false'
-  });
-
-  const embedUrl = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}${urlParams.toString()}`;
-
   const handleIframeLoad = () => {
-    console.log('Iframe loaded successfully');
-    console.log('Current URL:', embedUrl);
     setIsLoading(false);
     setError(null);
   };
 
   const handleIframeError = () => {
-    console.error('Iframe failed to load');
-    console.error('Failed URL:', embedUrl);
     setIsLoading(false);
     setError('Failed to load dashboard. Please check your network connection and try again.');
   };
-
-  // Prevent body scrolling when Stats page is mounted
-  useEffect(() => {
-    // Save original overflow style
-    const originalOverflow = document.body.style.overflow;
-    const originalOverflowHtml = document.documentElement.style.overflow;
-    
-    // Disable scrolling on body and html
-    document.body.style.overflow = 'hidden';
-    document.documentElement.style.overflow = 'hidden';
-    
-    // Restore scrolling when component unmounts
-    return () => {
-      document.body.style.overflow = originalOverflow;
-      document.documentElement.style.overflow = originalOverflowHtml;
-    };
-  }, []);
-
-  // Add message event listener for iframe communication
-  useEffect(() => {
-    const handleMessage = (event) => {
-      console.log('Received message from iframe:', event.data);
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
 
   return (
     <div className="stats-container">
@@ -166,10 +60,10 @@ const Stats = () => {
           {!isHiveQuotes && tenant?.channels && (
             <>
               {tenant.channels.find(c => c.id === 'librarian') && (
-                <p>Librarian has indexed 608 videos</p>
+                <p>Librarian has indexed 1,135 videos (Some older NLSS vids are assigned to Librarian but on different channel)</p>
               )}
               {tenant.channels.find(c => c.id === 'northernlion') && (
-                <p>NL has 21,112 videos</p>
+                <p>NL has 21,951 videos</p>
               )}
             </>
           )}
@@ -178,16 +72,6 @@ const Stats = () => {
           </button>
         </div>
       </div>
-      {isMobile && !normalizedMobileUrl && (
-        <div className="mobile-disclaimer">
-          <p>⚠️ Note: Mobile dashboard URL is not configured. Using desktop version which may not display correctly on mobile devices.</p>
-        </div>
-      )}
-      {isMobile && normalizedMobileUrl && (
-        <div className="mobile-disclaimer">
-          <p>⚠️ Note: The dashboard may not display correctly on mobile devices. For the best experience, please view on desktop.</p>
-        </div>
-      )}
       <div className={`dashboard-container ${isLoading ? 'loading' : ''}`}>
         {isLoading && <div className="loading-overlay">Loading dashboard...</div>}
         {error && (
@@ -197,30 +81,17 @@ const Stats = () => {
         )}
         <iframe
           key={`dashboard-${theme}`}
-          src={embedUrl}
-          width="100%"
-          height="2500px"
-          frameBorder="0"
-          scrolling="no"
+          src={dashboardUrl}
           title={`${siteName} Dashboard`}
-          sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-storage-access-by-user-activation allow-presentation allow-downloads allow-modals"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
           loading="eager"
           referrerPolicy="no-referrer"
           onLoad={handleIframeLoad}
           onError={handleIframeError}
-          style={{
-            width: '100%',
-            height: '2500px',
-            minHeight: '2500px',
-            border: 'none',
-            backgroundColor: theme === 'dark' ? '#1e1e1e' : '#F5F5F5',
-            overflow: 'hidden',
-            display: 'block'
-          }}
         />
       </div>
     </div>
   );
 };
 
-export default Stats; 
+export default Stats;
