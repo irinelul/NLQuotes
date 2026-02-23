@@ -9,7 +9,7 @@ import rateLimit from 'express-rate-limit';
 import slowDown from 'express-slow-down';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import analyticsModel from './models/analytics.js';
+// import analyticsModel from './models/analytics.js'; // Disabled — using Umami instead
 import { detectTenant, getTenantById, getAllTenants } from './tenants/tenant-manager.js';
 
 // Load environment variables
@@ -786,55 +786,11 @@ app.get('/topic/:term', (req, res, next) => {
   next();
 });
 
-// --- Analytics endpoint ---
+// --- Analytics endpoint (disabled - using Umami instead) ---
 // IMPORTANT: This must be registered BEFORE the SPA fallback route
-app.post('/analytics', async (req, res) => {
-    try {
-      console.log('[Analytics] POST /analytics hit');
-      console.log('[Analytics] Method:', req.method);
-      console.log('[Analytics] Path:', req.path);
-      console.log('Request body:', JSON.stringify(req.body, null, 2));
-
-      // Check if user has opted out of analytics
-      if (req.body.analytics_opted_out === true) {
-        console.log('Analytics skipped - user has opted out');
-        return res.status(204).end();
-      }
-
-      // Check database connection first
-      console.log('Checking analytics database connection...');
-      const isConnected = await analyticsModel.checkConnection();
-      if (!isConnected) {
-        console.error('Analytics database connection failed');
-        return res.status(500).json({ error: 'Database connection failed' });
-      }
-      console.log('Analytics database connection successful');
-
-      // Validate request body
-      if (!req.body || typeof req.body !== 'object') {
-        console.error('Invalid request body:', req.body);
-        return res.status(400).json({ error: 'Invalid request body' });
-      }
-
-      // Validate required field
-      if (!req.body.type) {
-        console.error('Missing required field: type');
-        return res.status(400).json({ error: 'Missing required field: type' });
-      }
-
-      // Store the analytics event
-      console.log('Attempting to store analytics event of type:', req.body.type);
-      const result = await analyticsModel.storeEvent(req.body);
-      console.log('Analytics event stored successfully with id:', result?.id);
-      res.status(204).end();
-    } catch (error) {
-      console.error('Error in analytics endpoint:', error);
-      console.error('Error stack:', error.stack);
-      res.status(500).json({ 
-        error: 'Failed to store analytics',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
+app.post('/analytics', (req, res) => {
+    // In-house analytics disabled — Umami handles all analytics now
+    res.status(204).end();
   });
 
 // 404 handler for API routes (must come before SPA fallback)
@@ -862,11 +818,11 @@ app.use((req, res, next) => {
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.nlquotes.com https://umami.nlquotes.com https://static.cloudflareinsights.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googlevideo.com https://googlevideo.com https://www.googleapis.com https://apis.google.com https://www.googlesyndication.com https://googlesyndication.com https://pagead2.googlesyndication.com https://www.doubleclick.net https://doubleclick.net https://www.google.com https://google.com https://googleads.g.doubleclick.net; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.nlquotes.com https://umami.nlquotes.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googlevideo.com https://googlevideo.com https://www.googleapis.com https://apis.google.com; " +
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-    "img-src 'self' " + tenantDomain + " https://api.nlquotes.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://i.ytimg.com https://img.youtube.com https://www.googlevideo.com https://googlevideo.com https://www.googlesyndication.com https://googlesyndication.com https://www.doubleclick.net https://doubleclick.net https://www.google.com https://google.com https://tpc.googlesyndication.com https://pagead2.googlesyndication.com data: blob:; " +
-    "frame-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://stats.nlquotes.com https://www.doubleclick.net https://doubleclick.net https://www.googlesyndication.com https://googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; " +
-    "connect-src 'self' https://umami.nlquotes.com https://cloudflareinsights.com https://static.cloudflareinsights.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googlevideo.com https://googlevideo.com https://www.googlesyndication.com https://googlesyndication.com https://www.doubleclick.net https://doubleclick.net https://www.google.com https://google.com https://googleads.g.doubleclick.net; " +
+    "img-src 'self' " + tenantDomain + " https://api.nlquotes.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://i.ytimg.com https://img.youtube.com https://www.googlevideo.com https://googlevideo.com data: blob:; " +
+    "frame-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://umami.nlquotes.com; " +
+    "connect-src 'self' https://api.nlquotes.com https://umami.nlquotes.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googlevideo.com https://googlevideo.com; " +
     "media-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googlevideo.com https://googlevideo.com; " +
     "object-src 'none'"
   );
