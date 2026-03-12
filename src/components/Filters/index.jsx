@@ -48,6 +48,7 @@ export const Filters = ({
                         placeholder="Year (YYYY)"
                         maxLength="4"
                         className={styles.yearInput}
+                        aria-label="Filter by year"
                     />
                 </div>
                 <div className="sort-tooltip">
@@ -55,6 +56,7 @@ export const Filters = ({
                         value={sortOrder}
                         onChange={handleSortChange}
                         className={styles.sortSelect}
+                        aria-label="Sort order"
                     >
                         <option value="default">Default Order</option>
                         <option value="newest">Newest First</option>
@@ -79,6 +81,7 @@ export const Filters = ({
                         className={styles.resetGameButton}
                         onClick={handleGameReset}
                         style={resetButtonStyle}
+                        aria-label={resetTooltipText}
                     >
                         ↺
                     </button>

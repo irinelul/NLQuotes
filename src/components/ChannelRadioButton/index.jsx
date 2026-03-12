@@ -16,7 +16,9 @@ export const ChannelRadioButton = ({ selectedChannel, handleChannelChange, id, n
         <div
             className={styles.radioButton}
             onClick={handleClick}
-            role="button"
+            role="radio"
+            aria-checked={isSelected}
+            aria-label={name}
             tabIndex={0}
             onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {

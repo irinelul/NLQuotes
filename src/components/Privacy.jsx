@@ -39,7 +39,7 @@ const Privacy = () => {
 
       <h3>Analytics</h3>
       <p>
-        We use <a href="https://umami.is" target="_blank" rel="noopener noreferrer" style={{ color: '#4A90E2' }}>Umami</a>, a privacy-focused, self-hosted analytics platform, to understand basic usage patterns. Umami does not use cookies, does not collect personal data, and respects your browser's "Do Not Track" setting.
+        We use <a href="https://umami.is" target="_blank" rel="noopener noreferrer" style={{ color: '#2563EB' }}>Umami</a>, a privacy-focused, self-hosted analytics platform, to understand basic usage patterns. Umami does not use cookies, does not collect personal data, and respects your browser's "Do Not Track" setting.
       </p>
       <p>
         The only data collected is anonymous aggregate information such as page views and general usage trends. No IP addresses, device fingerprints, or personal identifiers are stored.

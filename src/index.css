@@ -375,7 +375,7 @@ button:disabled {
 }
 
 .quotes-table a {
-    color: #4A90E2;
+    color: #2563EB;
     text-decoration: none;
     transition: all 0.2s ease;
     font-weight: 500;
@@ -406,6 +406,7 @@ button:disabled {
     src: url('./assets/fonts/ABCGinto-Regular-Trial.woff') format('woff');
     font-weight: 900;
     font-style: italic;
+    font-display: swap;
 }
 
 .logo-container {

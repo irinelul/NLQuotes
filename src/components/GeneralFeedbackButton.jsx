@@ -5,6 +5,7 @@ const GeneralFeedbackButton = ({ onClick, disabled }) => (
         className="floating-feedback-button"
         onClick={onClick}
         disabled={disabled}
+        aria-label="Send Feedback"
     >
         💡 Send Feedback
     </button>

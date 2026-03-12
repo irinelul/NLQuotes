@@ -39,13 +39,20 @@ export const SearchableDropdown = ({ options = [], value, onChange, placeholder 
                     }}
                     placeholder={value === "all" ? placeholder : value}
                     className={styles.dropdownInput}
+                    aria-label={placeholder}
+                    aria-expanded={isOpen}
+                    aria-haspopup="listbox"
+                    role="combobox"
+                    aria-controls="dropdown-listbox"
                 />
-                <span className={styles.dropdownArrow}>▼</span>
+                <span className={styles.dropdownArrow} aria-hidden="true">▼</span>
             </div>
             {isOpen && (
-                <div className={styles.dropdownOptions}>
+                <div className={styles.dropdownOptions} role="listbox" id="dropdown-listbox">
                     <div
                         className={styles.dropdownOption}
+                        role="option"
+                        aria-selected={value === "all"}
                         onClick={() => {
                             onChange({ target: { value: "all" } });
                             setSearchTerm('');
@@ -58,6 +65,8 @@ export const SearchableDropdown = ({ options = [], value, onChange, placeholder 
                         <div
                             key={index}
                             className={styles.dropdownOption}
+                            role="option"
+                            aria-selected={value === option}
                             onClick={() => {
                                 onChange({ target: { value: option } });
                                 setSearchTerm('');

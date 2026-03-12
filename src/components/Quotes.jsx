@@ -198,7 +198,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                               textAlign: 'left',
                                               background: 'none',
                                               border: 'none',
-                                              color: '#4A90E2',
+                                              color: '#2563EB',
                                               cursor: 'pointer',
                                               padding: 0,
                                               font: 'inherit',
@@ -243,13 +243,13 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                                       button.style.color = '#4CAF50';
                                                       setTimeout(() => {
                                                           button.innerHTML = originalText;
-                                                          button.style.color = '#4A90E2';
+                                                          button.style.color = '#2563EB';
                                                       }, 1000);
                                                   });
                                               }}
                                               style={{
                                                   backgroundColor: 'transparent',
-                                                  color: '#4A90E2',
+                                                  color: '#2563EB',
                                                   border: 'none',
                                                   padding: '0.5rem',
                                                   cursor: 'pointer',
@@ -266,6 +266,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                                   e.currentTarget.style.transform = 'scale(1)';
                                               }}
                                               title="Copy quote to clipboard"
+                                              aria-label="Copy quote to clipboard"
                                           >
                                               📋
                                           </button>
@@ -276,7 +277,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                               }}
                                               style={{
                                                   backgroundColor: 'transparent',
-                                                  color: '#4A90E2',
+                                                  color: '#2563EB',
                                                   border: 'none',
                                                   padding: '0.5rem',
                                                   cursor: 'pointer',
@@ -293,6 +294,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                                   e.currentTarget.style.transform = 'scale(1)';
                                               }}
                                               title="Open quote in YouTube"
+                                              aria-label="Open quote in YouTube"
                                           >
                                               ↗
                                           </button>
@@ -309,7 +311,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                               }}
                                               style={{
                                                   backgroundColor: 'transparent',
-                                                  color: '#4A90E2',
+                                                  color: '#2563EB',
                                                   border: 'none',
                                                   padding: '0.5rem',
                                                   cursor: 'pointer',
@@ -326,6 +328,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                                   e.currentTarget.style.transform = 'scale(1)';
                                               }}
                                               title="Share quote on X"
+                                              aria-label="Share quote on X"
                                           >
                                               𝕏
                                           </button>
@@ -361,6 +364,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                                   e.currentTarget.style.transform = 'scale(1)';
                                               }}
                                               title="Flag quote as invalid"
+                                              aria-label="Flag quote as invalid"
                                           >
                                               {flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? '⏳' : '🚩'}
                                           </button>
@@ -431,12 +435,13 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                               button.style.color = '#4CAF50';
                                               setTimeout(() => {
                                                   button.innerHTML = originalText;
-                                                  button.style.color = '#4A90E2';
+                                                  button.style.color = '#2563EB';
                                               }, 1000);
                                           });
                                       }}
                                       className="mobile-action-btn"
                                       title="Copy quote to clipboard"
+                                      aria-label="Copy quote to clipboard"
                                   >
                                       📋
                                   </button>
@@ -447,6 +452,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                       }}
                                       className="mobile-action-btn"
                                       title="Open quote in YouTube"
+                                      aria-label="Open quote in YouTube"
                                   >
                                       ↗
                                   </button>
@@ -463,6 +469,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                       }}
                                       className="mobile-action-btn"
                                       title="Share quote on X"
+                                      aria-label="Share quote on X"
                                   >
                                       𝕏
                                   </button>
@@ -482,6 +489,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                           cursor: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 'not-allowed' : 'pointer',
                                       }}
                                       title="Flag quote as invalid"
+                                      aria-label="Flag quote as invalid"
                                   >
                                       {flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? '⏳' : '🚩'}
                                   </button>

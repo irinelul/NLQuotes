@@ -91,6 +91,18 @@ app.use((req, res, next) => {
   next();
 });
 
+// ======= HTTPS REDIRECT (production) =======
+// Redirect HTTP → HTTPS when behind a reverse proxy (e.g. Coolify / Traefik)
+if (process.env.NODE_ENV === 'production') {
+  app.use((req, res, next) => {
+    // x-forwarded-proto is set by most reverse proxies
+    if (req.headers['x-forwarded-proto'] === 'http') {
+      return res.redirect(301, `https://${req.headers.host}${req.url}`);
+    }
+    next();
+  });
+}
+
 // ======= OPTIMIZED CONNECTION HANDLING =======
 // Configure connection and security in a single middleware to prevent conflicts
 app.use((req, res, next) => {
@@ -98,29 +110,35 @@ app.use((req, res, next) => {
   res.set({
     // Connection optimization
     'Connection': 'keep-alive',
-    'Keep-Alive': 'timeout=60', // Reduced from 120s to 60s
+    'Keep-Alive': 'timeout=60',
     
     // Security headers
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'X-XSS-Protection': '1; mode=block',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
-    'Permissions-Policy': 'geolocation=(), microphone=(), camera=()'
+    'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
+    'Cross-Origin-Opener-Policy': 'same-origin'
   });
   
-  // Only add HSTS in production environments
-  if (process.env.NODE_ENV === 'production') {
-    res.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-  }
+  // HSTS — always set it (browsers ignore it over plain HTTP anyway)
+  res.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
   
-  // Cache headers: long cache for hashed assets, no cache for HTML
+  // Cache headers based on resource type
   if (req.path.startsWith('/assets/')) {
     // Hashed filenames in /assets/ can be cached aggressively (1 year)
     res.set('Cache-Control', 'public, max-age=31536000, immutable');
+  } else if (/\.(woff2?|ttf|eot|otf)$/i.test(req.path)) {
+    // Font files — cache for 1 year
+    res.set('Cache-Control', 'public, max-age=31536000, immutable');
+  } else if (/\.(png|jpg|jpeg|gif|svg|webp|ico)$/i.test(req.path)) {
+    // Images — cache for 30 days
+    res.set('Cache-Control', 'public, max-age=2592000');
   } else if (req.path === '/' || req.path.endsWith('.html')) {
     // NEVER cache index.html — it contains references to hashed assets
     // Stale HTML after redeployment causes MIME type errors
-    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    // Use no-cache (revalidate every time) but allow bfcache
+    res.set('Cache-Control', 'no-cache, must-revalidate');
   }
   
   next();
@@ -328,7 +346,7 @@ app.get('/api', async (req, res) => {
             'X-Response-Time': `${totalTime}ms`,
             'X-Content-Type-Options': 'nosniff',
             'X-Frame-Options': 'DENY',
-            'Strict-Transport-Security': 'max-age=31536000; includeSubDomains'
+            'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload'
         });
 
         res.json({
@@ -715,7 +733,8 @@ app.use((req, res, next) => {
     "frame-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://umami.nlquotes.com; " +
     "connect-src 'self' https://api.nlquotes.com https://umami.nlquotes.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googlevideo.com https://googlevideo.com; " +
     "media-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googlevideo.com https://googlevideo.com; " +
-    "object-src 'none'"
+    "object-src 'none'; " +
+    "upgrade-insecure-requests"
   );
 
   // Inject tenant config into HTML before serving

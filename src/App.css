@@ -232,7 +232,7 @@
         text-align: left;
         background: none;
         border: none;
-        color: #4A90E2;
+        color: #2563EB;
         cursor: pointer;
         padding: 0.6rem 0.75rem;
         font: inherit;
@@ -267,7 +267,7 @@
 
     .mobile-action-btn {
         background-color: transparent;
-        color: #4A90E2;
+        color: #2563EB;
         border: none;
         padding: 0.5rem 0.75rem;
         cursor: pointer;
@@ -409,7 +409,7 @@ b {
 /* Quote item styling */
 .quote-item button,
 .mobile-quote-item button {
-    color: #4A90E2 !important;
+    color: #2563EB !important;
 }
 
 .total-quotes {

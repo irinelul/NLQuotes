@@ -64,13 +64,14 @@ const SearchPage = ({
 
     return (
         <div className='main-container'>
-            <div className="logo-section">
+            <header className="logo-section">
                 <div className="logo-container" onClick={handleLogoClick}>
                     <img 
                         src={logo} 
                         alt={`${TENANT.name || 'NLQuotes'} Logo`}
                         width={156}
                         height={125}
+                        fetchPriority="high"
                         onError={(e) => {
                             e.target.onerror = null;
                             e.target.src = logoFallback;
@@ -104,7 +105,8 @@ const SearchPage = ({
                         📋 Changelog
                     </button>
                 </div>
-            </div>
+            </header>
+            <main>
             <div className="input-container">
                 <button
                     onClick={handleRandomQuotes}
@@ -124,6 +126,7 @@ const SearchPage = ({
                     placeholder={searchPlaceholder}
                     className="search-input"
                     style={{ boxSizing: "border-box" }}
+                    aria-label="Search quotes"
                 />
                 <button onClick={handleSearch}>
                     Search
@@ -138,7 +141,7 @@ const SearchPage = ({
 
             {error && <div className="error-message">{error || errorMessage}</div>}
 
-            <div className="radio-group channel-tooltip">
+            <div className="radio-group channel-tooltip" role="radiogroup" aria-label="Filter by channel">
                 {channels.map((ch) => (
                     <ChannelRadioButton
                         key={ch.id}
@@ -195,6 +198,7 @@ const SearchPage = ({
                 />
             )}
 
+            </main>
             <Footer onChangelogClick={onChangelogClick} />
 
             {/* Improved desktop-only feedback button */}

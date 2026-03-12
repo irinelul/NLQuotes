@@ -1,15 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import query from './services/quotes';
 import { useNavigate, Routes, Route, useSearchParams } from 'react-router-dom';
 import { ChangelogModal } from './components/Modals/ChangelogModal';
 import './App.css';
 import { useFetchGames } from './hooks/useFetchGames';
 import { useSearchState } from './hooks/useSearchState';
-import Privacy from './components/Privacy';
 import SearchPage from './components/SearchPage';
-import NLDLE from './components/NLDLE/NLDLE';
-import Stats from './components/Stats';
-import { TopicPage } from './components/TopicPage';
+
+// Lazy-load routes that aren't needed on first paint
+const Privacy = lazy(() => import('./components/Privacy'));
+const NLDLE = lazy(() => import('./components/NLDLE/NLDLE'));
+const Stats = lazy(() => import('./components/Stats'));
+const TopicPage = lazy(() => import('./components/TopicPage').then(m => ({ default: m.TopicPage })));
 
 const App = () => {
     const { resetState } = useSearchState();
@@ -311,10 +313,10 @@ const App = () => {
                     setChangelogModalOpen(true);
                 }}
             />} />
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="/nldle" element={<NLDLE />} />
-            <Route path="/stats" element={<Stats />} />
-            <Route path="/topic/:term" element={<TopicPage />} />
+            <Route path="/privacy" element={<Suspense fallback={<div style={{ textAlign: 'center', padding: '2rem' }}>Loading…</div>}><Privacy /></Suspense>} />
+            <Route path="/nldle" element={<Suspense fallback={<div style={{ textAlign: 'center', padding: '2rem' }}>Loading…</div>}><NLDLE /></Suspense>} />
+            <Route path="/stats" element={<Suspense fallback={<div style={{ textAlign: 'center', padding: '2rem' }}>Loading…</div>}><Stats /></Suspense>} />
+            <Route path="/topic/:term" element={<Suspense fallback={<div style={{ textAlign: 'center', padding: '2rem' }}>Loading…</div>}><TopicPage /></Suspense>} />
         </Routes>
         <ChangelogModal
             isOpen={changelogModalOpen}

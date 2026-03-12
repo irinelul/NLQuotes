@@ -209,11 +209,6 @@ export default defineConfig({
         target: `http://localhost:${API_PORT}`,
         changeOrigin: true,
         secure: false,
-      },
-      '/analytics': {
-        target: `http://localhost:${API_PORT}`,
-        changeOrigin: true,
-        secure: false,
       }
     }
   },
@@ -222,10 +217,18 @@ export default defineConfig({
     assetsDir: 'assets',
     sourcemap: true,
     manifest: true,
-    emptyOutDir: true, // Ensure dist folder is cleaned before each build
+    emptyOutDir: true,
     rollupOptions: {
       output: {
-        manualChunks: undefined,
+        manualChunks(id) {
+          // Split large vendor libraries into their own chunks
+          if (id.includes('node_modules')) {
+            if (id.includes('react-dom')) return 'vendor-react';
+            if (id.includes('react-router')) return 'vendor-router';
+            if (id.includes('dompurify')) return 'vendor-dompurify';
+            if (id.includes('axios')) return 'vendor-axios';
+          }
+        },
         assetFileNames: 'assets/[name].[hash].[ext]'
       }
     }
