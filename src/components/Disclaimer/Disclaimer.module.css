@@ -174,8 +174,8 @@
 }
 
 /* Light mode styles */
-[data-theme="light"] .container {
-    background-color: rgba(72, 187, 180, 0.12);
+:is([data-theme="light"], [data-theme="warm"], [data-theme="cool"]) .container {
+    background-color: rgba(72, 187, 180, 0.1);
     border: 1px solid rgba(72, 187, 180, 0.25);
-    box-shadow: 0 4px 8px rgba(72, 187, 180, 0.15);
+    box-shadow: 0 4px 8px rgba(72, 187, 180, 0.12);
 }

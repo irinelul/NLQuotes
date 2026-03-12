@@ -11,17 +11,43 @@
     --hover-color: #A8A8A8;
 }
 
-/* Light mode theme - greyish tones */
+/* Light mode — clean white/grey */
 [data-theme="light"] {
-    --primary-color: #6A6A6A;
-    --secondary-color: #E8E8E8;
-    --background-color: #F5F5F5;
-    --surface-color: #EBEBEB;
-    --text-primary: #2A2A2A;
-    --text-secondary: #5A5A5A;
-    --accent-color: #FF4B4B;
-    --border-color: #D5D5D5;
-    --hover-color: #7A7A7A;
+    --primary-color: #505050;
+    --secondary-color: #E0E0E0;
+    --background-color: #FAFAFA;
+    --surface-color: #FFFFFF;
+    --text-primary: #1A1A1A;
+    --text-secondary: #444444;
+    --accent-color: #E53935;
+    --border-color: #CCCCCC;
+    --hover-color: #666666;
+}
+
+/* Warm light mode — soft cream/beige tones */
+[data-theme="warm"] {
+    --primary-color: #6B5B4E;
+    --secondary-color: #E8E2DA;
+    --background-color: #F9F6F2;
+    --surface-color: #FFFFFF;
+    --text-primary: #2C2420;
+    --text-secondary: #5C4F45;
+    --accent-color: #D84315;
+    --border-color: #D8CFC6;
+    --hover-color: #7A6B5E;
+}
+
+/* Cool light mode — blue-grey tones */
+[data-theme="cool"] {
+    --primary-color: #4A6175;
+    --secondary-color: #DDE4EB;
+    --background-color: #F0F4F8;
+    --surface-color: #FFFFFF;
+    --text-primary: #1A2733;
+    --text-secondary: #3D5066;
+    --accent-color: #C62828;
+    --border-color: #C0CDD8;
+    --hover-color: #5A7189;
 }
 
 body {
@@ -148,6 +174,11 @@ button:disabled {
     box-shadow: none;
 }
 
+:is([data-theme="light"], [data-theme="warm"], [data-theme="cool"]) button:disabled {
+    background-color: var(--secondary-color);
+    color: #999999;
+}
+
 .input-container {
     display: flex;
     justify-content: center;
@@ -167,8 +198,8 @@ button:disabled {
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: grey;
-    color: white;
+    background-color: var(--primary-color);
+    color: #FFFFFF;
     border: none;
     padding: 8px 16px;
     border-radius: 4px;
@@ -300,47 +331,47 @@ button:disabled {
 }
 
 /* Light mode adjustments for quotes table */
-[data-theme="light"] .quotes-table {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    border: 1px solid #C0C0C0;
+:is([data-theme="light"], [data-theme="warm"], [data-theme="cool"]) .quotes-table {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
     background-color: var(--surface-color);
 }
 
-[data-theme="light"] .quotes-table th {
-    background-color: #E0E0E0;
-    border-bottom: 2px solid #C0C0C0;
+:is([data-theme="light"], [data-theme="warm"], [data-theme="cool"]) .quotes-table th {
+    background-color: var(--secondary-color);
+    border-bottom: 2px solid var(--border-color);
     color: var(--text-primary);
 }
 
-[data-theme="light"] .quotes-table td {
-    border-bottom: 1px solid #D0D0D0;
+:is([data-theme="light"], [data-theme="warm"], [data-theme="cool"]) .quotes-table td {
+    border-bottom: 1px solid var(--border-color);
     background-color: var(--surface-color);
 }
 
-[data-theme="light"] .quotes-table tr:hover {
-    background-color: rgba(0, 0, 0, 0.05);
+:is([data-theme="light"], [data-theme="warm"], [data-theme="cool"]) .quotes-table tr:hover {
+    background-color: rgba(0, 0, 0, 0.04);
 }
 
-[data-theme="light"] .quotes-table td:first-child>div {
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-    background-color: #E5E5E5;
-    border: 1px solid #D0D0D0;
+:is([data-theme="light"], [data-theme="warm"], [data-theme="cool"]) .quotes-table td:first-child>div {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    background-color: var(--secondary-color);
+    border: 1px solid var(--border-color);
 }
 
-[data-theme="light"] .quotes-table td:last-child>div>div {
-    border-bottom: 1px solid #D0D0D0;
+:is([data-theme="light"], [data-theme="warm"], [data-theme="cool"]) .quotes-table td:last-child>div>div {
+    border-bottom: 1px solid var(--border-color);
 }
 
-[data-theme="light"] .quotes-table td:last-child::-webkit-scrollbar-track {
-    background: #E0E0E0;
+:is([data-theme="light"], [data-theme="warm"], [data-theme="cool"]) .quotes-table td:last-child::-webkit-scrollbar-track {
+    background: var(--secondary-color);
 }
 
-[data-theme="light"] .quotes-table td:last-child::-webkit-scrollbar-thumb {
-    background: #B0B0B0;
+:is([data-theme="light"], [data-theme="warm"], [data-theme="cool"]) .quotes-table td:last-child::-webkit-scrollbar-thumb {
+    background: var(--border-color);
 }
 
-[data-theme="light"] .quotes-table td:last-child::-webkit-scrollbar-thumb:hover {
-    background: #909090;
+:is([data-theme="light"], [data-theme="warm"], [data-theme="cool"]) .quotes-table td:last-child::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-color);
 }
 
 .quotes-table a {
@@ -406,7 +437,7 @@ button:disabled {
 }
 
 .stats {
-    color: white;
+    color: var(--text-primary);
     text-align: left;
     position: relative;
     left: 0;
@@ -414,7 +445,7 @@ button:disabled {
 }
 
 .footer-message {
-    color: #9f9f9f;
+    color: var(--text-secondary);
     text-align: center;
     padding: 2rem 0;
     font-size: 0.95rem;
@@ -713,9 +744,9 @@ button:disabled {
 .migration-details {
     margin-top: 0.75rem;
     padding-top: 0.75rem;
-    border-top: 1px dashed rgba(255, 255, 255, 0.2);
+    border-top: 1px dashed var(--border-color);
     font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--text-secondary);
 }
 
 .ssl-note {
@@ -728,14 +759,14 @@ button:disabled {
 }
 
 .inline-link {
-    color: white;
+    color: var(--text-primary);
     text-decoration: underline;
     font-weight: bold;
     transition: color 0.2s;
 }
 
 .inline-link:hover {
-    color: #ffeb3b;
+    color: var(--accent-color);
 }
 
 @keyframes spin {
@@ -756,14 +787,14 @@ button:disabled {
     opacity: 0.8;
     font-size: 0.9rem;
     padding-left: 0.5rem;
-    border-left: 1px solid rgba(255, 255, 255, 0.3);
+    border-left: 1px solid var(--border-color);
 }
 
 /* API Status Styles */
 .api-status {
     margin-top: 1rem;
     padding-top: 1rem;
-    border-top: 1px dashed rgba(255, 255, 255, 0.3);
+    border-top: 1px dashed var(--border-color);
     font-family: monospace;
     font-size: 0.9rem;
 }
@@ -784,7 +815,7 @@ button:disabled {
 .render-fix-suggestion {
     margin-top: 0.5rem;
     padding: 0.5rem;
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: rgba(128, 128, 128, 0.1);
     border-radius: 4px;
 }
 
@@ -807,7 +838,7 @@ button:disabled {
 }
 
 .troubleshooting-tips {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: rgba(128, 128, 128, 0.1);
     border-radius: 4px;
     padding: 0.75rem;
     margin-top: 0.75rem;

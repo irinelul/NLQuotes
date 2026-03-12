@@ -1,10 +1,23 @@
 import { useState, useEffect } from 'react';
 
+// Available themes in cycle order
+const THEMES = ['dark', 'light', 'warm', 'cool'];
+
+// Theme display info
+export const THEME_INFO = {
+  dark:  { label: 'Dark',  icon: '🌙', next: '☀️ Light' },
+  light: { label: 'Light', icon: '☀️', next: '🌤️ Warm' },
+  warm:  { label: 'Warm',  icon: '🌤️', next: '❄️ Cool' },
+  cool:  { label: 'Cool',  icon: '❄️', next: '🌙 Dark' },
+};
+
 // Initialize theme on module load (before React renders)
 const initializeTheme = () => {
   const savedTheme = localStorage.getItem('theme') || 'dark';
-  document.documentElement.setAttribute('data-theme', savedTheme);
-  return savedTheme;
+  // Validate the saved theme is still a valid option
+  const validTheme = THEMES.includes(savedTheme) ? savedTheme : 'dark';
+  document.documentElement.setAttribute('data-theme', validTheme);
+  return validTheme;
 };
 
 // Initialize immediately
@@ -12,16 +25,17 @@ const initialTheme = initializeTheme();
 
 export const useTheme = () => {
   const [theme, setTheme] = useState(() => {
-    // Read from localStorage on each component mount to ensure sync
-    return localStorage.getItem('theme') || 'dark';
+    const saved = localStorage.getItem('theme') || 'dark';
+    return THEMES.includes(saved) ? saved : 'dark';
   });
 
   useEffect(() => {
     // Sync with localStorage on mount in case it changed on another page
     const savedTheme = localStorage.getItem('theme') || 'dark';
-    if (savedTheme !== theme) {
-      setTheme(savedTheme);
-      document.documentElement.setAttribute('data-theme', savedTheme);
+    const validTheme = THEMES.includes(savedTheme) ? savedTheme : 'dark';
+    if (validTheme !== theme) {
+      setTheme(validTheme);
+      document.documentElement.setAttribute('data-theme', validTheme);
     }
   }, []);
 
@@ -29,8 +43,9 @@ export const useTheme = () => {
     // Listen for storage changes (when theme changes in another tab/page)
     const handleStorageChange = (e) => {
       if (e.key === 'theme' && e.newValue) {
-        setTheme(e.newValue);
-        document.documentElement.setAttribute('data-theme', e.newValue);
+        const validTheme = THEMES.includes(e.newValue) ? e.newValue : 'dark';
+        setTheme(validTheme);
+        document.documentElement.setAttribute('data-theme', validTheme);
       }
     };
 
@@ -45,9 +60,12 @@ export const useTheme = () => {
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme(prevTheme => prevTheme === 'dark' ? 'light' : 'dark');
+    setTheme(prevTheme => {
+      const currentIndex = THEMES.indexOf(prevTheme);
+      const nextIndex = (currentIndex + 1) % THEMES.length;
+      return THEMES[nextIndex];
+    });
   };
 
   return { theme, toggleTheme };
 };
-

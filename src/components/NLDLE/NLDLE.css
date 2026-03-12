@@ -33,12 +33,12 @@
 }
 
 .nldle-note {
-  background: rgba(255,255,255,0.1);
+  background: rgba(128, 128, 128, 0.1);
   padding: 1rem;
   border-radius: 8px;
   margin-bottom: 1.5rem;
   font-size: 0.9rem;
-  color: #ccc;
+  color: var(--text-secondary);
 }
 
 .nldle-options {
@@ -139,7 +139,7 @@
 
 .nldle-result-card {
   flex: 1;
-  background: rgba(255,255,255,0.1);
+  background: rgba(128, 128, 128, 0.1);
   padding: 1.5rem;
   border-radius: 8px;
   text-align: left;
@@ -184,7 +184,7 @@
 }
 
 .nldle-feedback {
-  background: rgba(255,255,255,0.1);
+  background: rgba(128, 128, 128, 0.1);
   padding: 0.5rem;
   border-radius: 8px;
   margin-bottom: 0.5rem;
@@ -196,9 +196,9 @@
   box-sizing: border-box;
   padding: 0.8rem;
   border-radius: 8px;
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.2);
-  color: white;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
   font-size: 1rem;
   margin-bottom: 1rem;
   min-height: 100px;

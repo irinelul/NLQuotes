@@ -151,45 +151,45 @@
 }
 
 /* Light mode styles */
-[data-theme="light"] .stats-container {
-  background: #F5F5F5;
+:is([data-theme="light"], [data-theme="warm"], [data-theme="cool"]) .stats-container {
+  background: var(--background-color);
 }
 
-[data-theme="light"] .title-section {
+:is([data-theme="light"], [data-theme="warm"], [data-theme="cool"]) .title-section {
   background: var(--surface-color);
   border-bottom: 2px solid var(--border-color);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-[data-theme="light"] .dashboard-container iframe {
-  background: #F5F5F5;
+:is([data-theme="light"], [data-theme="warm"], [data-theme="cool"]) .dashboard-container iframe {
+  background: var(--background-color);
 }
 
-[data-theme="light"] .back-button {
+:is([data-theme="light"], [data-theme="warm"], [data-theme="cool"]) .back-button {
   background: var(--surface-color);
   border: 2px solid var(--border-color);
   color: var(--text-primary);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-[data-theme="light"] .back-button:hover {
+:is([data-theme="light"], [data-theme="warm"], [data-theme="cool"]) .back-button:hover {
   background: var(--primary-color);
-  color: #000000;
+  color: #FFFFFF;
   border-color: var(--primary-color);
-  box-shadow: 0 4px 12px rgba(106, 106, 106, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-[data-theme="light"] .loading-overlay {
+:is([data-theme="light"], [data-theme="warm"], [data-theme="cool"]) .loading-overlay {
   background: rgba(255, 255, 255, 0.95);
   color: var(--text-primary);
 }
 
-[data-theme="light"] .error-message {
+:is([data-theme="light"], [data-theme="warm"], [data-theme="cool"]) .error-message {
   background: rgba(211, 47, 47, 0.08);
   border: 2px solid rgba(211, 47, 47, 0.25);
 }
 
-[data-theme="light"] .error-message p {
+:is([data-theme="light"], [data-theme="warm"], [data-theme="cool"]) .error-message p {
   color: #c62828;
   font-weight: 600;
 }

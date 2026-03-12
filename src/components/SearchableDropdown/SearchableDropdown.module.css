@@ -38,7 +38,7 @@
     background: none;
     padding: 0;
     margin-right: 0.5rem;
-    color: var(--text-color);
+    color: var(--text-primary);
     font-size: 0.9rem;
 
     &:focus {

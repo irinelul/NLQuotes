@@ -8,7 +8,7 @@ import { Footer } from './Footer';
 import { FeedbackModal } from './Modals/FeedbackModal';
 import { useNavigate } from 'react-router-dom';
 import GeneralFeedbackButton from './GeneralFeedbackButton';
-import { useTheme } from '../hooks/useTheme';
+import { useTheme, THEME_INFO } from '../hooks/useTheme';
 import { TENANT, logo, logoFallback } from '../config/tenant';
 
 const SearchPage = ({
@@ -81,9 +81,9 @@ const SearchPage = ({
                     <button
                         onClick={toggleTheme}
                         className="logo-nav-button theme-toggle-button"
-                        title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                        title={`Switch to ${THEME_INFO[theme]?.next || 'Light'} mode`}
                     >
-                        {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
+                        {THEME_INFO[theme]?.next || '☀️ Light'}
                     </button>
                     <button
                         onClick={() => {

@@ -17,7 +17,7 @@ const Privacy = () => {
       <button
         type="button"
         onClick={handleBack}
-        style={{ marginBottom: '1.5rem', background: 'none', border: '1px solid #ccc', borderRadius: 6, padding: '0.5rem 1rem', cursor: 'pointer', fontSize: '1rem', fontWeight: 500, color: '#fff' }}
+        style={{ marginBottom: '1.5rem', background: 'none', border: '1px solid var(--border-color)', borderRadius: 6, padding: '0.5rem 1rem', cursor: 'pointer', fontSize: '1rem', fontWeight: 500, color: 'var(--text-primary)' }}
       >
         Go Back
       </button>
@@ -44,7 +44,7 @@ const Privacy = () => {
       <p>
         The only data collected is anonymous aggregate information such as page views and general usage trends. No IP addresses, device fingerprints, or personal identifiers are stored.
       </p>
-      <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1rem' }}>
+      <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1rem' }}>
         You can opt out of analytics at any time using the button below.
       </p>
       <div style={{ marginBottom: '1.5rem' }}>
