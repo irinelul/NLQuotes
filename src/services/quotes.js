@@ -1,213 +1,59 @@
 import axios from 'axios'
 
-// Detect Render.com environment
-const isOnRender = window.location.hostname.includes('render.com') || 
-                   window.location.hostname.includes('onrender.com');
-
-// Check if current protocol is HTTPS
-const isHttps = window.location.protocol === 'https:';
-
-// Define possible API path prefixes to try
-const pathPrefixes = [
-    '/api', // Standard setup - TRY THIS FIRST
-    '', // No prefix (direct routes)
-    '/app/api', // Potential subfolder configuration
-];
-
-// Define possible base URLs for direct access if proxy fails
-// This helps bypass potential SSL/Proxy issues
-const possibleBaseUrls = isOnRender ? [
-    window.location.origin, // Explicit origin
-    '', // Current domain (default)
-] : [''];
-
-// Configure Axios with settings to handle SSL issues
+// Configure Axios defaults
 const axiosConfig = {
-    timeout: 15000,  // Longer timeout for SSL handshakes
+    timeout: 15000,
     headers: {
         'Accept': 'application/json',
         'Cache-Control': 'no-cache'
     }
 };
 
-// For Render.com, we may need to adjust SSL verification
-if (isOnRender) {
-    console.log('Running on Render.com, adjusting API paths');
-}
-
-// Add a delay helper for migration mode
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-// Flag to indicate if we're in migration mode (will be set to true after failed attempts)
-let isMigrationMode = false; // Migration complete - set to false to enable searches
-
-// Helper to try API calls with different path prefixes and base URLs
-const makeApiRequest = async (endpoint, method = 'get', params = null, data = null) => {
-    const errors = [];
-    
-    // If endpoint already starts with /api, use it directly first
-    if (endpoint.startsWith('/api')) {
-        try {
-            console.log(`Trying API request: ${method.toUpperCase()} ${endpoint}`);
-            if (method === 'get') {
-                const response = await axios.get(endpoint, { 
-                    ...axiosConfig,
-                    params 
-                });
-                console.log(`API call succeeded with: ${endpoint}`);
-                return response;
-            }
-            else if (method === 'post') {
-                const response = await axios.post(endpoint, data, axiosConfig);
-                console.log(`API POST call succeeded with: ${endpoint}`);
-                return response;
-            }
-        } catch (error) {
-            console.log(`API call failed with: ${endpoint}`, {
-                status: error.response?.status,
-                message: error.message
-            });
-            errors.push({
-                path: endpoint,
-                status: error.response?.status,
-                message: error.message
-            });
-        }
-    }
-    
-    for (const baseUrl of possibleBaseUrls) {
-        // Try each path prefix
-        for (const prefix of pathPrefixes) {
-            try {
-                // Build the full path, ensuring we don't double up on /api
-                let fullPath = endpoint;
-                if (prefix && !endpoint.startsWith(prefix)) {
-                    fullPath = `${prefix}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
-                }
-                // Skip if we already tried this exact path
-                if (fullPath === endpoint && endpoint.startsWith('/api')) {
-                    continue;
-                }
-                if (baseUrl) {
-                    fullPath = `${baseUrl}${fullPath}`;
-                }
-                
-                console.log(`Trying API request: ${method.toUpperCase()} ${fullPath}`);
-                
-                if (method === 'get') {
-                    const response = await axios.get(fullPath, { 
-                        ...axiosConfig,
-                        params 
-                    });
-                    console.log(`API call succeeded with: ${fullPath}`);
-                    return response;
-                }
-                else if (method === 'post') {
-                    const response = await axios.post(fullPath, data, axiosConfig);
-                    console.log(`API POST call succeeded with: ${fullPath}`);
-                    return response;
-                }
-            } catch (error) {
-                const errorInfo = {
-                    path: `${baseUrl}${prefix}${endpoint}`,
-                    status: error.response?.status,
-                    message: error.message,
-                    isSSL: error.message.includes('SSL')
-                };
-                errors.push(errorInfo);
-                
-                console.log(`API call failed with: ${baseUrl}${prefix}${endpoint}`, errorInfo);
-                
-                // If we get SSL error, log more details
-                if (error.message.includes('SSL')) {
-                    console.error('SSL Error detected:', error);
-                }
-            }
-        }
-    }
-    
-    // If we get here, all attempts failed
-    const errorMessage = errors.length > 0 
-        ? `All API attempts failed. Last error: ${errors[errors.length - 1].message}`
-        : 'API request failed';
-    throw new Error(errorMessage);
-};
-
 const getAll = async (searchTerm, page, strict, selectedValue, selectedMode, year, sortOrder, gameName) => {
     try {
-        // If we're in migration mode, fail quickly with appropriate message
-        if (isMigrationMode) {
-            await delay(500);
-            throw new Error('Search unavailable during database migration');
-        }
-        
-        // Make the request directly to the /api endpoint
-        const response = await makeApiRequest('/api', 'get', {  
-            search: searchTerm || '', 
-            page: page || 1,   
-            strict: strict,
-            channel: selectedValue || 'all',
-            selectedMode: selectedMode || 'searchText',
-            year: year || '',
-            sort: sortOrder || 'default',
-            game: gameName || 'all'
+        const response = await axios.get('/api', {
+            ...axiosConfig,
+            params: {
+                search: searchTerm || '',
+                page: page || 1,
+                strict: strict,
+                channel: selectedValue || 'all',
+                selectedMode: selectedMode || 'searchText',
+                year: year || '',
+                sort: sortOrder || 'default',
+                game: gameName || 'all'
+            }
         });
-        
-        console.log('[quotes.js] API Response:', {
-            hasData: !!response.data,
-            dataType: typeof response.data,
-            dataKeys: response.data ? Object.keys(response.data) : [],
-            dataLength: response.data?.data?.length,
-            total: response.data?.total,
-            totalQuotes: response.data?.totalQuotes
-        });
-        
-        // If we get here, one of the attempts succeeded
-        const result = {
+
+        return {
             data: response.data.data || [],
             total: response.data.total || 0,
             totalQuotes: response.data.totalQuotes || 0
         };
-        
-        console.log('[quotes.js] Returning result:', {
-            dataLength: result.data.length,
-            total: result.total,
-            totalQuotes: result.totalQuotes
-        });
-        
-        return result;
     } catch (error) {
-        console.error('Error fetching quotes:', error);
+        console.error('Error fetching quotes:', error.message);
         throw error;
     }
 };
 
 const flagQuote = async (quoteData) => {
     try {
-        if (isMigrationMode) {
-            await delay(300);
-            throw new Error('Flagging unavailable during database migration');
-        }
-        
-        // Use /api/flag directly since the endpoint is /api/flag
-        const response = await makeApiRequest('/api/flag', 'post', null, quoteData);
+        const response = await axios.post('/api/flag', quoteData, axiosConfig);
         return response.data;
     } catch (error) {
-        console.error('Error flagging quote:', error);
+        console.error('Error flagging quote:', error.message);
         throw error;
     }
 };
 
 const getRandomQuotes = async () => {
     try {
-        const response = await makeApiRequest('/api/random', 'get');
+        const response = await axios.get('/api/random', axiosConfig);
         if (!response.data || !response.data.quotes) {
             throw new Error('Invalid response format from random quotes endpoint');
         }
         return response.data;
     } catch (error) {
-        console.error('Error fetching random quotes:', error);
-        // Add more specific error handling
         if (error.message.includes('Network Error')) {
             throw new Error('Network connection failed. Please check your internet connection.');
         } else if (error.message.includes('timeout')) {
@@ -220,15 +66,10 @@ const getRandomQuotes = async () => {
 
 const checkDatabaseStatus = async () => {
     try {
-        if (isMigrationMode) {
-            await delay(300);
-            throw new Error('Database status check unavailable during migration');
-        }
-        
-        const response = await makeApiRequest('/db-status', 'get');
+        const response = await axios.get('/db-status', axiosConfig);
         return response.data;
     } catch (error) {
-        console.error('Error checking database status:', error);
+        console.error('Error checking database status:', error.message);
         throw error;
     }
 };

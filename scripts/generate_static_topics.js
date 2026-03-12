@@ -180,13 +180,13 @@ async function main() {
   }
 
   // Models are ESM and read env at import-time; import after dotenv.config().
-  let analyticsModel;
+  let umamiApi;
   let quoteModel;
   try {
-    analyticsModel = (await import('../models/analytics.js')).default;
+    umamiApi = (await import('../models/umami-api.js')).default;
     quoteModel = (await import('../models/postgres.js')).default;
   } catch (e) {
-    const msg = `[static-topics] Unable to initialize DB models (missing env vars?): ${e.message}`;
+    const msg = `[static-topics] Unable to initialize models (missing env vars?): ${e.message}`;
     if (strict) throw new Error(msg);
     console.warn(msg);
     console.warn('[static-topics] Skipping static topic generation. Set SKIP_STATIC_TOPICS=true to suppress this warning.');
@@ -194,20 +194,31 @@ async function main() {
   }
 
   console.log(`[static-topics] Generating static topic pages into: ${distDir}`);
-  console.log(`[static-topics] Popular terms source: domain=${domain}, year=${year}, timeRange=${timeRange}, limit=${limit}`);
+  console.log(`[static-topics] Popular terms source: timeRange=${timeRange}, limit=${limit}`);
+
+  // Resolve Umami website ID from tenant config or env
+  const websiteId = process.env.UMAMI_WEBSITE_ID || process.env.NLQ_UMAMI_WEBSITE_ID;
+  if (!websiteId) {
+    const msg = '[static-topics] No UMAMI_WEBSITE_ID configured. Cannot fetch popular searches.';
+    if (strict) throw new Error(msg);
+    console.warn(msg);
+    return;
+  }
 
   let terms;
   try {
-    // Add timeout to prevent hanging during build
+    // Fetch popular search terms from Umami
     const queryTimeout = 30000; // 30 seconds
-    terms = await Promise.race([
-      analyticsModel.getPopularSearchTerms({ limit, timeRange, domain, year }),
+    const rawTerms = await Promise.race([
+      umamiApi.getPopularSearches(websiteId, { limit, timeRange }),
       new Promise((_, reject) => 
         setTimeout(() => reject(new Error(`Query timeout after ${queryTimeout}ms`)), queryTimeout)
       )
     ]);
+    // Normalize to { search_term, count } format expected downstream
+    terms = (rawTerms || []).map(t => ({ search_term: t.value, count: t.total }));
   } catch (e) {
-    const msg = `[static-topics] Failed to fetch popular terms: ${e.message}`;
+    const msg = `[static-topics] Failed to fetch popular terms from Umami: ${e.message}`;
     if (strict) throw new Error(msg);
     console.warn(msg);
     console.warn('[static-topics] Skipping static topic generation. Set SKIP_STATIC_TOPICS=true to suppress this warning.');

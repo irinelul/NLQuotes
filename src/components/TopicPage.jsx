@@ -28,7 +28,6 @@ export const TopicPage = () => {
         setTotalQuotes(data.totalQuotes || 0);
         setTotalPages(data.totalPages || 1);
       } catch (err) {
-        console.error('Error fetching topic quotes:', err);
         setError('Failed to load quotes for this topic');
       } finally {
         setLoading(false);

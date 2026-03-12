@@ -28,6 +28,7 @@ body {
     margin: 0;
     min-width: 320px;
     min-height: 100vh;
+    min-height: -webkit-fill-available; /* iOS Safari viewport fix */
     display: flex;
     justify-content: center;
     align-items: flex-start;
@@ -35,16 +36,45 @@ body {
     color: var(--text-primary);
     background-color: var(--background-color);
     line-height: 1.6;
+    -webkit-text-size-adjust: 100%; /* Prevent font scaling in landscape */
+    overflow-x: hidden; /* Prevent horizontal scroll on mobile */
 }
 
 #root {
     box-sizing: border-box;
     max-width: 3000px;
-    height: 100vh;
+    min-height: 100vh;
     width: 100%;
     margin: 0 auto;
     padding: 2rem;
     text-align: start;
+}
+
+/* Reduce padding on mobile to reclaim screen real estate */
+@media (max-width: 768px) {
+    #root {
+        padding: 0.75rem 0.5rem;
+        /* Safe area padding for notched devices */
+        padding-left: max(0.5rem, env(safe-area-inset-left));
+        padding-right: max(0.5rem, env(safe-area-inset-right));
+        padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+    #root {
+        padding: 1rem;
+    }
+}
+
+/* Hide CSS tooltips on touch devices - they don't work and cause layout issues */
+@media (hover: none) and (pointer: coarse) {
+    .year-tooltip::before,
+    .sort-tooltip::before,
+    .channel-tooltip::before,
+    .game-tooltip::before {
+        display: none !important;
+    }
 }
 
 .logo {
@@ -127,10 +157,12 @@ button:disabled {
     max-width: 800px;
     margin-left: auto;
     margin-right: auto;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .input-container button {
-    min-width: 120px;
+    min-width: 100px;
     height: 40px;
     display: flex;
     align-items: center;
@@ -146,6 +178,7 @@ button:disabled {
     letter-spacing: 0.3px;
     transform: none;
     transition: background-color 0.2s ease;
+    box-sizing: border-box;
 }
 
 .input-container button:hover:not(:disabled) {
@@ -164,7 +197,9 @@ button:disabled {
     transition: all 0.2s ease;
     letter-spacing: 0.3px;
     height: 40px;
-    min-width: 300px;
+    min-width: 200px;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .search-input:focus {
@@ -182,6 +217,7 @@ button:disabled {
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    table-layout: fixed; /* Prevents table from overflowing */
 }
 
 .quotes-table th {

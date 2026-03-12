@@ -39,7 +39,7 @@ function loadTenantConfigs() {
       }
     }
     
-    console.log(`Loaded ${tenantConfigs.size / 2} tenant configurations`);
+    // Tenant configs loaded
   } catch (error) {
     console.error('Error loading tenant configs:', error);
     // Fallback to default tenant

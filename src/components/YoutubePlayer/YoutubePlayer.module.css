@@ -10,18 +10,22 @@
     gap: 10px;
     padding: 1rem;
 
-    @media (max-width: 768px) {
+    @media (max-width: 1024px) {
         width: 100%;
-        height: 250px;
+        height: 0;
+        padding-bottom: 56.25%;
+        position: relative;
     }
 }
 
 .retryButton {
-    padding: 5px 10px;
+    padding: 8px 16px;
     background: var(--accent-color);
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
+    min-height: 44px;
+    cursor: pointer;
 }
 
 .thumbnailContainer {
@@ -32,15 +36,26 @@
     overflow: hidden;
     border-radius: 8px;
 
-    @media (max-width: 768px) {
+    /* Tablets: full-width with aspect ratio */
+    @media (max-width: 1024px) {
         width: 100%;
-        height: 220px;
+        height: 0;
+        padding-bottom: 56.25%; /* 16:9 aspect ratio */
     }
 
     & img {
         width: 100%;
         height: 100%;
         object-fit: cover;
+    }
+
+    /* For aspect-ratio mode, img needs absolute positioning */
+    @media (max-width: 1024px) {
+        & img {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
     }
 }
 
@@ -51,16 +66,18 @@
     align-items: center;
     justify-content: center;
     background-color: rgba(0, 0, 0, 0.2);
+    cursor: pointer;
 
-    /* Red button */
+    /* Red play button */
     &>div {
-        width: 60px;
-        height: 60px;
+        width: 68px;
+        height: 68px;
         border-radius: 50%;
-        background-color: rgba(255, 0, 0, 0.8);
+        background-color: rgba(255, 0, 0, 0.85);
         display: flex;
         align-items: center;
         justify-content: center;
+        transition: transform 0.15s ease, background-color 0.15s ease;
 
         /* Triangle Shape */
         &>div {
@@ -72,16 +89,21 @@
             margin-left: 5px;
         }
 
-        @media (max-width: 768px) {
-            width: 50px;
-            height: 50px;
+        @media (max-width: 480px) {
+            width: 54px;
+            height: 54px;
 
-            &::after {
+            &>div {
                 border-top: 12px solid transparent;
                 border-bottom: 12px solid transparent;
                 border-left: 20px solid white;
+                margin-left: 4px;
             }
         }
+    }
+
+    &:active>div {
+        transform: scale(0.95);
     }
 }
 
@@ -96,19 +118,15 @@
     border-radius: 8px;
     box-sizing: border-box;
 
-    @media (max-width: 768px) {
+    /* Tablets and mobile: use aspect ratio for responsive sizing */
+    @media (max-width: 1024px) {
         width: 100%;
         height: 0;
         padding-bottom: 56.25%; /* 16:9 aspect ratio */
         max-width: 100%;
         margin-left: 0;
         margin-right: 0;
-    }
-
-    @media (max-width: 480px) {
-        max-width: 100%;
-        margin-left: 0;
-        margin-right: 0;
+        border-radius: 0; /* No border radius when edge-to-edge */
     }
 
     /* Handle landscape orientation on mobile */
@@ -124,10 +142,4 @@
     position: absolute;
     top: 0;
     left: 0;
-
-    @media (max-width: 768px) {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-    }
 }

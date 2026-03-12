@@ -1,14 +1,12 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAnalyticsOptOut } from '../hooks/useAnalyticsOptOut';
-import { IS_NORTHERNLION, TENANT } from '../config/tenant';
+import { TENANT } from '../config/tenant';
 
 const Privacy = () => {
   const navigate = useNavigate();
   const { isOptedOut, toggleOptOut } = useAnalyticsOptOut();
-  // Use build-time tenant config (no runtime checks needed)
   const siteName = TENANT.displayName || TENANT.metadata?.siteName || 'NL Quotes';
-  const isNL = IS_NORTHERNLION;
 
   const handleBack = () => {
     navigate('/');
@@ -24,18 +22,30 @@ const Privacy = () => {
         Go Back
       </button>
       <h2>Privacy Policy</h2>
-      <p><strong>Last updated: January 2025</strong></p>
+      <p><strong>Last updated: March 2026</strong></p>
 
       <p>
-        Your privacy is critically important to us at {siteName}. Our guiding principle is to collect the absolute minimum information necessary and to be transparent about it. This policy explains what we collect and why.
+        Your privacy is critically important to us at {siteName}. Our guiding principle is to collect the absolute minimum information necessary and to be transparent about it.
       </p>
 
-      <h3>Analytics Collection</h3>
+      <h3>Core Privacy Principles</h3>
+      <ul>
+        <li><strong>We do not collect personal information.</strong> Your identity remains anonymous.</li>
+        <li><strong>We do not use cookies</strong> or persistent tracking technologies.</li>
+        <li><strong>We do not serve advertisements.</strong></li>
+        <li><strong>We do not sell or share data with third parties.</strong></li>
+        <li><strong>We do not fingerprint users</strong> or create user profiles.</li>
+      </ul>
+
+      <h3>Analytics</h3>
       <p>
-        By default, we collect anonymous analytics to help improve our service. This includes information about how you use the site, such as page views and search terms. All data is anonymous and cannot be used to identify you.
+        We use <a href="https://umami.is" target="_blank" rel="noopener noreferrer" style={{ color: '#4A90E2' }}>Umami</a>, a privacy-focused, self-hosted analytics platform, to understand basic usage patterns. Umami does not use cookies, does not collect personal data, and respects your browser's "Do Not Track" setting.
+      </p>
+      <p>
+        The only data collected is anonymous aggregate information such as page views and general usage trends. No IP addresses, device fingerprints, or personal identifiers are stored.
       </p>
       <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1rem' }}>
-        Note: Analytics collection is enabled by default. You can opt out at any time using the button below.
+        You can opt out of analytics at any time using the button below.
       </p>
       <div style={{ marginBottom: '1.5rem' }}>
         <button
@@ -55,82 +65,39 @@ const Privacy = () => {
         >
           {isOptedOut ? 'Enable Analytics' : 'Disable Analytics'}
         </button>
-        <p style={{ 
-          margin: 0,
-          fontSize: '0.9rem'
-        }}>
+        <p style={{ margin: 0, fontSize: '0.9rem' }}>
           {isOptedOut 
             ? '✓ Analytics is currently disabled. No usage data will be collected.'
-            : '✓ Analytics is currently enabled. Anonymous usage data will be collected to help improve the service.'}
+            : '✓ Analytics is currently enabled. Anonymous, cookie-free usage data is collected via Umami.'}
         </p>
       </div>
-
-      <h3>Core Privacy Principles</h3>
-      <ul>
-        <li><strong>We do not collect personal information.</strong> Your identity remains anonymous.</li>
-        <li><strong>We do not use cookies</strong> or persistent tracking technologies.</li>
-        <li><strong>We do not serve advertisements.</strong></li>
-        <li><strong>We do not sell or share data with third parties.</strong></li>
-      </ul>
-
-      <h3>Information We Collect (Anonymous In-House Analytics)</h3>
-      <p>
-        We collect limited anonymous data to understand basic usage patterns and improve {siteName}, while fully respecting your privacy.
-      </p>
-      <ul>
-        <li>
-          <strong>User and Session Hashes:</strong> We generate anonymous hashes to distinguish usage sessions without identifying individuals.
-        </li>
-        <li>
-          <strong>Usage Events:</strong> We track events such as search terms, page views, and user interactions with the site.
-        </li>
-        <li>
-          <strong>Device and Browser Info:</strong> We collect general details such as device type, operating system, browser name, screen width and height, pixel ratio, preferred language, timezone, region, and city.
-        </li>
-        <li>
-          <strong>Performance Metrics:</strong> We measure page response times and total pages visited to help optimize site performance.
-        </li>
-      </ul>
 
       <h3>What We Do Not Collect</h3>
       <ul>
         <li>No IP addresses are stored.</li>
         <li>No cookies or tracking pixels are used.</li>
         <li>No personal identifiers like name, email, or account details are collected.</li>
-        <li>No user profiles are created.</li>
+        <li>No user profiles or fingerprints are created.</li>
+        <li>No data is shared with advertisers or third-party trackers.</li>
       </ul>
 
-      <h3>How We Use Information</h3>
-      <p>
-        The anonymous data we collect is used strictly to improve site functionality, monitor performance, and understand general usage trends. We do not use the data for profiling, advertising, or marketing purposes.
-      </p>
-
-      <h3>Data Security</h3>
-      <p>
-        Although we collect only anonymous data, we take reasonable measures to secure the information we store. However, no method of transmission over the Internet is 100% secure.
-      </p>
-
-      <h3>Third-Party Services & Data Sharing</h3>
+      <h3>Third-Party Services</h3>
       <ul>
-        <li><strong>Analytics:</strong> We operate our own in-house analytics system. Additionally, we use Umami, a privacy-focused, self-hosted analytics platform, to help us understand how users interact with the site. Umami is configured to respect your privacy preferences and does not use cookies for tracking. You can opt out of all analytics using the button above.</li>
-        <li><strong>Data Sharing:</strong> We do not share any data with third parties, except if strictly required by law (which is extremely unlikely given the anonymous nature of the data).</li>
+        <li><strong>Umami Analytics:</strong> Self-hosted, privacy-focused, cookie-free analytics. Respects Do Not Track and your opt-out preference above.</li>
+        <li><strong>YouTube:</strong> Video embeds are loaded from YouTube when you interact with quotes. YouTube's own privacy policy applies to those embeds.</li>
+        <li><strong>Data Sharing:</strong> We do not share any data with third parties.</li>
         <li><strong>Data Selling:</strong> We do not, and will never, sell any data.</li>
       </ul>
 
-      <h3>Cookies and Tracking</h3>
-      <p>
-        We do not use cookies or any other persistent tracking technologies to monitor your browsing history on our site or across the web. Umami does not use cookies for tracking and respects your browser's "Do Not Track" setting.
-      </p>
-
       <h3>Changes to This Policy</h3>
       <p>
-        We may update this Privacy Policy occasionally. Any changes will be posted on this page. We encourage you to review this policy periodically.
+        We may update this Privacy Policy occasionally. Any changes will be posted on this page.
       </p>
 
       <h3>Change Log</h3>
       <ul>
-        <li><strong>January 2025:</strong> Transitioned to Umami analytics, a privacy-focused, self-hosted analytics platform. Umami provides time-on-page tracking, user engagement metrics, and session duration data while maintaining our commitment to privacy: no cookies, respects Do Not Track, and fully respects user opt-out preferences.</li>
-        <li><strong>April 26, 2025:</strong> Updated our Privacy Policy to better reflect the anonymous analytics data collected (hashed identifiers, device/browser information, search terms, page views). Transitioned from using Simple Analytics to our own in-house analytics system. No new data collection was introduced — this is a clarification of existing practices.</li>
+        <li><strong>March 2026:</strong> Removed all advertisements (Google AdSense) and in-house analytics. The site now uses only Umami for privacy-friendly, cookie-free analytics. Removed user hashing and device fingerprinting.</li>
+        <li><strong>January 2025:</strong> Transitioned to Umami analytics for privacy-focused tracking.</li>
       </ul>
 
       <h3>Contact</h3>

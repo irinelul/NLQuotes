@@ -1,19 +1,19 @@
+/* ===== MOBILE STYLES (phones, up to 768px) ===== */
 @media (max-width: 768px) {
-    /* Mobile logo styles - significantly increased size */
+    /* Mobile logo styles */
     .logo-container {
         top: 0;
         background-color: var(--bg-color);
         width: 100%;
         text-align: center;
-        padding: 15px 0;
+        padding: 10px 0;
         z-index: 100;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        /* Prevent layout shift while tenant/logo loads */
-        min-height: 110px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        min-height: 90px;
     }
 
     .logo-container img {
-      height: 80px; /* Substantially increased from 55px */
+        height: 65px;
         width: auto;
         display: block;
         margin: 0 auto;
@@ -30,24 +30,29 @@
         display: none;
     }
 
-    /* Other mobile styles */
+    /* Search bar - stack vertically */
     .input-container {
         flex-direction: column;
-        width: 90% !important;
-        gap: 10px;
-        margin-top: 1rem;
+        width: 95% !important;
+        gap: 8px;
+        margin-top: 0.75rem;
+        padding: 0;
     }
 
     .input-container button {
         width: 100%;
-        margin: 5px 0 !important;
+        margin: 2px 0 !important;
+        min-height: 44px; /* Touch-friendly minimum */
     }
 
     .search-input {
         width: 100% !important;
+        min-width: 0 !important; /* Override 300px min-width that causes overflow */
+        min-height: 44px;
+        font-size: 16px !important; /* Prevents iOS zoom on focus */
     }
 
-  .year-tooltip, .sort-tooltip {
+    .year-tooltip, .sort-tooltip {
         width: 48%;
     }
 
@@ -56,40 +61,25 @@
         justify-content: center;
         width: 100%;
         margin: 0 auto;
+        gap: 0.4rem;
     }
 
     .game-tooltip {
         flex: 1;
-    }
-
-    .mobile-quote-group {
-        margin-bottom: 20px;
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        overflow: hidden;
-    }
-
-    .mobile-quotes-list {
-        border-top: 1px solid var(--border-color);
+        width: 100%;
     }
 
     .footer-message {
-        width: 90%;
+        width: 95%;
         font-size: 0.8rem;
         margin: 10px auto;
         text-align: center;
     }
 
-    /* Mobile-specific styles for bold tags */
-    .mobile-quote-item button span b {
-        color: #FF0000 !important;
-        font-weight: bold !important;
-    }
-
     .top-nav {
         flex-direction: column;
-        gap: 1rem;
-        padding: 1rem;
+        gap: 0.75rem;
+        padding: 0.75rem;
     }
 
     .nav-buttons {
@@ -103,33 +93,261 @@
     }
 
     .logo-section {
-        margin-bottom: 1rem;
+        margin-bottom: 0.75rem;
     }
 
     .logo-nav {
         position: fixed;
         top: 0.5rem;
         right: 0.5rem;
-        gap: 0.3rem;
+        gap: 0.25rem;
     }
 
     .logo-nav-button {
-        padding: 0.3rem 0.6rem;
-        font-size: 0.8rem;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.7rem;
+    }
+
+    .total-quotes {
+        font-size: 0.95rem;
     }
 }
 
-/* Desktop styles */
-@media (min-width: 769px) {
+/* ===== TABLET STYLES (iPads, small laptops: 769px-1024px) ===== */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .logo-container {
+        min-height: 110px;
+    }
+
+    .logo-container img {
+        height: 80px;
+        width: auto;
+        display: block;
+        margin: 0 auto;
+    }
+
+    .input-container {
+        width: 90% !important;
+        gap: 8px;
+    }
+
+    .search-input {
+        min-width: 200px !important;
+    }
+
+    .logo-nav {
+        position: fixed;
+        top: 0.75rem;
+        right: 0.75rem;
+        gap: 0.4rem;
+    }
+
+    .logo-nav-button {
+        padding: 0.35rem 0.7rem;
+        font-size: 0.85rem;
+    }
+
+    /* Hide feedback button on tablets too - not enough space */
+    .floating-feedback-button {
+        display: none;
+    }
+
+    .footer-message {
+        font-size: 0.85rem;
+    }
+}
+
+/* ===== SHARED MOBILE + TABLET STYLES (up to 1024px) ===== */
+@media (max-width: 1024px) {
+    /* --- Mobile/Tablet quote card layout --- */
+    .mobile-quotes-container {
+        width: 100%;
+        max-width: 700px;
+        margin: 0 auto;
+        padding: 0;
+    }
+
+    .mobile-quote-group {
+        margin-bottom: 1.25rem;
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        overflow: hidden;
+        background-color: var(--surface-color);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    }
+
+    .mobile-video-title {
+        font-weight: bold;
+        padding: 0.75rem 1rem;
+        text-align: center;
+        font-size: 0.95rem;
+        border-bottom: 1px solid var(--border-color);
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    .mobile-video-container {
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    .mobile-video-info {
+        text-align: center;
+        padding: 0.5rem 1rem;
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        border-bottom: 1px solid var(--border-color);
+        background-color: rgba(0, 0, 0, 0.03);
+    }
+
+    .mobile-quotes-list {
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 0.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        /* Smooth scrolling */
+        -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
+    }
+
+    .mobile-quote-item {
+        padding: 0.6rem 0.5rem;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .mobile-quote-item:last-child {
+        border-bottom: none;
+    }
+
+    /* Quote text button */
+    .mobile-quote-text-btn {
+        width: 100%;
+        text-align: left;
+        background: none;
+        border: none;
+        color: #4A90E2;
+        cursor: pointer;
+        padding: 0.6rem 0.75rem;
+        font: inherit;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        word-break: break-word;
+        border-radius: 6px;
+        background-color: rgba(74, 144, 226, 0.06);
+        transition: background-color 0.15s ease;
+        min-height: 44px; /* Touch target */
+    }
+
+    .mobile-quote-text-btn:active {
+        background-color: rgba(74, 144, 226, 0.12);
+    }
+
+    .mobile-quote-timestamp {
+        margin-left: 0.4em;
+        color: var(--text-secondary);
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    /* Action buttons row */
+    .mobile-quote-actions {
+        display: flex;
+        justify-content: space-around;
+        padding: 0.25rem 0.5rem;
+        background-color: rgba(0, 0, 0, 0.03);
+        border-radius: 6px;
+    }
+
+    .mobile-action-btn {
+        background-color: transparent;
+        color: #4A90E2;
+        border: none;
+        padding: 0.5rem 0.75rem;
+        cursor: pointer;
+        font-size: 1.2rem;
+        min-width: 44px; /* Touch-friendly */
+        min-height: 44px; /* Touch-friendly */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        transition: background-color 0.15s ease;
+    }
+
+    .mobile-action-btn:active {
+        background-color: rgba(74, 144, 226, 0.12);
+    }
+
+    .mobile-action-flag {
+        color: var(--accent-color);
+    }
+
+    /* Mobile-specific styles for bold tags (search highlights) */
+    .mobile-quote-item button span b {
+        color: #FF0000 !important;
+        font-weight: bold !important;
+    }
+
+    /* Scrollbar for quotes list */
+    .mobile-quotes-list::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .mobile-quotes-list::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .mobile-quotes-list::-webkit-scrollbar-thumb {
+        background: var(--border-color);
+        border-radius: 2px;
+    }
+}
+
+/* Tablet-specific: wider quote cards, taller quote lists */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .mobile-quotes-container {
+        max-width: 90%;
+    }
+
+    .mobile-quote-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .mobile-video-title {
+        font-size: 1.05rem;
+        padding: 0.85rem 1.25rem;
+    }
+
+    .mobile-quotes-list {
+        max-height: 500px;
+    }
+
+    .mobile-quote-text-btn {
+        font-size: 1rem;
+    }
+
+    .mobile-action-btn {
+        font-size: 1.3rem;
+    }
+}
+
+/* ===== DESKTOP STYLES (above 1024px) ===== */
+@media (min-width: 1025px) {
     .logo-container {
         margin-bottom: 2rem;
         cursor: pointer;
-        /* Prevent layout shift while tenant/logo loads */
         min-height: 140px;
     }
 
     .logo-container img {
-      height: 100px; /* Substantially increased from 70px */
+        height: 100px;
         width: auto;
         display: block;
         margin: 0 auto;
@@ -140,7 +358,7 @@
         transform: scale(1.05);
     }
 
-  .year-tooltip, .sort-tooltip {
+    .year-tooltip, .sort-tooltip {
         min-width: 120px;
     }
 
@@ -164,7 +382,7 @@
         border: none;
         border-radius: 30px;
         padding: 10px 20px;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+        box-shadow: 0 3px 10px rgba(0,0,0,0.2);
         cursor: pointer;
         z-index: 900;
         font-size: 1rem;
@@ -176,9 +394,9 @@
     }
 
     .floating-feedback-button:hover {
-      background-color: #e04c4c; /* Slightly different shade for hover */
+        background-color: #e04c4c;
         transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
     }
 }
 
@@ -208,6 +426,19 @@ b {
     margin-top: 2rem;
     width: 100%;
     height: 100%;
+    overflow-x: hidden;
+}
+
+@media (max-width: 768px) {
+    .main-container {
+        margin-top: 0.5rem;
+    }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+    .main-container {
+        margin-top: 1rem;
+    }
 }
 
 .top-nav {

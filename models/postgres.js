@@ -26,7 +26,6 @@ function getPoolForTenant(tenant) {
       throw new Error(`No database URL configured for tenant ${tenantId}`);
     }
     pools.set(tenantId, createPool(dbUrl));
-    console.log(`Created database pool for tenant: ${tenantId}`);
   }
   
   return pools.get(tenantId);
@@ -74,9 +73,7 @@ pools.set('default', defaultPool);
       if (tableRes.rows[0].table_exists) {
         const countRes = await client.query('SELECT COUNT(*) as quote_count FROM quotes');
         const sampleRes = await client.query('SELECT video_id, text FROM quotes LIMIT 1');
-        if (sampleRes.rows.length > 0) {
-          console.log(`Database connected successfully with ${countRes.rows[0].quote_count} quotes`);
-        }
+        // Database connected OK
       }
     } finally {
       client.release();
@@ -166,7 +163,6 @@ const quoteModel = {
     // We only search in text now, so no need to validate searchPath
     // log search parameters with tenant info
     const tenantId = tenant?.id || 'default';
-    console.log(`[Search] PostgreSQL search - Tenant: ${tenantId}, term="${searchTerm}", game="${gameName}", channel=${selectedValue}, year=${year}, sort=${sortOrder}, page=${page}, exactPhrase=${exactPhrase}`);
 
     // Base query structure remains similar
     let query = `
@@ -218,7 +214,6 @@ const quoteModel = {
         validChannels = tenant.channels
           .filter(ch => ch.id !== 'all')
           .map(ch => ch.id.toLowerCase());
-        console.log(`[Search] Using tenant channels for ${tenant.id}:`, validChannels);
       }
       
       const lowerSelectedValue = selectedValue.toLowerCase();
@@ -226,9 +221,8 @@ const quoteModel = {
         whereClauses.push(`LOWER(q.channel_source) = $${paramIndex}`);
         params.push(lowerSelectedValue);
         paramIndex++;
-        console.log(`[Search] Applied channel filter: ${lowerSelectedValue}`);
       } else {
-        console.warn(`[Search] Channel "${selectedValue}" not in valid channels list for tenant ${tenant?.id || 'default'}. Valid channels:`, validChannels);
+        console.warn(`[Search] Invalid channel "${selectedValue}" for tenant ${tenant?.id || 'default'}`);
       }
     }
 
@@ -339,12 +333,10 @@ if (sortOrder === 'default') {
 
     try {
       // Get a client with timeout to prevent hanging connections
-      console.log(`[Search] Getting database pool for tenant: ${tenantId}`);
       const pool = getPoolForTenant(tenant);
       if (!pool) {
         throw new Error(`Failed to get database pool for tenant ${tenantId}`);
       }
-      console.log(`[Search] Database pool obtained, connecting...`);
       const clientPromise = pool.connect();
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Database connection timeout')), 5000)
@@ -374,8 +366,6 @@ if (sortOrder === 'default') {
             throw err;
           });
         
-        console.log(`[Search] Main query executed successfully, rows: ${result.rows?.length || 0}`);
-        
         // Execute count query with timeout
         const countPromise = client.query(countQuery, countParams);
         const countTimeoutPromise = new Promise((_, reject) => 
@@ -396,8 +386,6 @@ if (sortOrder === 'default') {
         const totalVideos = parseInt(countResult.rows[0]?.total_videos || 0, 10);
         const totalQuotes = parseInt(countResult.rows[0]?.total_quotes || 0, 10);
         
-        console.log(`[Search] Query completed for tenant ${tenantId} - Videos: ${totalVideos}, Quotes: ${totalQuotes}, Results returned: ${result.rows?.length || 0}`);
-  
         return {
           data: result.rows,
           total: totalVideos,
@@ -409,14 +397,7 @@ if (sortOrder === 'default') {
         client.release();
       }
     } catch (error) {
-      console.error(`[Search] Database Query Error for tenant ${tenantId}:`, error);
-      console.error(`[Search] Error details:`, {
-        message: error.message,
-        code: error.code,
-        detail: error.detail,
-        hint: error.hint,
-        stack: error.stack?.split('\n').slice(0, 5).join('\n')
-      });
+      console.error(`[Search] Database error for tenant ${tenantId}:`, error.message);
       // Provide a meaningful error without exposing details
       if (error.message.includes('timeout')) {
         throw new Error('Database query timed out. Please try again or with a more specific search.');
@@ -502,14 +483,12 @@ if (sortOrder === 'default') {
   // Get NLDLE game data for a specific date
   async getNLDLEGame(date = new Date(), tenant = null) {
     try {
-      console.log('Fetching NLDLE game for date:', date);
       const pool = getPoolForTenant(tenant);
       const client = await pool.connect();
       try {
         // Convert date to UTC and format as YYYY-MM-DD
         const utcDate = new Date(date);
         const formattedDate = utcDate.toISOString().split('T')[0];
-        console.log('Formatted date for query:', formattedDate);
         
         const result = await client.query(`
           SELECT game_data 
@@ -517,10 +496,7 @@ if (sortOrder === 'default') {
           WHERE game_date = $1
         `, [formattedDate]);
         
-        console.log('Query result:', result.rows);
-        
         if (result.rows.length === 0) {
-          console.log('No game data found for date:', formattedDate);
           return null;
         }
         

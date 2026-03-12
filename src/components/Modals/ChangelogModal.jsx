@@ -2,12 +2,12 @@ import styles from './Modals.module.css';
 
 const changelogEntries = [
     {
-        date: 'January 2025',
+        date: 'March 2026',
         items: [
-            'Transitioned to Umami analytics for privacy-focused tracking',
-            'Added time-on-page tracking and user engagement metrics',
-            'Enhanced analytics tracking: filter usage, quote interactions, feature usage',
-            'Improved privacy policy transparency'
+            'Removed all advertisements (Google AdSense)',
+            'Removed in-house analytics and user fingerprinting',
+            'Privacy-first: only cookie-free Umami analytics remains',
+            'Improved mobile experience for iPads and tablets'
         ]
     },
     {
@@ -17,6 +17,13 @@ const changelogEntries = [
             'Improved notifications system',
             'Added email optional field to feedback',
             'Updated packages'
+        ]
+    },
+    {
+        date: 'January 2025',
+        items: [
+            'Transitioned to Umami analytics for privacy-focused tracking',
+            'Improved privacy policy transparency'
         ]
     }
 ];

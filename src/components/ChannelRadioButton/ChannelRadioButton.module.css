@@ -7,7 +7,7 @@
     transition: all 0.2s ease;
     background-color: var(--surface-color);
     border: 2px solid var(--border-color);
-    min-width: 120px;
+    min-width: 100px;
     justify-content: center;
 
     & input[type="radio"] {
@@ -35,7 +35,15 @@
     }
 
     @media (max-width: 768px) {
-        margin: 4px;
+        margin: 2px;
+        padding: 0.5rem 0.75rem;
+        min-width: 80px;
+        min-height: 40px;
+    }
+
+    @media (min-width: 769px) and (max-width: 1024px) {
+        padding: 0.5rem 1rem;
+        min-width: 100px;
     }
 }
 
@@ -46,4 +54,8 @@
     letter-spacing: 0.3px;
     transition: all 0.2s ease;
     cursor: pointer;
+
+    @media (max-width: 768px) {
+        font-size: 0.85rem;
+    }
 }

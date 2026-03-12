@@ -12,24 +12,19 @@ let API_PORT = process.env.VITE_API_PORT || process.env.API_PORT;
 if (!API_PORT) {
   // Try to get port from tenant config if TENANT_ID is set
   const forcedTenantId = process.env.TENANT_ID;
-  console.log(`[Vite] TENANT_ID from env:`, forcedTenantId);
   if (forcedTenantId) {
     try {
       const tenant = getTenantById(forcedTenantId);
       API_PORT = tenant?.port || 8080;
-      console.log(`[Vite] ✓ Using port ${API_PORT} from tenant config for ${forcedTenantId}`);
     } catch (e) {
-      console.error(`[Vite] ✗ Error getting tenant config:`, e.message);
       API_PORT = 8080;
     }
   } else {
-    console.log(`[Vite] No TENANT_ID set, using default port 8080`);
     API_PORT = 8080;
   }
 }
 
 API_PORT = parseInt(API_PORT) || 8080;
-console.log(`[Vite] Proxy target: http://localhost:${API_PORT}`);
 
 // Get tenant ID from env (for build-time injection)
 const TENANT_ID = process.env.TENANT_ID || 'northernlion';
@@ -196,8 +191,6 @@ function tenantHtmlPlugin() {
         /<noscript>[\s\S]*?<\/noscript>/g,
         `<noscript>\n    <p>${siteName} lets you search ${tenantName} quotes and moments from videos. Enable JavaScript for full functionality.</p>\n</noscript>`
       );
-      
-      console.log(`[Vite] ✓ Transformed HTML for tenant: ${TENANT_ID} (${siteName})`);
       
       return transformedHtml;
     }

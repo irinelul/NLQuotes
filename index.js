@@ -9,7 +9,6 @@ import rateLimit from 'express-rate-limit';
 import slowDown from 'express-slow-down';
 import path from 'path';
 import { fileURLToPath } from 'url';
-// import analyticsModel from './models/analytics.js'; // Disabled — using Umami instead
 import { detectTenant, getTenantById, getAllTenants } from './tenants/tenant-manager.js';
 
 // Load environment variables
@@ -41,7 +40,6 @@ if (!PORT) {
     try {
       const tenant = getTenantById(forcedTenantId);
       PORT = tenant?.port || 8080;
-      console.log(`Using port ${PORT} from tenant config for ${forcedTenantId}`);
     } catch (e) {
       PORT = 8080;
     }
@@ -62,40 +60,30 @@ app.use((req, res, next) => {
 
   if (forcedTenantId) {
     req.tenant = getTenantById(forcedTenantId);
-    console.log(`[Tenant] Forced tenant: ${forcedTenantId} -> ${req.tenant?.id}`);
   } else {
-    // Try to detect tenant by port first
-    // Priority: 1) Port from hostname, 2) Port from socket, 3) Server's PORT env var
     let detectedTenant = null;
     let port = null;
     
-    // Extract port from hostname (e.g., "localhost:3002")
     if (hostname.includes(':')) {
       port = parseInt(hostname.split(':')[1]);
     } else if (req.socket && req.socket.localPort) {
-      // Get port from the socket (the port the server is listening on)
       port = req.socket.localPort;
     } else {
-      // Fallback to the server's PORT (from env var or tenant config)
       port = PORT;
     }
     
-    // If we have a port, try to match it to a tenant
     if (port) {
       const allTenants = getAllTenants();
       for (const tenant of allTenants) {
         if (tenant.port === port) {
           detectedTenant = tenant;
-          console.log(`[Tenant] Detected from port ${port}: ${tenant.id} (hostname: ${hostname})`);
           break;
         }
       }
     }
     
-    // Fall back to hostname-based detection
     if (!detectedTenant) {
       detectedTenant = detectTenant(hostname);
-      console.log(`[Tenant] Detected from hostname "${hostname}": ${detectedTenant?.id} (server port: ${PORT})`);
     }
     
     req.tenant = detectedTenant;
@@ -176,32 +164,6 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '250kb' })); // Limit payload size
 
-// ======= DYNAMIC ADS.TXT ENDPOINT =======
-// Must be BEFORE express.static() to ensure it's served dynamically
-// Based on Google AdSense best practices: https://support.google.com/adsense/answer/12171612
-app.get('/ads.txt', (req, res) => {
-  try {
-    const tenant = req.tenant || detectTenant(req.get('host') || 'localhost');
-    
-    // Only serve ads.txt for tenants that should have ads (exclude nlquotes/northernlion)
-    // But we'll still serve it for all tenants so Google can verify it exists
-    const publisherId = 'pub-3762231556668854';
-    const adsTxtContent = `google.com, ${publisherId}, DIRECT, f08c47fec0942fa0`;
-    
-    // Set appropriate headers for ads.txt
-    res.set({
-      'Content-Type': 'text/plain; charset=utf-8',
-      'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
-      'X-Content-Type-Options': 'nosniff'
-    });
-    
-    res.send(adsTxtContent);
-  } catch (error) {
-    console.error('Error serving ads.txt:', error);
-    res.status(500).send('# Error generating ads.txt');
-  }
-});
-
 // ======= STREAMLINED STATIC FILE SERVING =======
 // Serve static assets from dist/, but skip index.html so the SPA fallback
 // handles it (with tenant injection + proper no-cache headers)
@@ -258,27 +220,22 @@ async function loadGameTitles(tenant) {
     try {
         const result = await quoteModel.getGameList(tenant);
         cachedGameLists.set(tenant.id, result);
-        console.log(`Loaded ${result.length} game titles into cache for tenant ${tenant.id}`);
     } catch (error) {
-        console.error(`Error loading game titles into cache for tenant ${tenant.id}:`, error);
+        console.error(`Error loading game titles cache for ${tenant.id}:`, error.message);
         cachedGameLists.set(tenant.id, []); // Initialize as empty array if query fails
     }
 }
 
 // Load game titles for default tenant immediately
 const defaultTenant = getDefaultTenant();
-loadGameTitles(defaultTenant).then(() => {
-    console.log('Game titles cache initialized for default tenant');
-}).catch(err => {
-    console.error('Failed to initialize game titles cache:', err);
+loadGameTitles(defaultTenant).catch(err => {
+    console.error('Failed to initialize game titles cache:', err.message);
 });
 
 // Tenant config endpoint - serves tenant configuration to frontend
 app.get('/api/tenant', (req, res) => {
   try {
     const tenant = req.tenant || detectTenant(req.get('host') || 'localhost');
-    
-    console.log(`[Tenant API] Serving config for tenant: ${tenant?.id} (hostname: ${req.get('host')})`);
     
     // Return sanitized tenant config (no database URLs or port)
     const config = {
@@ -310,11 +267,8 @@ app.get('/api/tenant', (req, res) => {
 });
 
 app.get('/api', async (req, res) => {
-    // Log search request details for debugging - THIS SHOULD ALWAYS APPEAR
-    console.log('=== SEARCH ENDPOINT HIT ===');
     const tenantId = req.tenant?.id || 'unknown';
     const hostname = req.get('host') || 'unknown';
-    console.log(`[Search] Request received - Tenant: ${tenantId}, Hostname: ${hostname}`);
     
     // Input validation and sanitization
     let searchTerm = req.query.search || '';
@@ -324,8 +278,6 @@ app.get('/api', async (req, res) => {
     let page = parseInt(req.query.page) || 1;
     let exactPhrase = req.query.strict === 'true';
     let gameName = req.query.game || 'all';
-
-    console.log(`[Search] Parameters - term: "${searchTerm}", channel: ${selectedValue}, year: ${year}, sort: ${sortOrder}, page: ${page}, game: ${gameName}, tenant: ${tenantId}`);
 
     if (req.query.gameName) {
         try {
@@ -351,7 +303,6 @@ app.get('/api', async (req, res) => {
     try {
         // Validate tenant is available
         if (!req.tenant) {
-            console.error(`[Search] ERROR: No tenant detected for hostname: ${hostname}`);
             return res.status(500).json({ 
                 error: 'Search failed',
                 details: 'Tenant configuration not found'
@@ -359,7 +310,6 @@ app.get('/api', async (req, res) => {
         }
         
         const startTime = Date.now();
-        console.log(`[Search] Executing search query for tenant: ${tenantId}`);
         const result = await quoteModel.search({
             searchTerm,
             searchPath,
@@ -372,7 +322,6 @@ app.get('/api', async (req, res) => {
             tenant: req.tenant
         });
         const totalTime = Date.now() - startTime;
-        console.log(`[Search] Query completed - Tenant: ${tenantId}, Results: ${result.data?.length || 0}, Total: ${result.total || 0}, Time: ${totalTime}ms`);
 
         // Set security headers (no CSP needed for API responses)
         res.set({
@@ -390,15 +339,7 @@ app.get('/api', async (req, res) => {
             totalTime: totalTime
         });
     } catch (error) {
-        console.error('Search error:', error);
-        console.error('Search parameters:', {
-            searchTerm,
-            selectedValue,
-            year,
-            sortOrder,
-            gameName,
-            searchPath
-        });
+        console.error('Search error:', error.message);
         res.status(500).json({ 
             error: 'Search failed',
             details: 'An error occurred while processing your request' // Don't expose actual error details
@@ -596,15 +537,8 @@ app.get('/health', async (req, res) => {
 
 // Database status endpoint - for monitoring in beta version
 app.get('/api/db-status', async (req, res) => {
-  console.log('Database status check requested from: ' + req.ip);
-  console.log('Request URL path: ' + req.path);
-  console.log('Full request URL: ' + req.originalUrl);
-  console.log('Request headers:', req.headers);
-  
   try {
-    console.log('Attempting to check database health...');
     const healthStatus = await quoteModel.checkHealth();
-    console.log('Database health check complete:', healthStatus.healthy ? 'HEALTHY' : 'UNHEALTHY');
     
     const response = {
       status: healthStatus.healthy ? 'connected' : 'error',
@@ -615,7 +549,6 @@ app.get('/api/db-status', async (req, res) => {
       timestamp: new Date().toISOString()
     };
     
-    console.log('Sending DB status response:', response.status);
     res.json(response);
   } catch (error) {
     console.error('Error checking database status:', error);
@@ -631,13 +564,12 @@ app.get('/api/db-status', async (req, res) => {
 
 // Add a test endpoint that's simpler to check if Express routing is working correctly
 app.get('/test', (req, res) => {
-  console.log('Test endpoint hit');
   res.json({ status: 'ok', message: 'Test endpoint working' });
 });
 
 // Add a global error handler with connection error recovery
 app.use((err, req, res, next) => {
-    console.error('Unhandled application error:', err.stack);
+    console.error('Unhandled application error:', err.message);
     
     // Check if it's a database connection error
     const isDbConnectionError = 
@@ -653,7 +585,6 @@ app.use((err, req, res, next) => {
             try {
                 const defaultTenant = getDefaultTenant();
                 await quoteModel.checkHealth(defaultTenant);
-                console.log('Database reconnection successful after error');
             } catch (e) {
                 console.error('Failed to reconnect to database:', e.message);
             }
@@ -682,15 +613,11 @@ app.use(errorHandler);
 
 // Add NLDLE game endpoint
 app.get('/api/nldle', async (req, res) => {
-  console.log('NLDLE endpoint hit');
   try {
     const currentDate = new Date();
-    console.log('Fetching game for date:', currentDate);
     const gameData = await quoteModel.getNLDLEGame(currentDate, req.tenant);
-    console.log('Game data:', gameData);
     
     if (!gameData) {
-      console.log('No game data found for date:', currentDate);
       return res.status(404).json({ error: 'No game data available for today' });
     }
     
@@ -703,34 +630,6 @@ app.get('/api/nldle', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch game data' });
   }
 });
-
-// Popular searches endpoint - DISABLED
-// app.get('/api/popular-searches', async (req, res) => {
-//   try {
-//     const limit = parseInt(req.query.limit) || 20;
-//     const timeRange = req.query.timeRange || '7d';
-//     const domain = req.query.domain || undefined;
-//     const year = req.query.year ? parseInt(req.query.year) : undefined;
-
-//     const result = await analyticsModel.getPopularSearchTerms({
-//       limit,
-//       timeRange,
-//       domain,
-//       year
-//     });
-    
-//     res.json({ 
-//       terms: result,
-//       total: result.length,
-//       timeRange,
-//       domain,
-//       year
-//     });
-//   } catch (error) {
-//     console.error('Error fetching popular searches:', error);
-//     res.status(500).json({ error: 'Failed to fetch popular searches' });
-//   }
-// });
 
 // Topic quotes endpoint
 app.get('/api/topic/:term', async (req, res) => {
@@ -786,17 +685,9 @@ app.get('/topic/:term', (req, res, next) => {
   next();
 });
 
-// --- Analytics endpoint (disabled - using Umami instead) ---
-// IMPORTANT: This must be registered BEFORE the SPA fallback route
-app.post('/analytics', (req, res) => {
-    // In-house analytics disabled — Umami handles all analytics now
-    res.status(204).end();
-  });
-
 // 404 handler for API routes (must come before SPA fallback)
 app.use((req, res, next) => {
-  if (req.path.startsWith('/api/') || req.path === '/analytics' || req.path === '/health') {
-    console.log(`[404] API route not found: ${req.method} ${req.path}`);
+  if (req.path.startsWith('/api/') || req.path === '/health') {
     return res.status(404).json({ error: 'API endpoint not found' });
   }
   next();
@@ -830,7 +721,6 @@ app.use((req, res, next) => {
   // Inject tenant config into HTML before serving
   try {
     const tenant = req.tenant || detectTenant(req.get('host') || 'localhost');
-    console.log(`[HTML Injection] Tenant detected: ${tenant?.id}, has umami: ${!!tenant?.umami}`);
     const indexPath = path.resolve(__dirname, 'dist', 'index.html');
     
     if (fs.existsSync(indexPath)) {
@@ -888,9 +778,9 @@ app.use((req, res, next) => {
               `$1\n    ${umamiScript}`
             );
           }
-          console.log(`[Umami] Injected script for tenant ${tenant.id}`);
+          // Umami script injected
         } else {
-          console.warn(`[Umami] Invalid scriptUrl or websiteId for tenant ${tenant.id}, skipping injection`);
+          console.warn(`[Umami] Invalid scriptUrl or websiteId for tenant ${tenant.id}`);
         }
       }
       
@@ -964,18 +854,7 @@ app.use((req, res, next) => {
 
 // Create server with optimized settings
 const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log('=================================');
     console.log(`Server running on port ${PORT}`);
-    console.log('Available endpoints:');
-    console.log('- /api (search)');
-    console.log('- /api/random (random quotes)');
-    console.log('- /api/games (game list)');
-    console.log('- /api/flag (flag quotes)');
-    console.log('- /api/nldle (NLDLE game)');
-    console.log('- /api/topic/:term (topic quotes)');
-    console.log('- /analytics (POST - analytics tracking)');
-    console.log('- /health (health check)');
-    console.log('=================================');
 });
 
 // Add error handling for server startup
