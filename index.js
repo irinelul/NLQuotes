@@ -229,7 +229,8 @@ app.get('/sitemap.xml', (req, res) => {
 // Serve static assets from dist/, but skip index.html so the SPA fallback
 // handles it (with tenant injection + proper no-cache headers)
 app.use(express.static(path.resolve(__dirname, 'dist'), {
-  index: false  // Don't serve index.html for '/' — let SPA fallback handle it
+  index: false,    // Don't serve index.html for '/' — let SPA fallback handle it
+  redirect: false  // Don't redirect /topic/foo to /topic/foo/ — causes redirect loops
 }));
 
 // ======= SECURITY FILTER =======
