@@ -565,76 +565,6 @@ app.get('/api/games', (req, res) => {
     }
 });
 
-// Health check endpoint for monitoring and diagnostics
-app.get('/health', async (req, res) => {
-    const health = {
-        uptime: process.uptime(),
-        timestamp: Date.now(),
-        memory: process.memoryUsage(),
-        status: 'UP'
-    };
-    
-    try {
-        // Check database connectivity (for default tenant)
-        const defaultTenant = getDefaultTenant();
-        const dbHealthy = await quoteModel.checkHealth(defaultTenant);
-        health.database = dbHealthy ? 'connected' : 'disconnected';
-        
-        if (!dbHealthy) {
-            health.status = 'DEGRADED';
-            return res.status(200).json(health);
-        }
-        
-        res.json(health);
-    } catch {
-        health.status = 'DOWN';
-        health.error = 'Service unavailable';
-        health.database = 'error';
-        res.status(500).json(health);
-    }
-});
-
-// Database status endpoint - for monitoring in beta version
-app.get('/api/db-status', async (req, res) => {
-  console.log('Database status check requested from: ' + req.ip);
-  console.log('Request URL path: ' + req.path);
-  console.log('Full request URL: ' + req.originalUrl);
-  console.log('Request headers:', req.headers);
-  
-  try {
-    console.log('Attempting to check database health...');
-    const healthStatus = await quoteModel.checkHealth();
-    console.log('Database health check complete:', healthStatus.healthy ? 'HEALTHY' : 'UNHEALTHY');
-    
-    const response = {
-      status: healthStatus.healthy ? 'connected' : 'error',
-      message: healthStatus.healthy 
-        ? `Connected to PostgreSQL (${healthStatus.responseTime} response time)` 
-        : `Error connecting to PostgreSQL: ${healthStatus.error}`,
-      details: healthStatus,
-      timestamp: new Date().toISOString()
-    };
-    
-    console.log('Sending DB status response:', response.status);
-    res.json(response);
-  } catch (error) {
-    console.error('Error checking database status:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to check database status: ' + error.message,
-      error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
-
-// Add a test endpoint that's simpler to check if Express routing is working correctly
-app.get('/test', (req, res) => {
-  console.log('Test endpoint hit');
-  res.json({ status: 'ok', message: 'Test endpoint working' });
-});
-
 // Add a global error handler with connection error recovery
 app.use((err, req, res, next) => {
     console.error('Unhandled application error:', err.stack);
@@ -679,58 +609,6 @@ const errorHandler = (error, req, res, next) => {
 };
 
 app.use(errorHandler);
-
-// Add NLDLE game endpoint
-app.get('/api/nldle', async (req, res) => {
-  console.log('NLDLE endpoint hit');
-  try {
-    const currentDate = new Date();
-    console.log('Fetching game for date:', currentDate);
-    const gameData = await quoteModel.getNLDLEGame(currentDate, req.tenant);
-    console.log('Game data:', gameData);
-    
-    if (!gameData) {
-      console.log('No game data found for date:', currentDate);
-      return res.status(404).json({ error: 'No game data available for today' });
-    }
-    
-    res.json({ 
-      game_data: gameData,
-      game_date: currentDate.toISOString().split('T')[0]
-    });
-  } catch (error) {
-    console.error('Error in NLDLE endpoint:', error);
-    res.status(500).json({ error: 'Failed to fetch game data' });
-  }
-});
-
-// Popular searches endpoint - DISABLED
-// app.get('/api/popular-searches', async (req, res) => {
-//   try {
-//     const limit = parseInt(req.query.limit) || 20;
-//     const timeRange = req.query.timeRange || '7d';
-//     const domain = req.query.domain || undefined;
-//     const year = req.query.year ? parseInt(req.query.year) : undefined;
-
-//     const result = await analyticsModel.getPopularSearchTerms({
-//       limit,
-//       timeRange,
-//       domain,
-//       year
-//     });
-    
-//     res.json({ 
-//       terms: result,
-//       total: result.length,
-//       timeRange,
-//       domain,
-//       year
-//     });
-//   } catch (error) {
-//     console.error('Error fetching popular searches:', error);
-//     res.status(500).json({ error: 'Failed to fetch popular searches' });
-//   }
-// });
 
 // Topic quotes endpoint
 app.get('/api/topic/:term', async (req, res) => {
@@ -795,7 +673,7 @@ app.post('/analytics', (req, res) => {
 
 // 404 handler for API routes (must come before SPA fallback)
 app.use((req, res, next) => {
-  if (req.path.startsWith('/api/') || req.path === '/analytics' || req.path === '/health') {
+  if (req.path.startsWith('/api/') || req.path === '/analytics') {
     console.log(`[404] API route not found: ${req.method} ${req.path}`);
     return res.status(404).json({ error: 'API endpoint not found' });
   }
@@ -971,10 +849,8 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     console.log('- /api/random (random quotes)');
     console.log('- /api/games (game list)');
     console.log('- /api/flag (flag quotes)');
-    console.log('- /api/nldle (NLDLE game)');
     console.log('- /api/topic/:term (topic quotes)');
     console.log('- /analytics (POST - analytics tracking)');
-    console.log('- /health (health check)');
     console.log('=================================');
 });
 
