@@ -504,9 +504,7 @@ function writeSitemapOnly({ distDir, siteBaseUrl }) {
 function writeSitemap({ distDir, siteBaseUrl, topicPages }) {
   const today = new Date().toISOString().slice(0, 10);
   const urls = [
-    { loc: `${siteBaseUrl}/`,        lastmod: today, priority: '1.0' },
-    { loc: `${siteBaseUrl}/stats`,   lastmod: today, priority: '0.5' },
-    { loc: `${siteBaseUrl}/privacy`, lastmod: today, priority: '0.3' },
+    { loc: `${siteBaseUrl}/`, lastmod: today, priority: '1.0' },
     ...topicPages.map((p) => ({
       loc: `${siteBaseUrl}${p.url}`,
       lastmod: p.lastSearched
