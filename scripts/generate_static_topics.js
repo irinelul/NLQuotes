@@ -329,7 +329,7 @@ async function getPopularSearchTerms({ limit, websiteId, timeRange, umamiDbUrl }
     connectionString: umamiDbUrl,
     max: 3,
     connectionTimeoutMillis: 5000,
-    ssl: { rejectUnauthorized: false },
+    ssl: false,
   });
 
   let timeFilter = '';
