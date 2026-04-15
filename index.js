@@ -9,7 +9,6 @@ import rateLimit from 'express-rate-limit';
 import slowDown from 'express-slow-down';
 import path from 'path';
 import { fileURLToPath } from 'url';
-// import analyticsModel from './models/analytics.js'; // Disabled — using Umami instead
 import { detectTenant, getTenantById, getAllTenants } from './tenants/tenant-manager.js';
 
 // Load environment variables
@@ -176,45 +175,19 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '250kb' })); // Limit payload size
 
-// ======= DYNAMIC ADS.TXT ENDPOINT =======
-// Must be BEFORE express.static() to ensure it's served dynamically
-// Based on Google AdSense best practices: https://support.google.com/adsense/answer/12171612
-app.get('/ads.txt', (req, res) => {
-  try {
-    const tenant = req.tenant || detectTenant(req.get('host') || 'localhost');
-    
-    // Only serve ads.txt for tenants that should have ads (exclude nlquotes/northernlion)
-    // But we'll still serve it for all tenants so Google can verify it exists
-    const publisherId = 'pub-3762231556668854';
-    const adsTxtContent = `google.com, ${publisherId}, DIRECT, f08c47fec0942fa0`;
-    
-    // Set appropriate headers for ads.txt
-    res.set({
-      'Content-Type': 'text/plain; charset=utf-8',
-      'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
-      'X-Content-Type-Options': 'nosniff'
-    });
-    
-    res.send(adsTxtContent);
-  } catch (error) {
-    console.error('Error serving ads.txt:', error);
-    res.status(500).send('# Error generating ads.txt');
-  }
-});
-
-// ======= STREAMLINED STATIC FILE SERVING =======
-// Serve static assets from dist/, but skip index.html so the SPA fallback
-// handles it (with tenant injection + proper no-cache headers)
-app.use(express.static(path.resolve(__dirname, 'dist'), {
-  index: false  // Don't serve index.html for '/' — let SPA fallback handle it
-}));
-
 // ======= REDUCED LOGGING =======
 // Only log essential information to reduce overhead
 morgan.token('method-path', (req) => `${req.method} ${req.path}`);
 morgan.token('response-info', (req, res) => `${res.statusCode} - ${res.getHeader('content-length') || 0}b`);
 app.use(morgan(':method-path :response-info :response-time ms', {
   skip: (req) => req.path.startsWith('/assets/')
+}));
+
+// ======= STREAMLINED STATIC FILE SERVING =======
+// Serve static assets from dist/, but skip index.html so the SPA fallback
+// handles it (with tenant injection + proper no-cache headers)
+app.use(express.static(path.resolve(__dirname, 'dist'), {
+  index: false  // Don't serve index.html for '/' — let SPA fallback handle it
 }));
 
 // ======= SECURITY FILTER =======
@@ -565,51 +538,6 @@ app.get('/api/games', (req, res) => {
     }
 });
 
-// Add a global error handler with connection error recovery
-app.use((err, req, res, next) => {
-    console.error('Unhandled application error:', err.stack);
-    
-    // Check if it's a database connection error
-    const isDbConnectionError = 
-        err.message && (
-            err.message.includes('database') || 
-            err.message.includes('connection') || 
-            err.message.includes('PostgreSQL')
-        );
-    
-    if (isDbConnectionError) {
-        // Try to reconnect immediately
-        setTimeout(async () => {
-            try {
-                const defaultTenant = getDefaultTenant();
-                await quoteModel.checkHealth(defaultTenant);
-                console.log('Database reconnection successful after error');
-            } catch (e) {
-                console.error('Failed to reconnect to database:', e.message);
-            }
-        }, 1000);
-    }
-    
-    res.status(500).json({
-        error: 'Internal server error',
-        message: process.env.NODE_ENV === 'production' 
-            ? 'Something went wrong' 
-            : err.message
-    });
-});
-
-const errorHandler = (error, req, res, next) => {
-    console.error(error.message);
-    if (error.name === 'CastError') {
-        return res.status(400).send({ error: 'malformatted id' });
-    } else if (error.name === 'ValidationError') {
-        return res.status(400).json({ error: error.message });
-    }
-    next(error);
-};
-
-app.use(errorHandler);
-
 // Topic quotes endpoint
 app.get('/api/topic/:term', async (req, res) => {
   try {
@@ -664,16 +592,9 @@ app.get('/topic/:term', (req, res, next) => {
   next();
 });
 
-// --- Analytics endpoint (disabled - using Umami instead) ---
-// IMPORTANT: This must be registered BEFORE the SPA fallback route
-app.post('/analytics', (req, res) => {
-    // In-house analytics disabled — Umami handles all analytics now
-    res.status(204).end();
-  });
-
 // 404 handler for API routes (must come before SPA fallback)
 app.use((req, res, next) => {
-  if (req.path.startsWith('/api/') || req.path === '/analytics') {
+  if (req.path.startsWith('/api/')) {
     console.log(`[404] API route not found: ${req.method} ${req.path}`);
     return res.status(404).json({ error: 'API endpoint not found' });
   }
@@ -839,6 +760,43 @@ app.use((req, res, next) => {
   }
 });
 
+// Global error handler — must be last, after all routes
+app.use((err, req, res, next) => {
+    console.error('Unhandled application error:', err.stack);
+
+    if (err.name === 'CastError') {
+        return res.status(400).json({ error: 'Malformatted id' });
+    }
+    if (err.name === 'ValidationError') {
+        return res.status(400).json({ error: err.message });
+    }
+
+    const isDbConnectionError =
+        err.message && (
+            err.message.includes('database') ||
+            err.message.includes('connection') ||
+            err.message.includes('PostgreSQL')
+        );
+
+    if (isDbConnectionError) {
+        setTimeout(async () => {
+            try {
+                const defaultTenant = getDefaultTenant();
+                await quoteModel.checkHealth(defaultTenant);
+                console.log('Database reconnection successful after error');
+            } catch (e) {
+                console.error('Failed to reconnect to database:', e.message);
+            }
+        }, 1000);
+    }
+
+    res.status(500).json({
+        error: 'Internal server error',
+        message: process.env.NODE_ENV === 'production'
+            ? 'Something went wrong'
+            : err.message
+    });
+});
 
 // Create server with optimized settings
 const server = app.listen(PORT, '0.0.0.0', () => {
@@ -850,7 +808,6 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     console.log('- /api/games (game list)');
     console.log('- /api/flag (flag quotes)');
     console.log('- /api/topic/:term (topic quotes)');
-    console.log('- /analytics (POST - analytics tracking)');
     console.log('=================================');
 });
 

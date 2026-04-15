@@ -1,11 +1,8 @@
 import axios from 'axios'
 
 // Detect Render.com environment
-const isOnRender = window.location.hostname.includes('render.com') || 
+const isOnRender = window.location.hostname.includes('render.com') ||
                    window.location.hostname.includes('onrender.com');
-
-// Check if current protocol is HTTPS
-const isHttps = window.location.protocol === 'https:';
 
 // Define possible API path prefixes to try
 const pathPrefixes = [
@@ -14,31 +11,23 @@ const pathPrefixes = [
 ];
 
 // Define possible base URLs for direct access if proxy fails
-// This helps bypass potential SSL/Proxy issues
 const possibleBaseUrls = isOnRender ? [
-    window.location.origin, // Explicit origin
-    '', // Current domain (default)
+    window.location.origin,
+    '',
 ] : [''];
 
-// Configure Axios with settings to handle SSL issues
+// Configure Axios defaults
 const axiosConfig = {
-    timeout: 15000,  // Longer timeout for SSL handshakes
+    timeout: 15000,
     headers: {
         'Accept': 'application/json',
         'Cache-Control': 'no-cache'
     }
 };
 
-// For Render.com, we may need to adjust SSL verification
 if (isOnRender) {
     console.log('Running on Render.com, adjusting API paths');
 }
-
-// Add a delay helper for migration mode
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-// Flag to indicate if we're in migration mode (will be set to true after failed attempts)
-let isMigrationMode = false; // Migration complete - set to false to enable searches
 
 // Helper to try API calls with different path prefixes and base URLs
 const makeApiRequest = async (endpoint, method = 'get', params = null, data = null) => {
@@ -136,12 +125,6 @@ const makeApiRequest = async (endpoint, method = 'get', params = null, data = nu
 
 const getAll = async (searchTerm, page, strict, selectedValue, selectedMode, year, sortOrder, gameName) => {
     try {
-        // If we're in migration mode, fail quickly with appropriate message
-        if (isMigrationMode) {
-            await delay(500);
-            throw new Error('Search unavailable during database migration');
-        }
-        
         // Make the request directly to the /api endpoint
         const response = await makeApiRequest('/api', 'get', {  
             search: searchTerm || '', 
@@ -185,11 +168,6 @@ const getAll = async (searchTerm, page, strict, selectedValue, selectedMode, yea
 
 const flagQuote = async (quoteData) => {
     try {
-        if (isMigrationMode) {
-            await delay(300);
-            throw new Error('Flagging unavailable during database migration');
-        }
-        
         // Use /api/flag directly since the endpoint is /api/flag
         const response = await makeApiRequest('/api/flag', 'post', null, quoteData);
         return response.data;
@@ -219,24 +197,8 @@ const getRandomQuotes = async () => {
     }
 };
 
-const checkDatabaseStatus = async () => {
-    try {
-        if (isMigrationMode) {
-            await delay(300);
-            throw new Error('Database status check unavailable during migration');
-        }
-        
-        const response = await makeApiRequest('/db-status', 'get');
-        return response.data;
-    } catch (error) {
-        console.error('Error checking database status:', error);
-        throw error;
-    }
-};
-
 export default {
     getAll,
     flagQuote,
     getRandomQuotes,
-    checkDatabaseStatus
 }

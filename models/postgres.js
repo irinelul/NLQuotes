@@ -262,23 +262,12 @@ const quoteModel = {
     // --- Grouping ---
     // Group by video fields AFTER filtering. This aggregates all quotes
     // for videos where AT LEAST ONE quote matched the WHERE criteria.
-    if (exactPhrase && searchTerm && searchTerm.trim() !== '') {
-      query += ` GROUP BY q.video_id, q.title, q.upload_date, q.channel_source, rank`;
-    } else {
-      query += ` GROUP BY q.video_id, q.title, q.upload_date, q.channel_source`;
+    query += ` GROUP BY q.video_id, q.title, q.upload_date, q.channel_source`;
+
+    // --- Sorting (Applied after grouping) ---
+    if (sortOrder === 'newest' || sortOrder === 'oldest') {
+      query += ` ORDER BY q.upload_date ${sortOrder === 'newest' ? 'DESC' : 'ASC'}`;
     }
-// --- Sorting (Applied after grouping) ---
-if (sortOrder === 'default') {
-  if (exactPhrase && searchTerm && searchTerm.trim() !== '') {
-    query += ` ORDER BY rank DESC`;
-  }
-} else if (sortOrder === 'newest' || sortOrder === 'oldest') {
-  if (exactPhrase && searchTerm && searchTerm.trim() !== '') {
-    query += ` ORDER BY rank DESC, q.upload_date ${sortOrder === 'newest' ? 'DESC' : 'ASC'}`;
-  } else {
-    query += ` ORDER BY q.upload_date ${sortOrder === 'newest' ? 'DESC' : 'ASC'}`;
-  }
-}
 
 
     // --- Pagination ---
