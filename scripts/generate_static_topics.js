@@ -342,6 +342,10 @@ async function getPopularSearchTerms({ limit, websiteId, timeRange, umamiDbUrl }
 
   const limitClause = limit > 0 ? `LIMIT ${parseInt(limit, 10)}` : '';
 
+  // Known non-search event names that should be excluded
+  const excludedNames = ['quote_search', 'pageview', 'page_view'];
+  const excludePlaceholders = excludedNames.map((_, i) => `$${i + 2}`).join(', ');
+
   try {
     const result = await pool.query(
       `SELECT event_name AS search_term, COUNT(*) AS count
@@ -350,11 +354,12 @@ async function getPopularSearchTerms({ limit, websiteId, timeRange, umamiDbUrl }
          AND event_type = 2
          AND event_name IS NOT NULL
          AND LENGTH(event_name) >= 2
+         AND event_name NOT IN (${excludePlaceholders})
          ${timeFilter}
        GROUP BY event_name
        ORDER BY count DESC
        ${limitClause}`,
-      [websiteId]
+      [websiteId, ...excludedNames]
     );
     return result.rows;
   } finally {
@@ -453,6 +458,11 @@ async function main() {
       ]);
     } catch (e) {
       console.warn(`[static-topics] Skipping "${term}": ${e.message}`);
+      continue;
+    }
+
+    if (!topicData?.totalQuotes || topicData.totalQuotes === 0) {
+      console.log(`[static-topics] Skipping "${term}" — no quotes found`);
       continue;
     }
 
