@@ -10,6 +10,7 @@ import slowDown from 'express-slow-down';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { detectTenant, getTenantById, getAllTenants } from './tenants/tenant-manager.js';
+import { renderTopicHtml } from './utils/renderTopicHtml.js';
 
 // Load environment variables
 dotenv.config();
@@ -185,8 +186,7 @@ app.use(morgan(':method-path :response-info :response-time ms', {
 }));
 
 // ======= DYNAMIC SITEMAP =======
-// Built from static-topic-pages.json (written by generate_static_topics.js on startup).
-// Always reflects what's actually on disk — no stale file to maintain.
+// Scans dist/topic/ directory directly so on-demand generated pages appear automatically.
 app.get('/sitemap.xml', (req, res) => {
   const today = new Date().toISOString().slice(0, 10);
   const hostname = req.tenant?.hostnames?.[0] || 'nlquotes.com';
@@ -195,9 +195,19 @@ app.get('/sitemap.xml', (req, res) => {
 
   let topicPages = [];
   try {
-    const jsonPath = path.resolve(__dirname, 'dist', 'static-topic-pages.json');
-    if (fs.existsSync(jsonPath)) {
-      topicPages = JSON.parse(fs.readFileSync(jsonPath, 'utf8')).pages || [];
+    const topicRoot = path.resolve(__dirname, 'dist', 'topic');
+    if (fs.existsSync(topicRoot)) {
+      const entries = fs.readdirSync(topicRoot);
+      for (const encoded of entries) {
+        const indexPath = path.join(topicRoot, encoded, 'index.html');
+        if (fs.existsSync(indexPath)) {
+          const mtime = fs.statSync(indexPath).mtime;
+          topicPages.push({
+            url: `/topic/${encoded}`,
+            lastmod: mtime.toISOString().slice(0, 10),
+          });
+        }
+      }
     }
   } catch (e) { /* no topic pages yet, that's fine */ }
 
@@ -205,9 +215,7 @@ app.get('/sitemap.xml', (req, res) => {
     { loc: `${base}/`, lastmod: today, priority: '1.0' },
     ...topicPages.map((p) => ({
       loc: `${base}${p.url}`,
-      lastmod: p.lastSearched
-        ? new Date(p.lastSearched).toISOString().slice(0, 10)
-        : today,
+      lastmod: p.lastmod,
       priority: '0.7',
     })),
   ];
@@ -260,6 +268,9 @@ app.use((req, res, next) => {
 });
 
 // Add console logs at the start of the file to check routes loading
+
+// In-memory set to prevent concurrent duplicate on-demand topic generation
+const topicGenerating = new Set();
 
 // Cache for game titles per tenant
 const cachedGameLists = new Map();
@@ -629,18 +640,81 @@ app.use('/topic', (req, res, next) => {
   next();
 });
 
-// Serve pre-generated static topic pages if present (lets Google crawl real HTML at /topic/:term)
-app.get('/topic/:term', (req, res, next) => {
+// Serve pre-generated static topic pages if present; generate on demand otherwise.
+app.get('/topic/:term', async (req, res, next) => {
+  const encoded = encodeURIComponent(req.params.term);
+  const staticPath = path.resolve(__dirname, 'dist', 'topic', encoded, 'index.html');
+
+  // Serve existing file immediately
   try {
-    const encoded = encodeURIComponent(req.params.term);
-    const staticPath = path.resolve(__dirname, 'dist', 'topic', encoded, 'index.html');
     if (fs.existsSync(staticPath)) {
       return res.sendFile(staticPath);
     }
   } catch (e) {
-    console.error('Error serving static topic page:', e);
+    console.error('Error checking static topic page:', e);
   }
-  next();
+
+  // Generate on demand
+  const term = req.params.term;
+  try {
+    // If another request is already generating this page, wait briefly then re-check
+    if (topicGenerating.has(encoded)) {
+      // Poll for up to 10s (100ms intervals) before falling through to SPA
+      for (let i = 0; i < 100; i++) {
+        await new Promise((r) => setTimeout(r, 100));
+        if (fs.existsSync(staticPath)) {
+          return res.sendFile(staticPath);
+        }
+        if (!topicGenerating.has(encoded)) break;
+      }
+      // If still not ready, fall through to SPA
+      return next();
+    }
+
+    topicGenerating.add(encoded);
+    try {
+      const topicData = await quoteModel.search({
+        searchTerm: term,
+        searchPath: 'text',
+        gameName: 'all',
+        selectedValue: 'all',
+        year: '',
+        sortOrder: 'default',
+        page: 1,
+        limit: 10,
+        exactPhrase: false,
+        tenant: req.tenant,
+      });
+
+      if (!topicData?.totalQuotes || topicData.totalQuotes === 0) {
+        // No quotes — fall through to SPA
+        return next();
+      }
+
+      const hostname = req.tenant?.hostnames?.[0] || 'nlquotes.com';
+      const siteBaseUrl = `https://${hostname}`;
+      const html = renderTopicHtml({
+        term,
+        totalQuotes: topicData.totalQuotes,
+        videoGroups: topicData.data || [],
+        siteBaseUrl,
+      });
+
+      // Save to disk so subsequent requests are served as static files
+      const outDir = path.resolve(__dirname, 'dist', 'topic', encoded);
+      fs.mkdirSync(outDir, { recursive: true });
+      fs.writeFileSync(path.join(outDir, 'index.html'), html, 'utf8');
+      console.log(`[topic] Generated on demand: /topic/${encoded}`);
+
+      res.send(html);
+    } finally {
+      topicGenerating.delete(encoded);
+    }
+  } catch (e) {
+    topicGenerating.delete(encoded);
+    console.error('Error generating on-demand topic page:', e);
+    next();
+  }
 });
 
 // 404 handler for API routes (must come before SPA fallback)
