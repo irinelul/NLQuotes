@@ -397,7 +397,7 @@ async function main() {
   if (!umamiDbUrl) {
     console.warn('[static-topics] UMAMI_DATABASE_URL not set — skipping topic generation.');
     console.warn('[static-topics] Set SKIP_STATIC_TOPICS=true to suppress this warning.');
-    writeSitemapOnly({ distDir, siteBaseUrl });
+    writeEmptyJson({ distDir });
     return;
   }
 
@@ -415,7 +415,7 @@ async function main() {
     const msg = `Failed to fetch terms from Umami: ${e.message}`;
     if (strict) throw new Error(msg);
     console.warn(`[static-topics] ${msg}`);
-    writeSitemapOnly({ distDir, siteBaseUrl });
+    writeEmptyJson({ distDir });
     return;
   }
 
@@ -428,7 +428,7 @@ async function main() {
     const msg = `Unable to load postgres model: ${e.message}`;
     if (strict) throw new Error(msg);
     console.warn(`[static-topics] ${msg}`);
-    writeSitemapOnly({ distDir, siteBaseUrl });
+    writeEmptyJson({ distDir });
     return;
   }
 
@@ -487,7 +487,7 @@ async function main() {
     console.log(`[static-topics] Wrote /topic/${encoded}`);
   }
 
-  writeSitemap({ distDir, siteBaseUrl, topicPages: written });
+  // Write JSON index — the Express /sitemap.xml route reads this to build a fresh sitemap
   fs.writeFileSync(
     path.join(distDir, 'static-topic-pages.json'),
     JSON.stringify({ generatedAt: new Date().toISOString(), timeRange, limit, pages: written }, null, 2),
@@ -497,37 +497,12 @@ async function main() {
   console.log(`[static-topics] Done. ${written.length} topic pages generated.`);
 }
 
-function writeSitemapOnly({ distDir, siteBaseUrl }) {
-  writeSitemap({ distDir, siteBaseUrl, topicPages: [] });
-}
-
-function writeSitemap({ distDir, siteBaseUrl, topicPages }) {
-  const today = new Date().toISOString().slice(0, 10);
-  const urls = [
-    { loc: `${siteBaseUrl}/`, lastmod: today, priority: '1.0' },
-    ...topicPages.map((p) => ({
-      loc: `${siteBaseUrl}${p.url}`,
-      lastmod: p.lastSearched
-        ? new Date(p.lastSearched).toISOString().slice(0, 10)
-        : today,
-      priority: '0.7',
-    })),
-  ];
-
-  const xml =
-    `<?xml version="1.0" encoding="UTF-8"?>\n` +
-    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
-    urls.map((u) =>
-      `  <url>\n` +
-      `    <loc>${escapeHtml(u.loc)}</loc>\n` +
-      `    <lastmod>${u.lastmod || today}</lastmod>\n` +
-      `    <priority>${u.priority}</priority>\n` +
-      `  </url>`
-    ).join('\n') +
-    `\n</urlset>\n`;
-
-  fs.writeFileSync(path.join(distDir, 'sitemap.xml'), xml, 'utf8');
-  console.log(`[static-topics] Wrote sitemap.xml (${urls.length} URLs)`);
+function writeEmptyJson({ distDir }) {
+  fs.writeFileSync(
+    path.join(distDir, 'static-topic-pages.json'),
+    JSON.stringify({ generatedAt: new Date().toISOString(), pages: [] }, null, 2),
+    'utf8'
+  );
 }
 
 async function run() {

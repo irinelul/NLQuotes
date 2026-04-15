@@ -184,6 +184,47 @@ app.use(morgan(':method-path :response-info :response-time ms', {
   skip: (req) => req.path.startsWith('/assets/')
 }));
 
+// ======= DYNAMIC SITEMAP =======
+// Built from static-topic-pages.json (written by generate_static_topics.js on startup).
+// Always reflects what's actually on disk — no stale file to maintain.
+app.get('/sitemap.xml', (req, res) => {
+  const today = new Date().toISOString().slice(0, 10);
+  const hostname = req.tenant?.hostnames?.[0] || 'nlquotes.com';
+  const base = `https://${hostname}`;
+  const escXml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  let topicPages = [];
+  try {
+    const jsonPath = path.resolve(__dirname, 'dist', 'static-topic-pages.json');
+    if (fs.existsSync(jsonPath)) {
+      topicPages = JSON.parse(fs.readFileSync(jsonPath, 'utf8')).pages || [];
+    }
+  } catch (e) { /* no topic pages yet, that's fine */ }
+
+  const urls = [
+    { loc: `${base}/`, lastmod: today, priority: '1.0' },
+    ...topicPages.map((p) => ({
+      loc: `${base}${p.url}`,
+      lastmod: p.lastSearched
+        ? new Date(p.lastSearched).toISOString().slice(0, 10)
+        : today,
+      priority: '0.7',
+    })),
+  ];
+
+  const xml =
+    '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+    urls.map((u) =>
+      `  <url>\n    <loc>${escXml(u.loc)}</loc>\n    <lastmod>${u.lastmod}</lastmod>\n    <priority>${u.priority}</priority>\n  </url>`
+    ).join('\n') +
+    '\n</urlset>\n';
+
+  res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.send(xml);
+});
+
 // ======= STREAMLINED STATIC FILE SERVING =======
 // Serve static assets from dist/, but skip index.html so the SPA fallback
 // handles it (with tenant injection + proper no-cache headers)
