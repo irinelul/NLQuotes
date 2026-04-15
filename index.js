@@ -31,6 +31,7 @@ if (!dbUrlPattern.test(process.env.DATABASE_URL)) {
 }
 
 const app = express();
+app.set('trust proxy', 1); // We're behind Coolify's reverse proxy
 // Get port from env var, or try to detect from tenant config
 let PORT = process.env.PORT;
 if (!PORT) {
