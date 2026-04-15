@@ -679,7 +679,7 @@ app.get('/topic/:term', async (req, res, next) => {
         gameName: 'all',
         selectedValue: 'all',
         year: '',
-        sortOrder: 'default',
+        sortOrder: 'newest',
         page: 1,
         limit: 10,
         exactPhrase: false,
