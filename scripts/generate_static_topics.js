@@ -357,6 +357,7 @@ async function getPopularSearchTerms({ limit, websiteId, timeRange, umamiDbUrl }
          AND event_name NOT IN (${excludePlaceholders})
          ${timeFilter}
        GROUP BY event_name
+       HAVING COUNT(*) >= 3
        ORDER BY count DESC
        ${limitClause}`,
       [websiteId, ...excludedNames]

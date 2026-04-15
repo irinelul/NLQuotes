@@ -579,6 +579,14 @@ app.get('/api/topic/:term', async (req, res) => {
   }
 });
 
+// Strip trailing slash on /topic/ routes so /topic/cruise/ → /topic/cruise
+app.use('/topic', (req, res, next) => {
+  if (req.path !== '/' && req.path.endsWith('/')) {
+    return res.redirect(301, '/topic/' + req.path.slice(1, -1));
+  }
+  next();
+});
+
 // Serve pre-generated static topic pages if present (lets Google crawl real HTML at /topic/:term)
 app.get('/topic/:term', (req, res, next) => {
   try {
