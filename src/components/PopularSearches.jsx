@@ -54,7 +54,7 @@ export const PopularSearches = () => {
 
   // Calculate total searches and max count for popularity bars
   const totalSearches = popularTerms.reduce((sum, term) => sum + parseInt(term.count), 0);
-  const maxCount = Math.max(...popularTerms.map(term => parseInt(term.count)));
+  const maxCount = popularTerms.length > 0 ? Math.max(...popularTerms.map(term => parseInt(term.count))) : 1;
 
   return (
     <div className={styles.container}>
@@ -95,7 +95,7 @@ export const PopularSearches = () => {
              <span className={styles.statLabel}>Total Searches</span>
            </div>
            <div className={styles.statItem}>
-             <span className={styles.statNumber}>{Math.round(totalSearches / popularTerms.length)}</span>
+             <span className={styles.statNumber}>{popularTerms.length > 0 ? Math.round(totalSearches / popularTerms.length) : 0}</span>
              <span className={styles.statLabel}>Avg. Searches</span>
            </div>
          </div>

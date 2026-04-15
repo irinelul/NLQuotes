@@ -83,6 +83,29 @@ function tenantHtmlPlugin() {
         /(<meta charset="UTF-8" \/>)/,
         `$1\n    <link rel="icon" href="${favicon}" type="${iconType}" />\n    <link rel="apple-touch-icon" href="${favicon}" />`
       );
+
+      // Inject Umami script in dev HTML so custom event tracking works with npm run dev.
+      if (tenant?.umami?.scriptUrl && tenant?.umami?.websiteId) {
+        const scriptUrl = String(tenant.umami.scriptUrl).trim();
+        const websiteId = String(tenant.umami.websiteId).trim();
+        const isValidUrl = scriptUrl.startsWith('https://') &&
+          !scriptUrl.includes('<') &&
+          !scriptUrl.includes('>') &&
+          !scriptUrl.includes('"') &&
+          !scriptUrl.includes("'");
+        const isValidWebsiteId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(websiteId);
+
+        if (isValidUrl && isValidWebsiteId) {
+          const safeScriptUrl = scriptUrl.replace(/"/g, '&quot;');
+          const safeWebsiteId = websiteId.replace(/"/g, '&quot;');
+          const umamiScript = `<script defer src="${safeScriptUrl}" data-website-id="${safeWebsiteId}"></script>`;
+
+          transformedHtml = transformedHtml.replace(
+            /(<meta charset="UTF-8" \/>)/,
+            `$1\n    ${umamiScript}`
+          );
+        }
+      }
       
       // Update og:image:type based on ogImage file extension
       let ogImageType = 'image/png';

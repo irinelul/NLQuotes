@@ -11,7 +11,6 @@ const isHttps = window.location.protocol === 'https:';
 const pathPrefixes = [
     '/api', // Standard setup - TRY THIS FIRST
     '', // No prefix (direct routes)
-    '/app/api', // Potential subfolder configuration
 ];
 
 // Define possible base URLs for direct access if proxy fails
@@ -72,6 +71,8 @@ const makeApiRequest = async (endpoint, method = 'get', params = null, data = nu
                 status: error.response?.status,
                 message: error.message
             });
+            // For same-origin API endpoints, don't fall through to legacy path guessing.
+            throw error;
         }
     }
     
