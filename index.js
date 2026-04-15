@@ -9,8 +9,8 @@ import rateLimit from 'express-rate-limit';
 import slowDown from 'express-slow-down';
 import path from 'path';
 import { fileURLToPath } from 'url';
-// import analyticsModel from './models/analytics.js'; // Disabled — using Umami instead
 import { detectTenant, getTenantById, getAllTenants } from './tenants/tenant-manager.js';
+import { renderTopicHtml } from './utils/renderTopicHtml.js';
 
 // Load environment variables
 dotenv.config();
@@ -32,6 +32,7 @@ if (!dbUrlPattern.test(process.env.DATABASE_URL)) {
 }
 
 const app = express();
+app.set('trust proxy', 1); // We're behind Coolify's reverse proxy
 // Get port from env var, or try to detect from tenant config
 let PORT = process.env.PORT;
 if (!PORT) {
@@ -176,45 +177,68 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '250kb' })); // Limit payload size
 
-// ======= DYNAMIC ADS.TXT ENDPOINT =======
-// Must be BEFORE express.static() to ensure it's served dynamically
-// Based on Google AdSense best practices: https://support.google.com/adsense/answer/12171612
-app.get('/ads.txt', (req, res) => {
-  try {
-    const tenant = req.tenant || detectTenant(req.get('host') || 'localhost');
-    
-    // Only serve ads.txt for tenants that should have ads (exclude nlquotes/northernlion)
-    // But we'll still serve it for all tenants so Google can verify it exists
-    const publisherId = 'pub-3762231556668854';
-    const adsTxtContent = `google.com, ${publisherId}, DIRECT, f08c47fec0942fa0`;
-    
-    // Set appropriate headers for ads.txt
-    res.set({
-      'Content-Type': 'text/plain; charset=utf-8',
-      'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
-      'X-Content-Type-Options': 'nosniff'
-    });
-    
-    res.send(adsTxtContent);
-  } catch (error) {
-    console.error('Error serving ads.txt:', error);
-    res.status(500).send('# Error generating ads.txt');
-  }
-});
-
-// ======= STREAMLINED STATIC FILE SERVING =======
-// Serve static assets from dist/, but skip index.html so the SPA fallback
-// handles it (with tenant injection + proper no-cache headers)
-app.use(express.static(path.resolve(__dirname, 'dist'), {
-  index: false  // Don't serve index.html for '/' — let SPA fallback handle it
-}));
-
 // ======= REDUCED LOGGING =======
 // Only log essential information to reduce overhead
 morgan.token('method-path', (req) => `${req.method} ${req.path}`);
 morgan.token('response-info', (req, res) => `${res.statusCode} - ${res.getHeader('content-length') || 0}b`);
 app.use(morgan(':method-path :response-info :response-time ms', {
   skip: (req) => req.path.startsWith('/assets/')
+}));
+
+// ======= DYNAMIC SITEMAP =======
+// Scans dist/topic/ directory directly so on-demand generated pages appear automatically.
+app.get('/sitemap.xml', (req, res) => {
+  const today = new Date().toISOString().slice(0, 10);
+  const hostname = req.tenant?.hostnames?.[0] || 'nlquotes.com';
+  const base = `https://${hostname}`;
+  const escXml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  let topicPages = [];
+  try {
+    const topicRoot = path.resolve(__dirname, 'dist', 'topic');
+    if (fs.existsSync(topicRoot)) {
+      const entries = fs.readdirSync(topicRoot);
+      for (const encoded of entries) {
+        const indexPath = path.join(topicRoot, encoded, 'index.html');
+        if (fs.existsSync(indexPath)) {
+          const mtime = fs.statSync(indexPath).mtime;
+          topicPages.push({
+            url: `/topic/${encoded}`,
+            lastmod: mtime.toISOString().slice(0, 10),
+          });
+        }
+      }
+    }
+  } catch (e) { /* no topic pages yet, that's fine */ }
+
+  const urls = [
+    { loc: `${base}/`, lastmod: today, priority: '1.0' },
+    ...topicPages.map((p) => ({
+      loc: `${base}${p.url}`,
+      lastmod: p.lastmod,
+      priority: '0.7',
+    })),
+  ];
+
+  const xml =
+    '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+    urls.map((u) =>
+      `  <url>\n    <loc>${escXml(u.loc)}</loc>\n    <lastmod>${u.lastmod}</lastmod>\n    <priority>${u.priority}</priority>\n  </url>`
+    ).join('\n') +
+    '\n</urlset>\n';
+
+  res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.send(xml);
+});
+
+// ======= STREAMLINED STATIC FILE SERVING =======
+// Serve static assets from dist/, but skip index.html so the SPA fallback
+// handles it (with tenant injection + proper no-cache headers)
+app.use(express.static(path.resolve(__dirname, 'dist'), {
+  index: false,    // Don't serve index.html for '/' — let SPA fallback handle it
+  redirect: false  // Don't redirect /topic/foo to /topic/foo/ — causes redirect loops
 }));
 
 // ======= SECURITY FILTER =======
@@ -244,6 +268,9 @@ app.use((req, res, next) => {
 });
 
 // Add console logs at the start of the file to check routes loading
+
+// In-memory set to prevent concurrent duplicate on-demand topic generation
+const topicGenerating = new Set();
 
 // Cache for game titles per tenant
 const cachedGameLists = new Map();
@@ -565,51 +592,6 @@ app.get('/api/games', (req, res) => {
     }
 });
 
-// Add a global error handler with connection error recovery
-app.use((err, req, res, next) => {
-    console.error('Unhandled application error:', err.stack);
-    
-    // Check if it's a database connection error
-    const isDbConnectionError = 
-        err.message && (
-            err.message.includes('database') || 
-            err.message.includes('connection') || 
-            err.message.includes('PostgreSQL')
-        );
-    
-    if (isDbConnectionError) {
-        // Try to reconnect immediately
-        setTimeout(async () => {
-            try {
-                const defaultTenant = getDefaultTenant();
-                await quoteModel.checkHealth(defaultTenant);
-                console.log('Database reconnection successful after error');
-            } catch (e) {
-                console.error('Failed to reconnect to database:', e.message);
-            }
-        }, 1000);
-    }
-    
-    res.status(500).json({
-        error: 'Internal server error',
-        message: process.env.NODE_ENV === 'production' 
-            ? 'Something went wrong' 
-            : err.message
-    });
-});
-
-const errorHandler = (error, req, res, next) => {
-    console.error(error.message);
-    if (error.name === 'CastError') {
-        return res.status(400).send({ error: 'malformatted id' });
-    } else if (error.name === 'ValidationError') {
-        return res.status(400).json({ error: error.message });
-    }
-    next(error);
-};
-
-app.use(errorHandler);
-
 // Topic quotes endpoint
 app.get('/api/topic/:term', async (req, res) => {
   try {
@@ -650,30 +632,94 @@ app.get('/api/topic/:term', async (req, res) => {
   }
 });
 
-// Serve pre-generated static topic pages if present (lets Google crawl real HTML at /topic/:term)
-app.get('/topic/:term', (req, res, next) => {
-  try {
-    const encoded = encodeURIComponent(req.params.term);
-    const staticPath = path.resolve(__dirname, 'dist', 'topic', encoded, 'index.html');
-    if (fs.existsSync(staticPath)) {
-      return res.sendFile(staticPath);
-    }
-  } catch (e) {
-    console.error('Error serving static topic page:', e);
+// Strip trailing slash on /topic/ routes so /topic/cruise/ → /topic/cruise
+app.use('/topic', (req, res, next) => {
+  if (req.path !== '/' && req.path.endsWith('/')) {
+    return res.redirect(301, '/topic/' + req.path.slice(1, -1));
   }
   next();
 });
 
-// --- Analytics endpoint (disabled - using Umami instead) ---
-// IMPORTANT: This must be registered BEFORE the SPA fallback route
-app.post('/analytics', (req, res) => {
-    // In-house analytics disabled — Umami handles all analytics now
-    res.status(204).end();
-  });
+// Serve pre-generated static topic pages if present; generate on demand otherwise.
+app.get('/topic/:term', async (req, res, next) => {
+  const encoded = encodeURIComponent(req.params.term);
+  const staticPath = path.resolve(__dirname, 'dist', 'topic', encoded, 'index.html');
+
+  // Serve existing file immediately
+  try {
+    if (fs.existsSync(staticPath)) {
+      return res.sendFile(staticPath);
+    }
+  } catch (e) {
+    console.error('Error checking static topic page:', e);
+  }
+
+  // Generate on demand
+  const term = req.params.term;
+  try {
+    // If another request is already generating this page, wait briefly then re-check
+    if (topicGenerating.has(encoded)) {
+      // Poll for up to 10s (100ms intervals) before falling through to SPA
+      for (let i = 0; i < 100; i++) {
+        await new Promise((r) => setTimeout(r, 100));
+        if (fs.existsSync(staticPath)) {
+          return res.sendFile(staticPath);
+        }
+        if (!topicGenerating.has(encoded)) break;
+      }
+      // If still not ready, fall through to SPA
+      return next();
+    }
+
+    topicGenerating.add(encoded);
+    try {
+      const topicData = await quoteModel.search({
+        searchTerm: term,
+        searchPath: 'text',
+        gameName: 'all',
+        selectedValue: 'all',
+        year: '',
+        sortOrder: 'default',
+        page: 1,
+        limit: 10,
+        exactPhrase: false,
+        tenant: req.tenant,
+      });
+
+      if (!topicData?.totalQuotes || topicData.totalQuotes === 0) {
+        // No quotes — fall through to SPA
+        return next();
+      }
+
+      const hostname = req.tenant?.hostnames?.[0] || 'nlquotes.com';
+      const siteBaseUrl = `https://${hostname}`;
+      const html = renderTopicHtml({
+        term,
+        totalQuotes: topicData.totalQuotes,
+        videoGroups: topicData.data || [],
+        siteBaseUrl,
+      });
+
+      // Save to disk so subsequent requests are served as static files
+      const outDir = path.resolve(__dirname, 'dist', 'topic', encoded);
+      fs.mkdirSync(outDir, { recursive: true });
+      fs.writeFileSync(path.join(outDir, 'index.html'), html, 'utf8');
+      console.log(`[topic] Generated on demand: /topic/${encoded}`);
+
+      res.send(html);
+    } finally {
+      topicGenerating.delete(encoded);
+    }
+  } catch (e) {
+    topicGenerating.delete(encoded);
+    console.error('Error generating on-demand topic page:', e);
+    next();
+  }
+});
 
 // 404 handler for API routes (must come before SPA fallback)
 app.use((req, res, next) => {
-  if (req.path.startsWith('/api/') || req.path === '/analytics') {
+  if (req.path.startsWith('/api/')) {
     console.log(`[404] API route not found: ${req.method} ${req.path}`);
     return res.status(404).json({ error: 'API endpoint not found' });
   }
@@ -839,6 +885,43 @@ app.use((req, res, next) => {
   }
 });
 
+// Global error handler — must be last, after all routes
+app.use((err, req, res, next) => {
+    console.error('Unhandled application error:', err.stack);
+
+    if (err.name === 'CastError') {
+        return res.status(400).json({ error: 'Malformatted id' });
+    }
+    if (err.name === 'ValidationError') {
+        return res.status(400).json({ error: err.message });
+    }
+
+    const isDbConnectionError =
+        err.message && (
+            err.message.includes('database') ||
+            err.message.includes('connection') ||
+            err.message.includes('PostgreSQL')
+        );
+
+    if (isDbConnectionError) {
+        setTimeout(async () => {
+            try {
+                const defaultTenant = getDefaultTenant();
+                await quoteModel.checkHealth(defaultTenant);
+                console.log('Database reconnection successful after error');
+            } catch (e) {
+                console.error('Failed to reconnect to database:', e.message);
+            }
+        }, 1000);
+    }
+
+    res.status(500).json({
+        error: 'Internal server error',
+        message: process.env.NODE_ENV === 'production'
+            ? 'Something went wrong'
+            : err.message
+    });
+});
 
 // Create server with optimized settings
 const server = app.listen(PORT, '0.0.0.0', () => {
@@ -850,7 +933,6 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     console.log('- /api/games (game list)');
     console.log('- /api/flag (flag quotes)');
     console.log('- /api/topic/:term (topic quotes)');
-    console.log('- /analytics (POST - analytics tracking)');
     console.log('=================================');
 });
 

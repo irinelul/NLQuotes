@@ -239,11 +239,6 @@ export default defineConfig({
         target: `http://localhost:${API_PORT}`,
         changeOrigin: true,
         secure: false,
-      },
-      '/analytics': {
-        target: `http://localhost:${API_PORT}`,
-        changeOrigin: true,
-        secure: false,
       }
     }
   },

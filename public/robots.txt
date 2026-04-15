@@ -1,7 +1,5 @@
 User-agent: *
 Allow: /
 Disallow: /api/
-Disallow: /admin/
-Disallow: /private/
 
 Sitemap: https://nlquotes.com/sitemap.xml

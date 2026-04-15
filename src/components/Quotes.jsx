@@ -6,7 +6,6 @@ import { FlagModal } from './Modals/FlagModal';
 import { backdateTimestamp, formatDate, formatTimestamp } from '../services/dateHelpers';
 import { TENANT } from '../config/tenant';
 import query from '../services/quotes';
-import { AdSense } from './AdSense';
 
 // `b` is returned from ts_headline when a match is found
 const ALLOWED_TAGS = ['b'];
@@ -122,8 +121,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
 
   // Desktop layout
   const renderDesktopLayout = () => {
-    const AD_INTERVAL = 3; // Show ad after every 3 quote groups
-    
+
     return (
       <table className="quotes-table">
           <thead>
@@ -384,14 +382,6 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                           </div>
                       </td>
                   </tr>
-                  {/* Insert ad after every AD_INTERVAL quote groups */}
-                  {(index + 1) % AD_INTERVAL === 0 && index < quotes.length - 1 && (
-                      <tr>
-                          <td colSpan={2} style={{ padding: '1rem', textAlign: 'center' }}>
-                              <AdSense format="horizontal" style={{ margin: '1rem 0' }} />
-                          </td>
-                      </tr>
-                  )}
                   </React.Fragment>
               ))}
           </tbody>
@@ -401,8 +391,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
 
   // Mobile layout
   const renderMobileLayout = () => {
-    const AD_INTERVAL = 3; // Show ad after every 3 quote groups
-    
+
     return (
       <div className="mobile-quotes-container">
           {quotes.map((quoteGroup, index) => (
@@ -592,12 +581,6 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                       ))}
                   </div>
               </div>
-              {/* Insert ad after every AD_INTERVAL quote groups */}
-              {(index + 1) % AD_INTERVAL === 0 && index < quotes.length - 1 && (
-                  <div style={{ padding: '1rem', width: '100%' }}>
-                      <AdSense format="horizontal" style={{ margin: '1rem 0' }} />
-                  </div>
-              )}
               </React.Fragment>
           ))}
       </div>
@@ -609,8 +592,6 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
           {quotes.length > 0 ? (
               <>
                   {isMobileView ? renderMobileLayout() : renderDesktopLayout()}
-                  {/* Ad after quotes list - non-intrusive horizontal banner */}
-                  <AdSense format="horizontal" style={{ marginTop: '1.5rem', marginBottom: '1rem' }} />
               </>
           ) : (
               <div style={{

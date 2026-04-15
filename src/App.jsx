@@ -274,87 +274,49 @@ const App = () => {
         }
     };
 
+    const searchPageElement = <SearchPage
+        searchInput={searchInput}
+        setSearchInput={setSearchInput}
+        yearInput={yearInput}
+        setYearInput={setYearInput}
+        handleSearch={handleSearch}
+        handleKeyPress={handleKeyPress}
+        handleResetSearch={handleResetSearch}
+        handleRandomQuotes={handleRandomQuotes}
+        handleChannelChange={handleChannelChange}
+        handleYearChange={handleYearChange}
+        handleSortChange={handleSortChange}
+        handleGameChange={handleGameChange}
+        handleGameReset={handleGameReset}
+        loading={loading}
+        error={error}
+        channel={channel}
+        sort={sort}
+        game={game}
+        games={games}
+        page={page}
+        totalPages={totalPages}
+        totalQuotes={totalQuotes}
+        hasSearched={hasSearched}
+        quotes={quotes}
+        searchTerm={searchTerm}
+        numberFormatter={numberFormatter}
+        strict={strict}
+        feedbackModalOpen={feedbackModalOpen}
+        setFeedbackModalOpen={setFeedbackModalOpen}
+        submittingFeedback={submittingFeedback}
+        handleFeedbackSubmit={handleFeedbackSubmit}
+        handleLogoClick={handleLogoClick}
+        fetchQuotes={fetchQuotes}
+        handlePageChange={handlePageChange}
+        onChangelogClick={() => setChangelogModalOpen(true)}
+    />;
+
     return (
         <>
         <Routes>
-            <Route path="/" element={<SearchPage
-                searchInput={searchInput}
-                setSearchInput={setSearchInput}
-                yearInput={yearInput}
-                setYearInput={setYearInput}
-                handleSearch={handleSearch}
-                handleKeyPress={handleKeyPress}
-                handleResetSearch={handleResetSearch}
-                handleRandomQuotes={handleRandomQuotes}
-                handleChannelChange={handleChannelChange}
-                handleYearChange={handleYearChange}
-                handleSortChange={handleSortChange}
-                handleGameChange={handleGameChange}
-                handleGameReset={handleGameReset}
-                loading={loading}
-                error={error}
-                channel={channel}
-                sort={sort}
-                game={game}
-                games={games}
-                page={page}
-                totalPages={totalPages}
-                totalQuotes={totalQuotes}
-                hasSearched={hasSearched}
-                quotes={quotes}
-                searchTerm={searchTerm}
-                numberFormatter={numberFormatter}
-                strict={strict}
-                feedbackModalOpen={feedbackModalOpen}
-                setFeedbackModalOpen={setFeedbackModalOpen}
-                submittingFeedback={submittingFeedback}
-                handleFeedbackSubmit={handleFeedbackSubmit}
-                handleLogoClick={handleLogoClick}
-                fetchQuotes={fetchQuotes}
-                handlePageChange={handlePageChange}
-                onChangelogClick={() => {
-                    setChangelogModalOpen(true);
-                }}
-            />} />
-            <Route path="/search" element={<SearchPage
-                searchInput={searchInput}
-                setSearchInput={setSearchInput}
-                yearInput={yearInput}
-                setYearInput={setYearInput}
-                handleSearch={handleSearch}
-                handleKeyPress={handleKeyPress}
-                handleResetSearch={handleResetSearch}
-                handleRandomQuotes={handleRandomQuotes}
-                handleChannelChange={handleChannelChange}
-                handleYearChange={handleYearChange}
-                handleSortChange={handleSortChange}
-                handleGameChange={handleGameChange}
-                handleGameReset={handleGameReset}
-                loading={loading}
-                error={error}
-                channel={channel}
-                sort={sort}
-                game={game}
-                games={games}
-                page={page}
-                totalPages={totalPages}
-                totalQuotes={totalQuotes}
-                hasSearched={hasSearched}
-                quotes={quotes}
-                searchTerm={searchTerm}
-                numberFormatter={numberFormatter}
-                strict={strict}
-                feedbackModalOpen={feedbackModalOpen}
-                setFeedbackModalOpen={setFeedbackModalOpen}
-                submittingFeedback={submittingFeedback}
-                handleFeedbackSubmit={handleFeedbackSubmit}
-                handleLogoClick={handleLogoClick}
-                fetchQuotes={fetchQuotes}
-                handlePageChange={handlePageChange}
-                onChangelogClick={() => {
-                    setChangelogModalOpen(true);
-                }}
-            />} />
+            <Route path="/" element={searchPageElement} />
+            <Route path="/search" element={searchPageElement} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/nldle" element={<NLDLE />} />
             <Route path="/stats" element={<Stats />} />

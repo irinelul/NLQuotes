@@ -23,8 +23,8 @@ ENV VITE_GRAFANA_DASHBOARD_URL=$VITE_GRAFANA_DASHBOARD_URL
 ENV VITE_GRAFANA_DASHBOARD_URL_MOBILE=$VITE_GRAFANA_DASHBOARD_URL_MOBILE
 ENV TENANT_ID=$TENANT_ID
 
-# Skip static topic generation during Docker build (can be done post-deployment)
-# This prevents build timeouts when database is not available during build
+# Skip static topic generation during Docker build — no network access to umami at build time.
+# The entrypoint script runs it at container startup when the network is available.
 ENV SKIP_STATIC_TOPICS=true
 
 # Build the application (Vite will pick up the env vars)
@@ -39,5 +39,7 @@ ENV DATABASE_URL=${DATABASE_URL}
 # Expose the port (must match PORT)
 EXPOSE ${PORT}
 
-# Start the server with proper error handling
-CMD ["node", "--trace-warnings", "index.js"]
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
+CMD ["/app/docker-entrypoint.sh"]
