@@ -135,6 +135,14 @@ async function main() {
   }
 
   const topicOutRoot = path.join(distDir, 'topic');
+
+  // Wipe and recreate the topic directory so stale pages (old template, removed
+  // search terms) never linger. On-demand pages generated during runtime will
+  // simply be recreated on the next visit after a restart.
+  if (fs.existsSync(topicOutRoot)) {
+    fs.rmSync(topicOutRoot, { recursive: true, force: true });
+    console.log('[static-topics] Cleared existing topic pages.');
+  }
   ensureDir(topicOutRoot);
 
   const written = [];
@@ -152,16 +160,6 @@ async function main() {
       continue;
     }
     seenTerms.add(encoded);
-
-    const outFile = path.join(topicOutRoot, encoded, 'index.html');
-
-    // If the page was already generated (on-demand or prior startup run), skip re-generating.
-    // Still include in the written index so it appears in the sitemap.
-    if (fs.existsSync(outFile)) {
-      written.push({ term, url: `/topic/${encoded}`, lastSearched: row.last_searched });
-      console.log(`[static-topics] Already exists, skipping: /topic/${encoded}`);
-      continue;
-    }
 
     let topicData;
     try {
@@ -195,7 +193,7 @@ async function main() {
     ensureDir(outDir);
 
     fs.writeFileSync(
-      outFile,
+      path.join(outDir, 'index.html'),
       renderTopicHtml({
         term,
         totalQuotes:  topicData?.totalQuotes || 0,
