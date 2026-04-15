@@ -11,6 +11,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { detectTenant, getTenantById, getAllTenants } from './tenants/tenant-manager.js';
 import { renderTopicHtml } from './utils/renderTopicHtml.js';
+import { isBlockedTopic } from './utils/topicBlocklist.js';
 
 // Load environment variables
 dotenv.config();
@@ -656,6 +657,11 @@ app.get('/topic/:term', async (req, res, next) => {
 
   // Generate on demand
   const term = req.params.term;
+
+  if (isBlockedTopic(term)) {
+    return next(); // fall through to SPA, no static page generated
+  }
+
   try {
     // If another request is already generating this page, wait briefly then re-check
     if (topicGenerating.has(encoded)) {

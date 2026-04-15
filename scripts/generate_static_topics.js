@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import pkg from 'pg';
 import dotenv from 'dotenv';
 import { renderTopicHtml } from '../utils/renderTopicHtml.js';
+import { isBlockedTopic } from '../utils/topicBlocklist.js';
 
 const { Pool } = pkg;
 const __filename = fileURLToPath(import.meta.url);
@@ -160,6 +161,11 @@ async function main() {
       continue;
     }
     seenTerms.add(encoded);
+
+    if (isBlockedTopic(term)) {
+      console.log(`[static-topics] Skipping blocked term "${term}"`);
+      continue;
+    }
 
     let topicData;
     try {
