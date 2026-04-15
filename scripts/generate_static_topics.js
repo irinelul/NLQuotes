@@ -138,9 +138,30 @@ async function main() {
   ensureDir(topicOutRoot);
 
   const written = [];
+  const seenTerms = new Set(); // guard against duplicate rows from Umami
+
   for (const row of terms) {
     const term = row?.search_term?.trim();
     if (!term) continue;
+
+    const encoded = encodeURIComponent(term);
+
+    // Skip duplicates (shouldn't happen with GROUP BY but be safe)
+    if (seenTerms.has(encoded)) {
+      console.log(`[static-topics] Skipping duplicate "${term}"`);
+      continue;
+    }
+    seenTerms.add(encoded);
+
+    const outFile = path.join(topicOutRoot, encoded, 'index.html');
+
+    // If the page was already generated (on-demand or prior startup run), skip re-generating.
+    // Still include in the written index so it appears in the sitemap.
+    if (fs.existsSync(outFile)) {
+      written.push({ term, url: `/topic/${encoded}`, lastSearched: row.last_searched });
+      console.log(`[static-topics] Already exists, skipping: /topic/${encoded}`);
+      continue;
+    }
 
     let topicData;
     try {
@@ -170,12 +191,11 @@ async function main() {
       continue;
     }
 
-    const encoded = encodeURIComponent(term);
-    const outDir  = path.join(topicOutRoot, encoded);
+    const outDir = path.join(topicOutRoot, encoded);
     ensureDir(outDir);
 
     fs.writeFileSync(
-      path.join(outDir, 'index.html'),
+      outFile,
       renderTopicHtml({
         term,
         totalQuotes:  topicData?.totalQuotes || 0,
