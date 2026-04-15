@@ -348,7 +348,8 @@ async function getPopularSearchTerms({ limit, websiteId, timeRange, umamiDbUrl }
 
   try {
     const result = await pool.query(
-      `SELECT event_name AS search_term, COUNT(*) AS count
+      `SELECT event_name AS search_term, COUNT(*) AS count,
+              MAX(created_at) AS last_searched
        FROM website_event
        WHERE website_id = $1
          AND event_type = 2
@@ -482,7 +483,7 @@ async function main() {
       'utf8'
     );
 
-    written.push({ term, url: `/topic/${encoded}` });
+    written.push({ term, url: `/topic/${encoded}`, lastSearched: row.last_searched });
     console.log(`[static-topics] Wrote /topic/${encoded}`);
   }
 
@@ -503,11 +504,17 @@ function writeSitemapOnly({ distDir, siteBaseUrl }) {
 function writeSitemap({ distDir, siteBaseUrl, topicPages }) {
   const today = new Date().toISOString().slice(0, 10);
   const urls = [
-    { loc: `${siteBaseUrl}/`,        priority: '1.0' },
-    { loc: `${siteBaseUrl}/search`,  priority: '0.9' },
-    { loc: `${siteBaseUrl}/stats`,   priority: '0.5' },
-    { loc: `${siteBaseUrl}/privacy`, priority: '0.3' },
-    ...topicPages.map((p) => ({ loc: `${siteBaseUrl}${p.url}`, priority: '0.7' })),
+    { loc: `${siteBaseUrl}/`,        lastmod: today, priority: '1.0' },
+    { loc: `${siteBaseUrl}/search`,  lastmod: today, priority: '0.9' },
+    { loc: `${siteBaseUrl}/stats`,   lastmod: today, priority: '0.5' },
+    { loc: `${siteBaseUrl}/privacy`, lastmod: today, priority: '0.3' },
+    ...topicPages.map((p) => ({
+      loc: `${siteBaseUrl}${p.url}`,
+      lastmod: p.lastSearched
+        ? new Date(p.lastSearched).toISOString().slice(0, 10)
+        : today,
+      priority: '0.7',
+    })),
   ];
 
   const xml =
@@ -516,7 +523,7 @@ function writeSitemap({ distDir, siteBaseUrl, topicPages }) {
     urls.map((u) =>
       `  <url>\n` +
       `    <loc>${escapeHtml(u.loc)}</loc>\n` +
-      `    <lastmod>${today}</lastmod>\n` +
+      `    <lastmod>${u.lastmod || today}</lastmod>\n` +
       `    <priority>${u.priority}</priority>\n` +
       `  </url>`
     ).join('\n') +
