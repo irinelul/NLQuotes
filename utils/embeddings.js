@@ -10,10 +10,13 @@ const OUTPUT_DIM = process.env.EMBEDDING_OUTPUT_DIM
   : DIM;
 const VOYAGE_API_KEY = process.env.VOYAGE_API_KEY;
 const VOYAGE_URL = process.env.VOYAGE_URL || 'https://api.voyageai.com/v1/embeddings';
+const VOYAGE_RERANK_URL = process.env.VOYAGE_RERANK_URL || 'https://api.voyageai.com/v1/rerank';
+const RERANK_MODEL = process.env.VOYAGE_RERANK_MODEL || '';
 const GENERIC_URL = process.env.EMBEDDING_URL;
 const GENERIC_KEY = process.env.EMBEDDING_API_KEY;
 
 export const EMBEDDING_DIM = DIM;
+export const RERANK_ENABLED = Boolean(RERANK_MODEL && VOYAGE_API_KEY);
 
 export async function embedQuery(text) {
   const input = (text || '').trim();
@@ -57,6 +60,28 @@ export async function embedQuery(text) {
   }
 
   throw new Error(`Unknown EMBEDDING_PROVIDER: ${PROVIDER}`);
+}
+
+// Re-rank a set of candidate documents against the query using Voyage's
+// cross-encoder reranker. Returns an array of { index, relevance_score }
+// ordered best-first (index refers to the position in `documents`).
+export async function rerank(query, documents, topK) {
+  if (!RERANK_ENABLED) throw new Error('Rerank not enabled (set VOYAGE_RERANK_MODEL)');
+  if (!documents?.length) return [];
+  const body = {
+    query,
+    documents,
+    model: RERANK_MODEL,
+    top_k: topK || documents.length
+  };
+  const { data } = await axios.post(VOYAGE_RERANK_URL, body, {
+    headers: {
+      Authorization: `Bearer ${VOYAGE_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    timeout: 20000
+  });
+  return data?.data || [];
 }
 
 export function toPgVectorLiteral(vec) {

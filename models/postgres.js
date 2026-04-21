@@ -420,8 +420,10 @@ const quoteModel = {
 
   // Semantic search using pgvector cosine distance on the `embedding` column.
   // Expects `queryVector` to be a JS array of floats matching the stored embedding dim.
-  async semanticSearch({ queryVector, gameName, selectedValue, year, limit = 30, tenant = null }) {
-    limit = Math.min(100, Math.max(1, parseInt(limit) || 30));
+  // When `grouped=false`, returns flat rows (one per quote) — used as candidates
+  // for a reranker before the final grouping step in the API handler.
+  async semanticSearch({ queryVector, gameName, selectedValue, year, limit = 30, grouped = true, tenant = null }) {
+    limit = Math.min(500, Math.max(1, parseInt(limit) || 30));
 
     const vectorLiteral = `[${queryVector.join(',')}]`;
     const params = [vectorLiteral];
@@ -461,17 +463,20 @@ const quoteModel = {
 
     const whereSql = `WHERE ${whereClauses.join(' AND ')}`;
 
-    // Top-K quotes by cosine distance, then group by video keeping quote order by distance.
-    const query = `
-      WITH top_matches AS (
-        SELECT q.video_id, q.title, q.upload_date, q.channel_source,
-               q.text, q.line_number, q.timestamp_start,
-               q.embedding <=> $1::vector AS distance
-        FROM quotes q
-        ${whereSql}
-        ORDER BY q.embedding <=> $1::vector
-        LIMIT $${paramIndex}
-      )
+    // Flat mode returns one row per quote — used as rerank candidates.
+    const flatQuery = `
+      SELECT q.video_id, q.title, q.upload_date, q.channel_source,
+             q.text, q.line_number, q.timestamp_start,
+             q.embedding <=> $1::vector AS distance
+      FROM quotes q
+      ${whereSql}
+      ORDER BY q.embedding <=> $1::vector
+      LIMIT $${paramIndex}
+    `;
+
+    // Grouped mode returns one row per video, quotes ordered by distance.
+    const groupedQuery = `
+      WITH top_matches AS (${flatQuery})
       SELECT video_id, title, upload_date, channel_source,
              MIN(distance) AS best_distance,
              json_agg(json_build_object(
@@ -487,6 +492,7 @@ const quoteModel = {
       GROUP BY video_id, title, upload_date, channel_source
       ORDER BY best_distance ASC
     `;
+    const query = grouped ? groupedQuery : flatQuery;
     params.push(limit);
 
     const tenantId = tenant?.id || 'default';
@@ -497,8 +503,10 @@ const quoteModel = {
       const startTime = Date.now();
       const result = await client.query(query, params);
       const queryTime = Date.now() - startTime;
-      const totalQuotes = result.rows.reduce((acc, row) => acc + (row.quotes?.length || 0), 0);
-      console.log(`[Semantic] Tenant ${tenantId} - videos: ${result.rows.length}, quotes: ${totalQuotes}, time: ${queryTime}ms`);
+      const totalQuotes = grouped
+        ? result.rows.reduce((acc, row) => acc + (row.quotes?.length || 0), 0)
+        : result.rows.length;
+      console.log(`[Semantic] Tenant ${tenantId} - rows: ${result.rows.length}, quotes: ${totalQuotes}, grouped: ${grouped}, time: ${queryTime}ms`);
       return {
         data: result.rows,
         total: result.rows.length,

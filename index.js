@@ -12,7 +12,7 @@ import { fileURLToPath } from 'url';
 import { detectTenant, getTenantById, getAllTenants } from './tenants/tenant-manager.js';
 import { renderTopicHtml } from './utils/renderTopicHtml.js';
 import { isBlockedTopic } from './utils/topicBlocklist.js';
-import { embedQuery } from './utils/embeddings.js';
+import { embedQuery, rerank, RERANK_ENABLED } from './utils/embeddings.js';
 
 // Load environment variables
 dotenv.config();
@@ -460,14 +460,65 @@ app.get('/api/semantic', async (req, res) => {
         const queryVector = await embedQuery(searchTerm.trim());
         const embedTime = Date.now() - startTime;
 
-        const result = await quoteModel.semanticSearch({
-            queryVector,
-            gameName,
-            selectedValue,
-            year,
-            limit,
-            tenant: req.tenant
-        });
+        let data, totalQuotes, rerankTime = null, queryTime;
+
+        if (RERANK_ENABLED) {
+            // Stage 1: pull a wider flat candidate set from pgvector.
+            const CANDIDATE_LIMIT = Math.max(limit * 5, 100);
+            const flat = await quoteModel.semanticSearch({
+                queryVector, gameName, selectedValue, year,
+                limit: CANDIDATE_LIMIT, grouped: false, tenant: req.tenant
+            });
+            queryTime = flat.queryTime;
+
+            // Stage 2: rerank with a cross-encoder for precise ordering.
+            const docs = flat.data.map(r => r.text || '');
+            const rerankStart = Date.now();
+            const ranked = docs.length
+                ? await rerank(searchTerm.trim(), docs, Math.min(docs.length, limit * 3))
+                : [];
+            rerankTime = Date.now() - rerankStart;
+
+            // Stage 3: group the reranked quotes by video, preserving order.
+            const byVideo = new Map();
+            for (const item of ranked) {
+                const row = flat.data[item.index];
+                if (!row) continue;
+                const key = row.video_id;
+                const quote = {
+                    text: row.text,
+                    line_number: row.line_number,
+                    timestamp_start: row.timestamp_start,
+                    title: row.title,
+                    upload_date: row.upload_date,
+                    channel_source: row.channel_source,
+                    distance: row.distance,
+                    rerank_score: item.relevance_score
+                };
+                if (!byVideo.has(key)) {
+                    byVideo.set(key, {
+                        video_id: row.video_id,
+                        title: row.title,
+                        upload_date: row.upload_date,
+                        channel_source: row.channel_source,
+                        best_rerank_score: item.relevance_score,
+                        quotes: [quote]
+                    });
+                } else {
+                    byVideo.get(key).quotes.push(quote);
+                }
+            }
+            data = Array.from(byVideo.values()).slice(0, limit);
+            totalQuotes = data.reduce((acc, v) => acc + v.quotes.length, 0);
+        } else {
+            const result = await quoteModel.semanticSearch({
+                queryVector, gameName, selectedValue, year, limit, tenant: req.tenant
+            });
+            data = result.data;
+            totalQuotes = result.totalQuotes;
+            queryTime = result.queryTime;
+        }
+
         const totalTime = Date.now() - startTime;
 
         res.set({
@@ -479,12 +530,14 @@ app.get('/api/semantic', async (req, res) => {
         });
 
         res.json({
-            data: result.data,
-            total: result.total,
-            totalQuotes: result.totalQuotes,
-            queryTime: result.queryTime,
+            data,
+            total: data.length,
+            totalQuotes,
+            queryTime,
             embedTime,
+            rerankTime,
             totalTime,
+            reranked: RERANK_ENABLED,
             mode: 'semantic'
         });
     } catch (error) {
