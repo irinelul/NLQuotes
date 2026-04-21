@@ -418,6 +418,101 @@ const quoteModel = {
     }
   },
 
+  // Semantic search using pgvector cosine distance on the `embedding` column.
+  // Expects `queryVector` to be a JS array of floats matching the stored embedding dim.
+  async semanticSearch({ queryVector, gameName, selectedValue, year, limit = 30, tenant = null }) {
+    limit = Math.min(100, Math.max(1, parseInt(limit) || 30));
+
+    const vectorLiteral = `[${queryVector.join(',')}]`;
+    const params = [vectorLiteral];
+    let paramIndex = 2;
+    const whereClauses = ['q.embedding IS NOT NULL'];
+
+    if (gameName && gameName !== 'all') {
+      const cleanGameName = gameName.replace(/['";]/g, '').trim();
+      if (cleanGameName.length > 2) {
+        whereClauses.push(`q.game_name = $${paramIndex}`);
+        params.push(cleanGameName);
+        paramIndex++;
+      }
+    }
+
+    if (selectedValue && selectedValue !== 'all') {
+      let validChannels = ['librarian', 'northernlion'];
+      if (tenant && tenant.channels) {
+        validChannels = tenant.channels.filter(ch => ch.id !== 'all').map(ch => ch.id.toLowerCase());
+      }
+      const lowerSelectedValue = selectedValue.toLowerCase();
+      if (validChannels.includes(lowerSelectedValue)) {
+        whereClauses.push(`LOWER(q.channel_source) = $${paramIndex}`);
+        params.push(lowerSelectedValue);
+        paramIndex++;
+      }
+    }
+
+    if (year && year.toString().trim() !== '') {
+      const yearInt = parseInt(year);
+      if (!isNaN(yearInt)) {
+        whereClauses.push(`EXTRACT(YEAR FROM q.upload_date) = $${paramIndex}`);
+        params.push(yearInt);
+        paramIndex++;
+      }
+    }
+
+    const whereSql = `WHERE ${whereClauses.join(' AND ')}`;
+
+    // Top-K quotes by cosine distance, then group by video keeping quote order by distance.
+    const query = `
+      WITH top_matches AS (
+        SELECT q.video_id, q.title, q.upload_date, q.channel_source,
+               q.text, q.line_number, q.timestamp_start,
+               q.embedding <=> $1::vector AS distance
+        FROM quotes q
+        ${whereSql}
+        ORDER BY q.embedding <=> $1::vector
+        LIMIT $${paramIndex}
+      )
+      SELECT video_id, title, upload_date, channel_source,
+             MIN(distance) AS best_distance,
+             json_agg(json_build_object(
+               'text', text,
+               'line_number', line_number,
+               'timestamp_start', timestamp_start,
+               'title', title,
+               'upload_date', upload_date,
+               'channel_source', channel_source,
+               'distance', distance
+             ) ORDER BY distance) AS quotes
+      FROM top_matches
+      GROUP BY video_id, title, upload_date, channel_source
+      ORDER BY best_distance ASC
+    `;
+    params.push(limit);
+
+    const tenantId = tenant?.id || 'default';
+    let client;
+    try {
+      const pool = getPoolForTenant(tenant);
+      client = await pool.connect();
+      const startTime = Date.now();
+      const result = await client.query(query, params);
+      const queryTime = Date.now() - startTime;
+      const totalQuotes = result.rows.reduce((acc, row) => acc + (row.quotes?.length || 0), 0);
+      console.log(`[Semantic] Tenant ${tenantId} - videos: ${result.rows.length}, quotes: ${totalQuotes}, time: ${queryTime}ms`);
+      return {
+        data: result.rows,
+        total: result.rows.length,
+        totalQuotes,
+        queryTime
+      };
+    } catch (error) {
+      console.error(`[Semantic] Query error for tenant ${tenantId}:`, error);
+      throw new Error(`Semantic search failed: ${error.message}`);
+    } finally {
+      if (client) client.release();
+    }
+  },
+
   // Get stats (no changes needed, assumes indexes help GROUP BY)
   async getStats(tenant = null) {
     const query = `

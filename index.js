@@ -12,6 +12,7 @@ import { fileURLToPath } from 'url';
 import { detectTenant, getTenantById, getAllTenants } from './tenants/tenant-manager.js';
 import { renderTopicHtml } from './utils/renderTopicHtml.js';
 import { isBlockedTopic } from './utils/topicBlocklist.js';
+import { embedQuery } from './utils/embeddings.js';
 
 // Load environment variables
 dotenv.config();
@@ -430,6 +431,70 @@ app.get('/api', async (req, res) => {
         res.status(500).json({ 
             error: 'Search failed',
             details: 'An error occurred while processing your request' // Don't expose actual error details
+        });
+    }
+});
+
+
+// Semantic search: embed the query and rank quotes by cosine distance on the `embedding` column.
+app.get('/api/semantic', async (req, res) => {
+    const tenantId = req.tenant?.id || 'unknown';
+    const searchTerm = (req.query.search || '').toString();
+    const selectedValue = req.query.channel || 'all';
+    const year = req.query.year || '';
+    const gameName = req.query.game || 'all';
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 30));
+
+    console.log(`[Semantic] Request - tenant: ${tenantId}, term: "${searchTerm}", channel: ${selectedValue}, year: ${year}, game: ${gameName}`);
+
+    if (!searchTerm.trim() || searchTerm.trim().length < 3) {
+        return res.status(400).json({ error: 'Please enter at least 3 characters' });
+    }
+
+    if (!req.tenant) {
+        return res.status(500).json({ error: 'Tenant configuration not found' });
+    }
+
+    try {
+        const startTime = Date.now();
+        const queryVector = await embedQuery(searchTerm.trim());
+        const embedTime = Date.now() - startTime;
+
+        const result = await quoteModel.semanticSearch({
+            queryVector,
+            gameName,
+            selectedValue,
+            year,
+            limit,
+            tenant: req.tenant
+        });
+        const totalTime = Date.now() - startTime;
+
+        res.set({
+            'X-Response-Time': `${totalTime}ms`,
+            'X-Embed-Time': `${embedTime}ms`,
+            'X-Content-Type-Options': 'nosniff',
+            'X-Frame-Options': 'DENY',
+            'Strict-Transport-Security': 'max-age=31536000; includeSubDomains'
+        });
+
+        res.json({
+            data: result.data,
+            total: result.total,
+            totalQuotes: result.totalQuotes,
+            queryTime: result.queryTime,
+            embedTime,
+            totalTime,
+            mode: 'semantic'
+        });
+    } catch (error) {
+        console.error('[Semantic] Error:', error.message);
+        const status = error.message?.includes('API_KEY') ? 500 : 500;
+        res.status(status).json({
+            error: 'Semantic search failed',
+            details: error.message?.includes('API_KEY') || error.message?.includes('not set')
+                ? 'Embedding service not configured'
+                : 'An error occurred while processing your request'
         });
     }
 });

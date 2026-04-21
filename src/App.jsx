@@ -47,6 +47,7 @@ const App = () => {
     const year = searchParams.get('year') || '';
     const sort = searchParams.get('sort') || 'default';
     const game = searchParams.get('game') || 'all';
+    const mode = searchParams.get('mode') || 'keyword';
 
     // Add local state for search input
     const [searchInput, setSearchInput] = useState(searchTerm);
@@ -72,14 +73,18 @@ const App = () => {
             setError(null);
             setQuotes([]);
             setHasSearched(true);
-            fetchQuotes(page, channel, year, sort, strict, game);
+            if (mode === 'semantic') {
+                fetchSemanticQuotes(channel, year, game);
+            } else {
+                fetchQuotes(page, channel, year, sort, strict, game);
+            }
         } else if (!searchTerm) {
             setQuotes([]);
             setTotalPages(0);
             setTotalQuotes(0);
             setHasSearched(false);
         }
-    }, [searchTerm, page, channel, year, sort, game]);
+    }, [searchTerm, page, channel, year, sort, game, mode]);
 
     const handleChannelChange = (channelId) => {
         navigate(buildSearchUrl({ channel: channelId, page: 1 }));
@@ -122,7 +127,17 @@ const App = () => {
         e.preventDefault();
         if (searchInput.trim().length > 2) {
             trackUmamiSearch(searchInput);
-            navigate(buildSearchUrl({ q: searchInput, page: 1 }));
+            navigate(buildSearchUrl({ q: searchInput, page: 1, mode: 'keyword' }));
+        } else {
+            setError('Please enter at least 3 characters to search');
+            setTimeout(() => setError(null), 3000);
+        }
+    };
+
+    const handleSemanticSearch = () => {
+        if (searchInput.trim().length > 2) {
+            trackUmamiSearch(searchInput);
+            navigate(buildSearchUrl({ q: searchInput, page: 1, mode: 'semantic' }));
         } else {
             setError('Please enter at least 3 characters to search');
             setTimeout(() => setError(null), 3000);
@@ -133,7 +148,7 @@ const App = () => {
         if (event.key === 'Enter' && !loading) {
             if (searchInput.trim().length > 2) {
                 trackUmamiSearch(searchInput);
-                navigate(buildSearchUrl({ q: searchInput, page: 1 }));
+                navigate(buildSearchUrl({ q: searchInput, page: 1, mode: mode === 'semantic' ? 'semantic' : 'keyword' }));
             } else {
                 setError('Please enter at least 3 characters to search');
                 setTimeout(() => setError(null), 3000);
@@ -162,11 +177,12 @@ const App = () => {
             year,
             sort,
             game,
+            mode,
             ...overrides
         };
-        // Remove empty/default values
+        // Remove empty/default values ('keyword' is the default mode)
         const query = Object.entries(params)
-            .filter(([, v]) => v && v !== 'all' && v !== 'default' && v !== 1 && v !== '1')
+            .filter(([, v]) => v && v !== 'all' && v !== 'default' && v !== 1 && v !== '1' && v !== 'keyword')
             .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
             .join('&');
         return `${basePath}?${query}`;
@@ -240,6 +256,24 @@ const App = () => {
         navigate("/", { replace: true });
     };
 
+    const fetchSemanticQuotes = async (channel, year, game) => {
+        try {
+            const response = await query.semanticSearch(searchTerm, channel, year, game);
+            setQuotes(response.data || []);
+            setTotalPages(1);
+            setTotalQuotes(response.totalQuotes || 0);
+        } catch (error) {
+            console.error('Error fetching semantic quotes:', error);
+            const detail = error.response?.data?.details || error.response?.data?.error;
+            setError(detail || 'Unable to run semantic search.');
+            setQuotes([]);
+            setTotalPages(0);
+            setTotalQuotes(0);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const fetchQuotes = async (pageNum, channel, year, sort, strictMode, game) => {
         try {
             console.log('[App] fetchQuotes called with:', { searchTerm, pageNum, channel, year, sort, game });
@@ -280,6 +314,8 @@ const App = () => {
         yearInput={yearInput}
         setYearInput={setYearInput}
         handleSearch={handleSearch}
+        handleSemanticSearch={handleSemanticSearch}
+        mode={mode}
         handleKeyPress={handleKeyPress}
         handleResetSearch={handleResetSearch}
         handleRandomQuotes={handleRandomQuotes}

@@ -166,6 +166,27 @@ const getAll = async (searchTerm, page, strict, selectedValue, selectedMode, yea
     }
 };
 
+const semanticSearch = async (searchTerm, selectedValue, year, gameName) => {
+    try {
+        const response = await makeApiRequest('/api/semantic', 'get', {
+            search: searchTerm || '',
+            channel: selectedValue || 'all',
+            year: year || '',
+            game: gameName || 'all'
+        });
+        return {
+            data: response.data.data || [],
+            total: response.data.total || 0,
+            totalQuotes: response.data.totalQuotes || 0,
+            embedTime: response.data.embedTime,
+            queryTime: response.data.queryTime
+        };
+    } catch (error) {
+        console.error('Error running semantic search:', error);
+        throw error;
+    }
+};
+
 const flagQuote = async (quoteData) => {
     try {
         // Use /api/flag directly since the endpoint is /api/flag
@@ -201,4 +222,5 @@ export default {
     getAll,
     flagQuote,
     getRandomQuotes,
+    semanticSearch,
 }
