@@ -34,6 +34,26 @@ const Disclaimer = () => {
 
         <div className={styles.tips}>
           <div className={styles.tip}>
+            <span>🧠</span>
+            <div>
+              <strong>Two buttons: Search vs. Semantic</strong>
+              <p><strong>🔍 Search</strong> — finds the exact words you type. Use it when you remember what was said.</p>
+              <p><strong>🧠 Semantic</strong> — finds quotes that mean the same thing, even with different words. Use it when you only remember what happened, not the exact words.</p>
+              <div className={styles.examples}>
+                <div className={styles.example}>
+                  <p className={styles.exampleTitle}>Try Semantic with things like:</p>
+                  <div className={styles.exampleDescription}>
+                    <p>🧠 {isNorthernlion ? 'getting mad at the game' : 'getting frustrated'}</p>
+                    <p>🧠 {isNorthernlion ? 'bragging about a win' : 'showing off a victory'}</p>
+                    <p>🧠 {isNorthernlion ? 'weird food opinions' : 'strange food takes'}</p>
+                    <p>🧠 {isNorthernlion ? 'complaining about chat' : 'chat drama'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className={styles.tip}>
             <span>⚡</span>
             <div>
               <strong>Flexible vs. Exact Searching</strong>
