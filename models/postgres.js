@@ -487,7 +487,7 @@ const quoteModel = {
                'upload_date', upload_date,
                'channel_source', channel_source,
                'distance', distance
-             ) ORDER BY distance) AS quotes
+             ) ORDER BY timestamp_start ASC) AS quotes
       FROM top_matches
       GROUP BY video_id, title, upload_date, channel_source
       ORDER BY best_distance ASC

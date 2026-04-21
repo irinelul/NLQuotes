@@ -508,6 +508,12 @@ app.get('/api/semantic', async (req, res) => {
                     byVideo.get(key).quotes.push(quote);
                 }
             }
+            // Within each video, show quotes in chronological order so
+            // adjacent moments read naturally. Video order still follows
+            // the best rerank score.
+            for (const v of byVideo.values()) {
+                v.quotes.sort((a, b) => (a.timestamp_start || 0) - (b.timestamp_start || 0));
+            }
             data = Array.from(byVideo.values()).slice(0, limit);
             totalQuotes = data.reduce((acc, v) => acc + v.quotes.length, 0);
         } else {
