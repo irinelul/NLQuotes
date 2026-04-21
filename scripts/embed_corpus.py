@@ -48,7 +48,10 @@ import psycopg2.extras
 import voyageai
 from tqdm import tqdm
 
-MODEL       = os.environ.get("EMBEDDING_MODEL", "voyage-3-large")
+MODEL       = os.environ.get("EMBEDDING_MODEL", "voyage-4-large")
+# If set, truncates embeddings to this dim (Matryoshka). MUST match the
+# pgvector column dim AND the server's EMBEDDING_OUTPUT_DIM at query time.
+OUTPUT_DIM  = int(os.environ["EMBEDDING_OUTPUT_DIM"]) if os.environ.get("EMBEDDING_OUTPUT_DIM") else None
 BATCH_SIZE  = int(os.environ.get("BATCH_SIZE", "64"))   # texts per API call
 FETCH_SIZE  = int(os.environ.get("FETCH_SIZE", "2000"))  # rows per DB fetch
 MAX_CHARS   = int(os.environ.get("MAX_CHARS", "8000"))   # hard cap per text
@@ -68,9 +71,12 @@ def to_vector_literal(vec):
 def embed_with_retry(texts):
     """Call Voyage with exponential backoff on transient errors."""
     delay = 2.0
+    kwargs = {"model": MODEL, "input_type": "document"}
+    if OUTPUT_DIM:
+        kwargs["output_dimension"] = OUTPUT_DIM
     for attempt in range(MAX_RETRIES):
         try:
-            result = vo.embed(texts, model=MODEL, input_type="document")
+            result = vo.embed(texts, **kwargs)
             return result.embeddings
         except Exception as e:
             msg = str(e)
@@ -97,6 +103,8 @@ def main():
     print(f"Corpus size: {total:,} rows")
     print(f"To embed:    {remaining:,} rows (resumable — skips rows with non-NULL embedding)")
     print(f"Model:       {MODEL}")
+    if OUTPUT_DIM:
+        print(f"Output dim:  {OUTPUT_DIM} (Matryoshka truncation)")
     print(f"Batch size:  {BATCH_SIZE} per API call, {FETCH_SIZE} per DB fetch")
 
     if remaining == 0:

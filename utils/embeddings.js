@@ -1,8 +1,13 @@
 import axios from 'axios';
 
 const PROVIDER = (process.env.EMBEDDING_PROVIDER || 'voyage').toLowerCase();
-const MODEL = process.env.EMBEDDING_MODEL || 'voyage-3-large';
+const MODEL = process.env.EMBEDDING_MODEL || 'voyage-4-large';
 const DIM = parseInt(process.env.EMBEDDING_DIM) || 1024;
+// If set, asks Voyage to truncate the embedding to this dim (Matryoshka).
+// Must match the dim used at corpus-embedding time AND the pgvector column.
+const OUTPUT_DIM = process.env.EMBEDDING_OUTPUT_DIM
+  ? parseInt(process.env.EMBEDDING_OUTPUT_DIM)
+  : DIM;
 const VOYAGE_API_KEY = process.env.VOYAGE_API_KEY;
 const VOYAGE_URL = process.env.VOYAGE_URL || 'https://api.voyageai.com/v1/embeddings';
 const GENERIC_URL = process.env.EMBEDDING_URL;
@@ -16,9 +21,11 @@ export async function embedQuery(text) {
 
   if (PROVIDER === 'voyage') {
     if (!VOYAGE_API_KEY) throw new Error('VOYAGE_API_KEY not set');
+    const body = { input: [input], model: MODEL, input_type: 'query' };
+    if (OUTPUT_DIM) body.output_dimension = OUTPUT_DIM;
     const { data } = await axios.post(
       VOYAGE_URL,
-      { input: [input], model: MODEL, input_type: 'query' },
+      body,
       {
         headers: {
           Authorization: `Bearer ${VOYAGE_API_KEY}`,
