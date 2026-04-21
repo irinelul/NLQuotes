@@ -443,7 +443,7 @@ app.get('/api/semantic', async (req, res) => {
     const selectedValue = req.query.channel || 'all';
     const year = req.query.year || '';
     const gameName = req.query.game || 'all';
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 30));
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
 
     console.log(`[Semantic] Request - tenant: ${tenantId}, term: "${searchTerm}", channel: ${selectedValue}, year: ${year}, game: ${gameName}`);
 
