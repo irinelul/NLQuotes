@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NL movie mentions</title>
+<style>
+  body { font: 14px system-ui, sans-serif; max-width: 1100px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+  h1 { margin: 0 0 .25rem; }
+  .sub { color: #666; margin-bottom: 1.5rem; }
+  .controls { display: flex; gap: .5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+  input[type=file], input[type=search] { padding: .4rem .6rem; font: inherit; border: 1px solid #ccc; border-radius: 4px; }
+  input[type=search] { flex: 1; min-width: 200px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: .5rem .6rem; border-bottom: 1px solid #eee; vertical-align: top; text-align: left; }
+  th { background: #f5f5f5; cursor: pointer; user-select: none; }
+  th.sorted::after { content: " ▾"; }
+  .movie-row { background: #fafbff; }
+  .movie-row td { font-weight: 600; }
+  .quote-row td { font-size: 13px; color: #444; padding-left: 2rem; }
+  .quote-row .note { color: #111; font-style: italic; }
+  .sentiment { display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+  .s-love    { background: #d4f7d4; color: #0a6c0a; }
+  .s-like    { background: #e6f4d4; color: #4a6c0a; }
+  .s-neutral { background: #eee; color: #555; }
+  .s-dislike { background: #fde0c7; color: #7a3500; }
+  .s-hate    { background: #fad4d4; color: #8a0000; }
+  .s-unclear { background: #e8e0fa; color: #4a2e8a; }
+  details summary { cursor: pointer; }
+  a { color: #2255c4; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .summary-counts { color: #666; }
+</style>
+</head>
+<body>
+
+<h1>NL movie mentions</h1>
+<div class="sub">Drop an <code>extractions.jsonl</code> file (or paste its contents below).</div>
+
+<div class="controls">
+  <input type="file" id="file" accept=".jsonl,application/x-ndjson,text/plain">
+  <input type="search" id="search" placeholder="Filter by movie title or quote text…">
+</div>
+
+<div id="summary" class="summary-counts"></div>
+<table id="t">
+  <thead>
+    <tr>
+      <th data-sort="title">Movie</th>
+      <th data-sort="count">Mentions</th>
+      <th data-sort="love">love</th>
+      <th data-sort="like">like</th>
+      <th data-sort="dislike">dislike</th>
+      <th data-sort="hate">hate</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script>
+let groups = [];      // [{title, count, sents:{}, quotes:[...]}]
+let sortKey = "count";
+
+function youtubeLink(vid, ts) {
+  const t = Math.floor(parseFloat(ts || 0));
+  return `https://youtu.be/${vid}?t=${t}`;
+}
+
+function normalizeTitle(t) {
+  return (t || "").trim().toLowerCase().replace(/^the\s+/, "").replace(/[^\w\s]/g, "");
+}
+
+function load(rows) {
+  const byTitle = new Map();
+  for (const row of rows) {
+    const ext = row.extraction || {};
+    const title = (ext.movie_title || "").trim();
+    if (!title) continue;
+    const key = normalizeTitle(title);
+    if (!byTitle.has(key)) {
+      byTitle.set(key, {
+        title,
+        count: 0,
+        sents: { love:0, like:0, neutral:0, dislike:0, hate:0, unclear:0 },
+        quotes: [],
+      });
+    }
+    const g = byTitle.get(key);
+    g.count++;
+    g.sents[ext.sentiment || "unclear"]++;
+    g.quotes.push({
+      text: row.text,
+      note: ext.note || "",
+      sentiment: ext.sentiment || "unclear",
+      video_id: row.video_id,
+      timestamp_start: row.timestamp_start,
+      upload_date: row.upload_date,
+    });
+  }
+  groups = Array.from(byTitle.values());
+  render();
+}
+
+function render() {
+  const q = document.getElementById("search").value.trim().toLowerCase();
+  let g = groups;
+  if (q) {
+    g = g.map(grp => ({
+      ...grp,
+      quotes: grp.quotes.filter(qu =>
+        grp.title.toLowerCase().includes(q) ||
+        qu.text.toLowerCase().includes(q) ||
+        qu.note.toLowerCase().includes(q)
+      ),
+    })).filter(grp => grp.title.toLowerCase().includes(q) || grp.quotes.length);
+  }
+
+  const sorters = {
+    title: (a, b) => a.title.localeCompare(b.title),
+    count: (a, b) => b.count - a.count,
+    love:  (a, b) => b.sents.love - a.sents.love,
+    like:  (a, b) => b.sents.like - a.sents.like,
+    dislike: (a, b) => b.sents.dislike - a.sents.dislike,
+    hate:  (a, b) => b.sents.hate - a.sents.hate,
+  };
+  g = [...g].sort(sorters[sortKey] || sorters.count);
+
+  document.getElementById("summary").textContent =
+    `${g.length} unique films · ${g.reduce((a, x) => a + x.count, 0)} mentions`;
+
+  document.querySelectorAll("th").forEach(th => {
+    th.classList.toggle("sorted", th.dataset.sort === sortKey);
+  });
+
+  const tbody = document.querySelector("#t tbody");
+  tbody.innerHTML = "";
+  for (const grp of g) {
+    const tr = document.createElement("tr");
+    tr.className = "movie-row";
+    tr.innerHTML = `
+      <td>
+        <details>
+          <summary>${escapeHtml(grp.title)}</summary>
+        </details>
+      </td>
+      <td>${grp.count}</td>
+      <td>${grp.sents.love}</td>
+      <td>${grp.sents.like}</td>
+      <td>${grp.sents.dislike}</td>
+      <td>${grp.sents.hate}</td>
+    `;
+    tbody.appendChild(tr);
+
+    const det = tr.querySelector("details");
+    det.addEventListener("toggle", () => {
+      // Lazy-render quote rows beneath when expanded.
+      const next = tr.nextElementSibling;
+      if (det.open) {
+        if (next && next.classList.contains("quotes-block")) return;
+        const block = document.createElement("tr");
+        block.className = "quotes-block";
+        block.innerHTML = `<td colspan="6"><table style="width:100%;">${
+          grp.quotes
+            .sort((a, b) => (a.upload_date || "").localeCompare(b.upload_date || ""))
+            .map(qu => `
+            <tr class="quote-row">
+              <td style="width:90px; color:#888;">${qu.upload_date || ""}</td>
+              <td style="width:90px;"><span class="sentiment s-${qu.sentiment}">${qu.sentiment}</span></td>
+              <td>
+                <div class="note">${escapeHtml(qu.note || "—")}</div>
+                <div>${escapeHtml(qu.text)}</div>
+                <a href="${youtubeLink(qu.video_id, qu.timestamp_start)}" target="_blank">▶ open at ${qu.timestamp_start}s</a>
+              </td>
+            </tr>`).join("")
+        }</table></td>`;
+        tr.after(block);
+      } else if (next && next.classList.contains("quotes-block")) {
+        next.remove();
+      }
+    });
+  }
+}
+
+function escapeHtml(s) {
+  return (s || "").replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+
+document.getElementById("file").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const text = await file.text();
+  const rows = text.split("\n").filter(Boolean).map(l => {
+    try { return JSON.parse(l); } catch { return null; }
+  }).filter(Boolean);
+  load(rows);
+});
+
+document.getElementById("search").addEventListener("input", render);
+document.querySelectorAll("th").forEach(th => {
+  th.addEventListener("click", () => {
+    sortKey = th.dataset.sort;
+    render();
+  });
+});
+</script>
+
+</body>
+</html>
