@@ -464,7 +464,7 @@ app.get('/api/semantic', async (req, res) => {
 
         if (RERANK_ENABLED) {
             // Stage 1: pull a wider flat candidate set from pgvector.
-            const CANDIDATE_LIMIT = Math.max(limit * 5, 100);
+            const CANDIDATE_LIMIT = Math.max(limit * 5, 150);
             const flat = await quoteModel.semanticSearch({
                 queryVector, gameName, selectedValue, year,
                 limit: CANDIDATE_LIMIT, grouped: false, tenant: req.tenant
