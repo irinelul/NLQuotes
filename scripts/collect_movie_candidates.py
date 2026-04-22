@@ -159,47 +159,51 @@ def main():
 
         # Hydrate the candidate rows with the fields stage 2 needs, plus
         # the immediately preceding and following quote (same video) for
-        # context. line_number is varchar in the schema but is reliably
-        # numeric, so cast for the +/- 1 join.
-        cur.execute(
-            """
-            WITH cand AS (
-              SELECT id, video_id, line_number, timestamp_start,
-                     upload_date, title, channel_source, text,
-                     line_number::int AS ln
-              FROM quotes
-              WHERE id = ANY(%s)
+        # context. line_number is varchar but reliably numeric, so cast.
+        # Chunked to avoid blowing /dev/shm with a 70K x 2.27M hash join.
+        ids = sorted(candidate_ids)
+        CHUNK = int(os.environ.get("HYDRATE_CHUNK", "2000"))
+        for i in tqdm(range(0, len(ids), CHUNK), desc="hydrate", file=sys.stderr):
+            chunk_ids = ids[i:i + CHUNK]
+            cur.execute(
+                """
+                WITH cand AS (
+                  SELECT id, video_id, line_number, timestamp_start,
+                         upload_date, title, channel_source, text,
+                         line_number::int AS ln
+                  FROM quotes
+                  WHERE id = ANY(%s)
+                )
+                SELECT c.id, c.video_id, c.line_number, c.timestamp_start,
+                       c.upload_date, c.title, c.channel_source, c.text,
+                       prev.text AS prev_text, next.text AS next_text
+                FROM cand c
+                LEFT JOIN quotes prev
+                  ON prev.video_id = c.video_id
+                 AND prev.line_number::int = c.ln - 1
+                LEFT JOIN quotes next
+                  ON next.video_id = c.video_id
+                 AND next.line_number::int = c.ln + 1
+                ORDER BY c.upload_date, c.id
+                """,
+                (chunk_ids,),
             )
-            SELECT c.id, c.video_id, c.line_number, c.timestamp_start,
-                   c.upload_date, c.title, c.channel_source, c.text,
-                   prev.text AS prev_text, next.text AS next_text
-            FROM cand c
-            LEFT JOIN quotes prev
-              ON prev.video_id = c.video_id
-             AND prev.line_number::int = c.ln - 1
-            LEFT JOIN quotes next
-              ON next.video_id = c.video_id
-             AND next.line_number::int = c.ln + 1
-            ORDER BY c.upload_date, c.id
-            """,
-            (list(candidate_ids),),
-        )
-        for row in cur:
-            (qid, video_id, line_number, ts_start,
-             upload_date, title, channel, text,
-             prev_text, next_text) = row
-            out_file.write(json.dumps({
-                "id": qid,
-                "video_id": video_id,
-                "line_number": line_number,
-                "timestamp_start": ts_start,
-                "upload_date": upload_date.isoformat() if upload_date else None,
-                "title": title,
-                "channel_source": channel,
-                "text": text,
-                "prev_text": prev_text,
-                "next_text": next_text,
-            }, ensure_ascii=False) + "\n")
+            for row in cur.fetchall():
+                (qid, video_id, line_number, ts_start,
+                 upload_date, title, channel, text,
+                 prev_text, next_text) = row
+                out_file.write(json.dumps({
+                    "id": qid,
+                    "video_id": video_id,
+                    "line_number": line_number,
+                    "timestamp_start": ts_start,
+                    "upload_date": upload_date.isoformat() if upload_date else None,
+                    "title": title,
+                    "channel_source": channel,
+                    "text": text,
+                    "prev_text": prev_text,
+                    "next_text": next_text,
+                }, ensure_ascii=False) + "\n")
 
     if close_out:
         out_file.close()
