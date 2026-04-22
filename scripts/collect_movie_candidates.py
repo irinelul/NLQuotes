@@ -21,9 +21,9 @@ Tune SEED_TOPK and the seed lists below to widen or narrow the funnel.
 import json
 import os
 import sys
+import httpx
 import psycopg2
 import psycopg2.extras
-import voyageai
 from tqdm import tqdm
 
 DATABASE_URL   = os.environ["DATABASE_URL"]
@@ -90,12 +90,20 @@ KEYWORD_PATTERNS = [
 
 
 def embed_seeds(phrases):
-    vo = voyageai.Client(api_key=VOYAGE_API_KEY)
-    kwargs = {"model": MODEL, "input_type": "query"}
-    if OUTPUT_DIM:
-        kwargs["output_dimension"] = OUTPUT_DIM
+    """Hit Voyage's REST endpoint directly so we don't depend on a specific
+    SDK version supporting output_dimension."""
     print(f"Embedding {len(phrases)} seed phrases with {MODEL}...", file=sys.stderr)
-    return vo.embed(phrases, **kwargs).embeddings
+    body = {"input": phrases, "model": MODEL, "input_type": "query"}
+    if OUTPUT_DIM:
+        body["output_dimension"] = OUTPUT_DIM
+    r = httpx.post(
+        "https://api.voyageai.com/v1/embeddings",
+        headers={"Authorization": f"Bearer {VOYAGE_API_KEY}"},
+        json=body,
+        timeout=60.0,
+    )
+    r.raise_for_status()
+    return [d["embedding"] for d in r.json()["data"]]
 
 
 def to_vector_literal(vec):
