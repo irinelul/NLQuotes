@@ -177,8 +177,16 @@ def call_lmstudio(client, candidate):
     }
     r = client.post("/chat/completions", json=payload, timeout=TIMEOUT)
     r.raise_for_status()
-    content = r.json()["choices"][0]["message"]["content"]
-    return normalize(json.loads(content))
+    content = r.json()["choices"][0]["message"]["content"] or ""
+    # Qwen3 thinking models sometimes emit <think>...</think> before the JSON.
+    if "<think>" in content:
+        content = content.split("</think>", 1)[-1].strip()
+    try:
+        return normalize(json.loads(content))
+    except json.JSONDecodeError:
+        print(f"\n[debug] raw response (first 400 chars): {content[:400]!r}",
+              file=sys.stderr)
+        raise
 
 
 def normalize(ext):
