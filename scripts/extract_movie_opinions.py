@@ -84,26 +84,53 @@ EXTRACTION_SCHEMA = {
             "required": ["vs_movie", "direction"],
             "additionalProperties": False,
         },
+        "ironic_enjoyment": {
+            "type": "boolean",
+            "description": "True when the speaker enjoys the movie in a so-bad-it's-good / laughing-AT-it way."
+        },
         "confidence": {
             "type": "number", "minimum": 0, "maximum": 1,
             "description": "How confident you are in this extraction."
         }
     },
     "required": ["mentions_movie", "sentiment", "tags", "is_best_claim",
-                 "is_worst_claim", "confidence"],
+                 "is_worst_claim", "ironic_enjoyment", "confidence"],
     "additionalProperties": False,
 }
 
 SYSTEM_PROMPT = """You extract structured movie opinions from short transcript quotes spoken by a YouTuber (Northernlion).
 
-Rules:
-- Only set mentions_movie=true if the quote is clearly about a specific FILM. Video games, TV shows, and generic chatter do NOT count, even if they mention the word "movie".
-- If the quote is too short or ambiguous to identify a specific movie, set mentions_movie=false and movie_title=null.
-- "best of all time" / "favourite ever" / "no movie tops this" -> is_best_claim=true.
-- A comparison must reference TWO concrete films. "Better than most movies" is not a comparison.
-- Only put a numeric rating_out_of_10 if the speaker says a number ("8 out of 10", "I'd give it a 9").
-- Be conservative with confidence — 0.9+ only if the title and opinion are unambiguous.
-- Output ONLY the JSON object matching the schema. No prose."""
+Identifying a movie:
+- mentions_movie=true ONLY if the quote clearly discusses a specific FILM. Video games, TV shows, and passing references (e.g. naming a level after a film) do NOT count.
+- If mentions_movie=false: movie_title MUST be null, tags MUST be empty [], is_best_claim MUST be false, is_worst_claim MUST be false, comparison MUST be null, ironic_enjoyment MUST be false.
+- If the title is ambiguous, prefer mentions_movie=false over guessing.
+
+Sentiment — DO NOT default to "neutral". Pick the strongest fit:
+- "love"   → "favourite of all time", "incredible", "I cried", "best ever", strong praise.
+- "like"   → "good", "enjoyed it", "pretty solid", mild praise.
+- "neutral"→ genuinely no opinion expressed (rare). Do NOT use this just because you are unsure.
+- "dislike"→ "mid", "not great", mild criticism.
+- "hate"   → "worst", "terrible", "wasted my time", strong negative.
+- "unclear"→ a movie is named but no opinion is detectable in the quote.
+
+Ironic enjoyment:
+- ironic_enjoyment=true when the speaker laughs AT the film, calls it "so bad it's good", "hilarious for the wrong reasons", a guilty pleasure they enjoy unironically-ironically.
+- In that case sentiment is usually "like" or "love" (they enjoy watching it), NOT "hate".
+
+Best/worst claims:
+- is_best_claim=true ONLY for "best of all time", "favourite ever", "no movie tops this".
+- is_worst_claim=true ONLY for "worst I have ever seen", "literally unwatchable".
+- Both require mentions_movie=true.
+
+Comparisons:
+- comparison is non-null ONLY when TWO concrete films are explicitly compared. "Better than most movies" does NOT count.
+
+Rating:
+- rating_out_of_10 is non-null ONLY if the speaker states an explicit number ("8 out of 10", "I'd give it a 9").
+
+Confidence: 0.9+ only when title AND opinion are unambiguous. Use 0.5–0.7 for borderline cases.
+
+Output ONLY the JSON object matching the schema. No prose."""
 
 USER_TEMPLATE = """Quote: "{text}"
 
@@ -151,7 +178,22 @@ def call_lmstudio(client, candidate):
     r = client.post("/chat/completions", json=payload, timeout=TIMEOUT)
     r.raise_for_status()
     content = r.json()["choices"][0]["message"]["content"]
-    return json.loads(content)
+    return normalize(json.loads(content))
+
+
+def normalize(ext):
+    """Belt-and-suspenders: enforce the 'no movie -> nothing claimed' rule
+    even if the model violates it."""
+    if not ext.get("mentions_movie"):
+        ext["movie_title"] = None
+        ext["tags"] = []
+        ext["is_best_claim"] = False
+        ext["is_worst_claim"] = False
+        ext["comparison"] = None
+        ext["ironic_enjoyment"] = False
+        if ext.get("sentiment") not in ("unclear",):
+            ext["sentiment"] = "unclear"
+    return ext
 
 
 def main():
