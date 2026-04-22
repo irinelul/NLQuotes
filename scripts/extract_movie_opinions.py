@@ -170,7 +170,6 @@ def call_lmstudio(client, candidate):
             "type": "json_schema",
             "json_schema": {
                 "name": "movie_opinion",
-                "strict": True,
                 "schema": EXTRACTION_SCHEMA,
             },
         },
