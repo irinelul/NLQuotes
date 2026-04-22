@@ -18,6 +18,7 @@ Setup:
 Tune SEED_TOPK and the seed lists below to widen or narrow the funnel.
 """
 
+import argparse
 import json
 import os
 import sys
@@ -111,9 +112,19 @@ def to_vector_literal(vec):
 
 
 def main():
-    # Quotes contain non-cp1252 chars (e.g. fullwidth colons). On Windows,
-    # stdout defaults to cp1252 and chokes — force UTF-8.
-    sys.stdout.reconfigure(encoding="utf-8")
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--out", default="-", help="Output JSONL path. '-' = stdout (UTF-8).")
+    args = ap.parse_args()
+
+    if args.out == "-":
+        # Quotes contain non-cp1252 chars (e.g. fullwidth colons). On Windows,
+        # stdout defaults to cp1252 and chokes — force UTF-8.
+        sys.stdout.reconfigure(encoding="utf-8")
+        out_file = sys.stdout
+        close_out = False
+    else:
+        out_file = open(args.out, "w", encoding="utf-8", newline="\n")
+        close_out = True
 
     seed_vectors = embed_seeds(SEED_PHRASES)
 
@@ -156,7 +167,7 @@ def main():
         for row in cur:
             (qid, video_id, line_number, ts_start,
              upload_date, title, channel, text) = row
-            print(json.dumps({
+            out_file.write(json.dumps({
                 "id": qid,
                 "video_id": video_id,
                 "line_number": line_number,
@@ -165,8 +176,10 @@ def main():
                 "title": title,
                 "channel_source": channel,
                 "text": text,
-            }, ensure_ascii=False))
+            }, ensure_ascii=False) + "\n")
 
+    if close_out:
+        out_file.close()
     conn.close()
 
 
