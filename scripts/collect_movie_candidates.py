@@ -111,6 +111,10 @@ def to_vector_literal(vec):
 
 
 def main():
+    # Quotes contain non-cp1252 chars (e.g. fullwidth colons). On Windows,
+    # stdout defaults to cp1252 and chokes — force UTF-8.
+    sys.stdout.reconfigure(encoding="utf-8")
+
     seed_vectors = embed_seeds(SEED_PHRASES)
 
     conn = psycopg2.connect(DATABASE_URL)
