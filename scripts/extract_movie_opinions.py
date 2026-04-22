@@ -68,12 +68,14 @@ Output exactly three fields:
 
 Output ONLY the JSON object. No prose, no thinking."""
 
-USER_TEMPLATE = """Quote: "{text}"
-
-Video title: {title}
+USER_TEMPLATE = """Video title: {title}
 Date: {upload_date}
 
-Extract the structured opinion."""
+Previous quote (context only): "{prev_text}"
+TARGET QUOTE: "{text}"
+Next quote (context only): "{next_text}"
+
+Extract the structured opinion based on the TARGET QUOTE. You may use the previous/next quotes only to resolve pronouns like "it" or "that movie" — do not extract opinions that appear only in the context quotes."""
 
 
 def already_processed(out_path):
@@ -98,6 +100,8 @@ def call_lmstudio(client, candidate):
                 text=candidate["text"],
                 title=candidate.get("title") or "(unknown)",
                 upload_date=candidate.get("upload_date") or "(unknown)",
+                prev_text=candidate.get("prev_text") or "(none)",
+                next_text=candidate.get("next_text") or "(none)",
             )},
         ],
         "temperature": 0.1,
@@ -131,8 +135,12 @@ def normalize(ext, candidate=None):
     note."""
     title = (ext.get("movie_title") or "").strip()
     if title and candidate:
-        haystack = ((candidate.get("text") or "") + " " +
-                    (candidate.get("title") or "")).lower()
+        haystack = " ".join([
+            candidate.get("text") or "",
+            candidate.get("title") or "",
+            candidate.get("prev_text") or "",
+            candidate.get("next_text") or "",
+        ]).lower()
         if title.lower() not in haystack:
             ext["movie_title"] = None
 

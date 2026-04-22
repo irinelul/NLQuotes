@@ -157,16 +157,37 @@ def main():
 
         print(f"Total unique candidates: {len(candidate_ids):,}", file=sys.stderr)
 
-        # Hydrate the candidate rows with the fields stage 2 needs.
+        # Hydrate the candidate rows with the fields stage 2 needs, plus
+        # the immediately preceding and following quote (same video) for
+        # context. line_number is varchar in the schema but is reliably
+        # numeric, so cast for the +/- 1 join.
         cur.execute(
-            "SELECT id, video_id, line_number, timestamp_start, "
-            "       upload_date, title, channel_source, text "
-            "FROM quotes WHERE id = ANY(%s) ORDER BY upload_date, id",
+            """
+            WITH cand AS (
+              SELECT id, video_id, line_number, timestamp_start,
+                     upload_date, title, channel_source, text,
+                     line_number::int AS ln
+              FROM quotes
+              WHERE id = ANY(%s)
+            )
+            SELECT c.id, c.video_id, c.line_number, c.timestamp_start,
+                   c.upload_date, c.title, c.channel_source, c.text,
+                   prev.text AS prev_text, next.text AS next_text
+            FROM cand c
+            LEFT JOIN quotes prev
+              ON prev.video_id = c.video_id
+             AND prev.line_number::int = c.ln - 1
+            LEFT JOIN quotes next
+              ON next.video_id = c.video_id
+             AND next.line_number::int = c.ln + 1
+            ORDER BY c.upload_date, c.id
+            """,
             (list(candidate_ids),),
         )
         for row in cur:
             (qid, video_id, line_number, ts_start,
-             upload_date, title, channel, text) = row
+             upload_date, title, channel, text,
+             prev_text, next_text) = row
             out_file.write(json.dumps({
                 "id": qid,
                 "video_id": video_id,
@@ -176,6 +197,8 @@ def main():
                 "title": title,
                 "channel_source": channel,
                 "text": text,
+                "prev_text": prev_text,
+                "next_text": next_text,
             }, ensure_ascii=False) + "\n")
 
     if close_out:
