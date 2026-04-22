@@ -53,10 +53,18 @@ EXTRACTION_SCHEMA = {
 
 SYSTEM_PROMPT = """You read short transcript quotes from the YouTuber Northernlion and extract any FILM he is talking about.
 
+CRITICAL: only output a movie_title that is LITERALLY NAMED in the quote text or in the video title. Do NOT guess based on surrounding context, do NOT infer from a playthrough's setting, do NOT fill in famous titles when "the movie" or "that film" is mentioned without a name. If no specific title is spoken, movie_title MUST be null.
+
 Output exactly three fields:
-- movie_title: the film's canonical title, or null if the quote isn't actually about a specific film. Passing references (level names, casual mentions, "I saw X recently") with no opinion count as null. Video games and TV shows are always null.
-- sentiment: one of love / like / neutral / dislike / hate / unclear. Pick the strongest fit. "favourite", "incredible", "I cried" -> love. "good", "enjoyed" -> like. "mid", "meh" -> dislike. "worst", "terrible" -> hate. unclear = movie named but no opinion in this quote. Do not default to neutral when sentiment is detectable.
-- note: a short paraphrase (max ~15 words) of what he actually says about the movie. Empty string when movie_title is null.
+- movie_title: the film's canonical title (only if literally named in the quote or video title). Otherwise null.
+- sentiment: one of love / like / neutral / dislike / hate / unclear.
+  - "love" = "favourite", "incredible", "I cried", "best ever".
+  - "like" = "good", "enjoyed", "fantastically awful" (Northernlion uses this for so-bad-it's-good — they LIKE it ironically), "hilarious", "so bad it's good".
+  - "neutral" = no opinion expressed.
+  - "dislike" = "mid", "meh", mild criticism.
+  - "hate" = "worst", "wasted my time", strong sincere negative. Mocking/laughing-at language is NOT hate.
+  - "unclear" = movie named but you cannot tell the opinion from this quote alone.
+- note: a short paraphrase (max ~15 words) of what he says about the movie. Empty string when movie_title is null.
 
 Output ONLY the JSON object. No prose, no thinking."""
 
@@ -109,15 +117,25 @@ def call_lmstudio(client, candidate):
     if "<think>" in content:
         content = content.split("</think>", 1)[-1].strip()
     try:
-        return normalize(json.loads(content))
+        return normalize(json.loads(content), candidate)
     except json.JSONDecodeError:
         print(f"\n[debug] raw response (first 400 chars): {content[:400]!r}",
               file=sys.stderr)
         raise
 
 
-def normalize(ext):
-    """If no movie is identified, force sentiment=unclear and empty note."""
+def normalize(ext, candidate=None):
+    """Drop hallucinated titles: the title must literally appear in the
+    quote text or video title (case-insensitive substring), or we throw
+    it out. If no movie is identified, force sentiment=unclear and empty
+    note."""
+    title = (ext.get("movie_title") or "").strip()
+    if title and candidate:
+        haystack = ((candidate.get("text") or "") + " " +
+                    (candidate.get("title") or "")).lower()
+        if title.lower() not in haystack:
+            ext["movie_title"] = None
+
     if not ext.get("movie_title"):
         ext["movie_title"] = None
         ext["note"] = ""
