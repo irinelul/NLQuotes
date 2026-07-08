@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import query from '../../services/quotes';
+import { track } from '../../services/analytics';
 import { formatDate } from '../../services/dateHelpers';
 import { TENANT, IS_HIVEMIND } from '../../config/tenant';
 import './NLDLE.css';
@@ -70,18 +71,15 @@ const NLDLE = () => {
 
       try {
         setLoading(true);
-        console.log('Fetching game data...');
         const response = await fetch('/api/nldle');
-        console.log('Response status:', response.status);
-        
+
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({ error: 'Failed to fetch game data' }));
           throw new Error(errorData.error || 'Failed to fetch game data');
         }
         
         const data = await response.json();
-        console.log('Received data:', data);
-        
+
         if (isMounted) {
           if (data.game_data && data.game_data.wordPairs) {
             setWordPairs(data.game_data.wordPairs);
@@ -113,23 +111,33 @@ const NLDLE = () => {
   }, []);
 
   const handleStartGame = () => {
+    track('nldle_start');
     setShowTutorial(false);
   };
 
   const handleOptionSelect = (option) => {
     setSelectedOption(option);
     const currentPair = wordPairs[currentRound];
-    console.log('Current pair:', currentPair);
     const count1 = parseInt(currentPair.option1.count);
     const count2 = parseInt(currentPair.option2.count);
-    console.log('Option 1 count:', count1);
-    console.log('Option 2 count:', count2);
     const isCorrectAnswer = option === (count1 > count2 ? 1 : 2);
-    console.log('Selected option:', option);
-    console.log('Is correct answer:', isCorrectAnswer);
     setIsCorrect(isCorrectAnswer);
     setShowResult(true);
     setAnimateResult(true);
+    track('nldle_guess', { props: { round: currentRound + 1, correct: isCorrectAnswer } });
+
+    // Final round: report the finished game (score counts this round's answer).
+    if (currentRound === wordPairs.length - 1) {
+        const finalScore = score + (isCorrectAnswer ? 1 : 0);
+        track('nldle_finish', {
+            props: {
+                score: finalScore,
+                total: wordPairs.length,
+                perfect: finalScore === wordPairs.length,
+                streak: finalScore === wordPairs.length ? streak + 1 : 0
+            }
+        });
+    }
     
     // Update round results
     const newRoundResults = [...roundResults];

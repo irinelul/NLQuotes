@@ -46,6 +46,9 @@
     "mobileDashboardUrl": "https://umami.nlquotes.com/share/EzFxKFmIfUnSYgG8",
     "useHostname": false
   },
+  "metabase": {
+    "publicDashboardUrl": "https://metabase.nlquotes.com/public/dashboard/9321d8d4-552f-42ca-a50c-836d7d3ea333"
+  },
   "gameFilter": {
     "enabled": true,
     "label": "game",

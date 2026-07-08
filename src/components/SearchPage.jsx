@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import GeneralFeedbackButton from './GeneralFeedbackButton';
 import { useTheme } from '../hooks/useTheme';
 import { TENANT, logo, logoFallback } from '../config/tenant';
+import { track } from '../services/analytics';
 
 const SearchPage = ({
     searchInput,
@@ -17,8 +18,6 @@ const SearchPage = ({
     yearInput,
     setYearInput,
     handleSearch,
-    handleSemanticSearch,
-    mode,
     handleKeyPress,
     handleResetSearch,
     handleRandomQuotes,
@@ -131,17 +130,6 @@ const SearchPage = ({
                     Search
                 </button>
                 <button
-                    onClick={handleSemanticSearch}
-                    title="Find quotes by meaning, not exact words"
-                    style={{
-                        marginLeft: '0.5rem',
-                        background: mode === 'semantic' ? 'var(--accent-color, #4A90E2)' : undefined,
-                        color: mode === 'semantic' ? '#fff' : undefined
-                    }}
-                >
-                    🧠 Semantic
-                </button>
-                <button
                     onClick={handleResetSearch}
                     style={{ marginLeft: '0.5rem' }}
                 >
@@ -187,9 +175,7 @@ const SearchPage = ({
             {hasSearched && (
                 <>
                     <div className="total-quotes">
-                        {mode === 'semantic'
-                            ? `🧠 Top ${numberFormatter.format(totalQuotes)} semantic matches`
-                            : `${totalQuotesLabel} ${numberFormatter.format(totalQuotes)}`}
+                        {`${totalQuotesLabel} ${numberFormatter.format(totalQuotes)}`}
                     </div>
                     {quotes.length > 0 && (
                         <PaginationButtons
@@ -215,6 +201,7 @@ const SearchPage = ({
             {/* Improved desktop-only feedback button */}
             <GeneralFeedbackButton
                 onClick={() => {
+                    track('feedback_open');
                     setFeedbackModalOpen(true);
                 }}
                 disabled={submittingFeedback}
