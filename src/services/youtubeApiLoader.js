@@ -28,7 +28,6 @@ export function ensureApiReady() {
     if (!window.onYouTubeIframeAPIReady) {
        // Define the global callback *only once*
        window.onYouTubeIframeAPIReady = () => {
-         console.log('[YouTubeAPI] YouTube IFrame API is ready');
          // Give a small delay for the API to be fully initialized
          setTimeout(() => {
            signalReady();
@@ -78,9 +77,7 @@ export function ensureApiReady() {
        };
        tag.onload = () => {
          clearTimeout(timeout);
-         console.log('[YouTubeAPI] Script tag loaded successfully');
        };
-       console.log('[YouTubeAPI] Attempting to load YouTube IFrame API from:', tag.src);
        const firstScript = document.getElementsByTagName('script')[0];
        if (firstScript && firstScript.parentNode) {
          firstScript.parentNode.insertBefore(tag, firstScript);
@@ -92,7 +89,6 @@ export function ensureApiReady() {
        // Or maybe it loaded before this code ran? Check YT object.
        if (window.YT && window.YT.Player) {
          // If API is already there, signal immediately.
-         console.log('[YouTubeAPI] YouTube API already loaded');
          signalReady();
        }
        // Otherwise, the existing onYouTubeIframeAPIReady will eventually call signalReady.
@@ -107,7 +103,6 @@ export function ensurePlayerContainer(containerId, width = '480px', height = '27
   let container = document.getElementById(containerId);
   
   if (!container) {
-    console.log(`Creating container for ${containerId}`);
     container = document.createElement('div');
     container.id = containerId;
     container.style.width = width;
@@ -144,7 +139,6 @@ export function unregisterPlayer(player) {
   const index = playerRegistry.indexOf(player);
   if (index !== -1) {
     playerRegistry.splice(index, 1);
-    console.log(`[PlayerRegistry] Unregistered player, registry size: ${playerRegistry.length}`);
   }
 }
 
@@ -159,19 +153,11 @@ export function cleanupRegistry() {
         validPlayers.push(player);
       } catch (e) {
         // Player is destroyed/invalid, don't keep it
-        console.log('[PlayerRegistry] Removing destroyed player from registry');
       }
-    } else {
-      // Player doesn't have expected methods, remove it
-      console.log('[PlayerRegistry] Removing invalid player from registry');
     }
+    // Players without the expected methods are dropped silently
   });
-  
-  const removed = playerRegistry.length - validPlayers.length;
-  if (removed > 0) {
-    console.log(`[PlayerRegistry] Cleaned up ${removed} stale player(s)`);
-  }
-  
+
   playerRegistry.length = 0;
   playerRegistry.push(...validPlayers);
 }
@@ -179,7 +165,6 @@ export function cleanupRegistry() {
 export function pauseOtherPlayers(currentPlayer) {
   // Prevent re-entrancy
   if (isStoppingPlayers) {
-    console.log('[PlayerRegistry] Already stopping players, skipping');
     return;
   }
   
@@ -188,9 +173,7 @@ export function pauseOtherPlayers(currentPlayer) {
   try {
     // Clean up stale players first
     cleanupRegistry();
-    
-    console.log(`[PlayerRegistry] Pausing other players, registry size: ${playerRegistry.length}, initializing: ${initializingPlayers.size}, current: ${currentPlayer ? 'has' : 'none'}`);
-    
+
     // Stop all registered players - be aggressive, don't check state
     playerRegistry.forEach(player => {
       if (player !== currentPlayer) {
@@ -203,7 +186,6 @@ export function pauseOtherPlayers(currentPlayer) {
           }
           
           // Stop regardless of state - be aggressive
-          console.log('[PlayerRegistry] Force stopping player');
           // Use both pauseVideo and stopVideo for better mobile compatibility
           if (player.pauseVideo && typeof player.pauseVideo === 'function') {
             player.pauseVideo();
@@ -212,7 +194,6 @@ export function pauseOtherPlayers(currentPlayer) {
             player.stopVideo();
           }
         } catch (e) {
-          console.log('[PlayerRegistry] Error stopping player, removing from registry:', e.message);
           // Player is invalid, remove from registry
           unregisterPlayer(player);
         }
@@ -224,11 +205,10 @@ export function pauseOtherPlayers(currentPlayer) {
     initializingPlayers.forEach(player => {
       try {
         if (player && typeof player.destroy === 'function') {
-          console.log('[PlayerRegistry] Destroying initializing player');
           player.destroy();
         }
       } catch (e) {
-        console.log('[PlayerRegistry] Error destroying initializing player:', e.message);
+        // Ignore — player already destroyed
       }
     });
     initializingPlayers.clear();

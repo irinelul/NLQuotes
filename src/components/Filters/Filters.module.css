@@ -44,6 +44,11 @@
     width: 160px;
     box-sizing: border-box;
 
+    /* Fill the 50% flex cell instead of floating at a fixed width inside it */
+    @media (max-width: 768px) {
+        width: 100%;
+    }
+
     &:focus {
         outline: none;
         border-color: var(--primary-color);
@@ -69,7 +74,7 @@
 .gameContainer {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 10px;
 
     @media (max-width: 768px) {
         width: 100%;
@@ -78,16 +83,19 @@
 
 .resetGameButton {
     background-color: var(--surface-color);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    margin-left: 8px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
+    height: 40px;
+    min-width: 40px;
     padding: 0 10px;
     font-size: 18px;
     position: relative;
+    flex-shrink: 0;
+    box-sizing: border-box;
     color: var(--text-secondary);
 
     &:hover {

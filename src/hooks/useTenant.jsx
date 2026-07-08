@@ -11,13 +11,9 @@ const getInitialTenantConfig = () => {
   // First, try to read the injected config (server-side injection from tenant JSON files)
   // Inline scripts execute before module scripts, so this should be available
   if (window.__TENANT_CONFIG__) {
-    const injectedConfig = window.__TENANT_CONFIG__;
-    console.log('[useTenant] ✓ Found injected tenant config:', injectedConfig.id);
-    return injectedConfig;
+    return window.__TENANT_CONFIG__;
   }
-  
-  console.log('[useTenant] No injected config found, will fetch from /api/tenant');
-  
+
   // For dev mode (localhost), try synchronous fetch from API as fallback
   // The API reads from tenant JSON files, so this ensures we always use the source of truth
   const hostname = window.location.hostname.toLowerCase().split(':')[0];
@@ -30,9 +26,7 @@ const getInitialTenantConfig = () => {
       xhr.send();
       
       if (xhr.status >= 200 && xhr.status < 300) {
-        const tenantConfig = JSON.parse(xhr.responseText);
-        console.log('[useTenant] Synchronously fetched tenant from API:', tenantConfig.id);
-        return tenantConfig;
+        return JSON.parse(xhr.responseText);
       }
     } catch (e) {
       console.warn('[useTenant] Synchronous fetch failed:', e.message);
@@ -88,7 +82,6 @@ export function TenantProvider({ children }) {
   useEffect(() => {
     // If we already have a tenant config (from injection or sync fetch), update metadata immediately
     if (initialTenantConfig) {
-      console.log('[useTenant] Using initial tenant config:', initialTenantConfig.id);
       updateDocumentMetadata(initialTenantConfig);
       setLoading(false);
       
@@ -120,7 +113,6 @@ export function TenantProvider({ children }) {
     // If no initial config, fetch from API (reads from tenant JSON files)
     async function fetchTenant() {
       try {
-        console.log('[useTenant] Fetching tenant config from /api/tenant');
         const cacheBuster = `_t=${Date.now()}`;
         const response = await axios.get(`/api/tenant?${cacheBuster}`, {
           headers: {
@@ -128,7 +120,6 @@ export function TenantProvider({ children }) {
             'Pragma': 'no-cache'
           }
         });
-        console.log('[useTenant] Received tenant config:', response.data.id);
         setTenant(response.data);
         updateDocumentMetadata(response.data);
       } catch (err) {

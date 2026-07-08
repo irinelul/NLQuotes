@@ -19,7 +19,6 @@ export const useFetchGames = () => {
                 // Try each path until one works
                 for (const path of pathsToTry) {
                     try {
-                        console.log(`Trying to fetch games from: ${path}`);
                         const response = await fetch(path, {
                             cache: 'no-store', // Disable caching
                             headers: {
@@ -34,21 +33,15 @@ export const useFetchGames = () => {
                             const data = await response.json();
                             if (data && data.games && Array.isArray(data.games)) {
                                 gamesData = data;
-                                console.log(`Successfully fetched games from ${path}`);
                                 break;
                             } else {
-                                console.log(`Response from ${path} didn't contain valid games data`);
                                 failureMessages.push(`Invalid data from ${path}`);
                             }
                         } else {
-                            const errorMsg = `Failed to fetch games from ${path}: ${response.status}`;
-                            console.log(errorMsg);
-                            failureMessages.push(errorMsg);
+                            failureMessages.push(`Failed to fetch games from ${path}: ${response.status}`);
                         }
                     } catch (pathError) {
-                        const errorMsg = `Error fetching games from ${path}: ${pathError.message}`;
-                        console.log(errorMsg);
-                        failureMessages.push(errorMsg);
+                        failureMessages.push(`Error fetching games from ${path}: ${pathError.message}`);
                     }
                 }
 
@@ -58,7 +51,6 @@ export const useFetchGames = () => {
                 } else {
                     // When no paths worked, set empty array but log detailed error info
                     console.error('All paths failed. Details:', failureMessages.join('; '));
-                    console.log('Database connection issue detected - using empty games array');
                     setGames([]);
                 }
             } catch (error) {

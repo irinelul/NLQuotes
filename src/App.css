@@ -80,12 +80,6 @@
         text-align: center;
     }
 
-    /* Mobile-specific styles for bold tags */
-    .mobile-quote-item button span b {
-        color: #FF0000 !important;
-        font-weight: bold !important;
-    }
-
     .top-nav {
         flex-direction: column;
         gap: 1rem;
@@ -182,16 +176,25 @@
     }
 }
 
-/* Global styles for search term highlighting */
+/* Global styles for search term highlighting: yellow marker wash, so matches
+   read as "found it", not as an error, and the text stays in primary ink. */
 b {
-    color: #FF0000 !important;
-    font-weight: bold !important;
+    color: var(--text-primary);
+    font-weight: 700;
+    background-color: rgba(250, 204, 21, 0.3);
+    border-radius: 3px;
+    padding: 0 0.15em;
 }
 
-/* Quote item styling */
+/* Light theme: classic highlighter yellow reads better at a stronger wash */
+[data-theme="light"] b {
+    background-color: rgba(255, 220, 0, 0.45);
+}
+
+/* Quote text reads in primary ink; the timestamp carries the link color. */
 .quote-item button,
 .mobile-quote-item button {
-    color: #4A90E2 !important;
+    color: var(--text-primary);
 }
 
 .total-quotes {
