@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import query from './services/quotes';
+import { track } from './services/analytics';
 import { useNavigate, Routes, Route, useSearchParams, useLocation } from 'react-router-dom';
 import { ChangelogModal } from './components/Modals/ChangelogModal';
 import './App.css';
@@ -11,18 +12,16 @@ import NLDLE from './components/NLDLE/NLDLE';
 import Stats from './components/Stats';
 import { TopicPage } from './components/TopicPage';
 
-// Custom hook for Simple Analytics pageview
-function useSimpleAnalyticsPageview() {
+// In-house pageview tracking (route changes)
+function usePageviewTracking() {
     const location = useLocation();
     useEffect(() => {
-        if (window.sa_event) {
-            window.sa_event('pageview');
-        }
-    }, [location]);
+        track('page_view');
+    }, [location.pathname]);
 }
 
 const App = () => {
-    useSimpleAnalyticsPageview();
+    usePageviewTracking();
     const { resetState } = useSearchState();
     const [quotes, setQuotes] = useState([]);
     const [error, setError] = useState(null);
@@ -81,7 +80,17 @@ const App = () => {
         }
     }, [searchTerm, page, channel, year, sort, game]);
 
+    // One event per filter interaction; the resulting search (with the full
+    // parameter set and result counts) is logged server-side.
+    const trackFilterChange = (filter, value) => {
+        track('filter_change', {
+            search_term: searchTerm ? searchTerm.toLowerCase() : null,
+            props: { filter, value: String(value) }
+        });
+    };
+
     const handleChannelChange = (channelId) => {
+        trackFilterChange('channel', channelId);
         navigate(buildSearchUrl({ channel: channelId, page: 1 }));
     };
 
@@ -89,12 +98,14 @@ const App = () => {
         const value = e.target.value;
         setYearInput(value);
         if (value.length === 4 && /^\d{4}$/.test(value)) {
+            trackFilterChange('year', value);
             navigate(buildSearchUrl({ year: value, page: 1 }));
         }
     };
 
     const handleSortChange = (e) => {
         const value = e.target.value;
+        trackFilterChange('sort', value);
         navigate(buildSearchUrl({ sort: value, page: 1 }));
     };
 
@@ -108,9 +119,10 @@ const App = () => {
             return;
         }
 
-        window.umami.track(trimmedTerm, {
+        // Stable event name + term as a property, so Umami can aggregate
+        // instead of creating one event type per unique search term.
+        window.umami.track('quote_search', {
             search_term: trimmedTerm.toLowerCase(),
-            event_type: 'quote_search',
             channel: channel || 'all',
             year: year || '',
             sort_order: sort || 'default',
@@ -142,14 +154,20 @@ const App = () => {
     };
 
     const handlePageChange = (newPage) => {
+        track('pagination', {
+            page: newPage,
+            search_term: searchTerm ? searchTerm.toLowerCase() : null
+        });
         navigate(buildSearchUrl({ page: newPage }));
     };
     const handleGameChange = (e) => {
         const value = e.target.value;
+        trackFilterChange('game', value);
         navigate(buildSearchUrl({ game: value, page: 1 }));
     };
 
     const handleGameReset = () => {
+        trackFilterChange('game', 'all');
         navigate(buildSearchUrl({ game: 'all', page: 1 }));
     };
 
@@ -177,9 +195,7 @@ const App = () => {
         setError(null);
         setHasSearched(true);
         try {
-            console.log('Fetching random quotes...');
             const response = await query.getRandomQuotes();
-            console.log('Random quotes response:', response);
 
             if (!response || !response.quotes) {
                 throw new Error('Invalid response format from server');
@@ -221,6 +237,7 @@ const App = () => {
                 reason: feedback,
                 email: email || undefined
             });
+            track('feedback_submit');
             alert('Thank you for your feedback!');
             setFeedbackModalOpen(false);
         } catch (error) {
@@ -242,7 +259,6 @@ const App = () => {
 
     const fetchQuotes = async (pageNum, channel, year, sort, strictMode, game) => {
         try {
-            console.log('[App] fetchQuotes called with:', { searchTerm, pageNum, channel, year, sort, game });
             const response = await query.getAll(
                 searchTerm,
                 pageNum,
@@ -253,16 +269,9 @@ const App = () => {
                 sort,
                 game
             );
-            console.log('[App] Received response:', {
-                dataLength: response.data?.length,
-                total: response.total,
-                totalQuotes: response.totalQuotes,
-                firstItem: response.data?.[0]
-            });
             setQuotes(response.data || []);
             setTotalPages(Math.ceil((response.total || 0) / 10));
             setTotalQuotes(response.totalQuotes || 0);
-            console.log('[App] State updated - quotes:', response.data?.length, 'totalQuotes:', response.totalQuotes);
         } catch (error) {
             console.error('Error fetching quotes:', error);
             setError('Unable to connect to database.');
@@ -309,7 +318,10 @@ const App = () => {
         handleLogoClick={handleLogoClick}
         fetchQuotes={fetchQuotes}
         handlePageChange={handlePageChange}
-        onChangelogClick={() => setChangelogModalOpen(true)}
+        onChangelogClick={() => {
+            track('changelog_open');
+            setChangelogModalOpen(true);
+        }}
     />;
 
     return (

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { track } from '../services/analytics';
 
 // Initialize theme on module load (before React renders)
 const initializeTheme = () => {
@@ -45,7 +46,11 @@ export const useTheme = () => {
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme(prevTheme => prevTheme === 'dark' ? 'light' : 'dark');
+    setTheme(prevTheme => {
+      const next = prevTheme === 'dark' ? 'light' : 'dark';
+      track('theme_toggle', { props: { theme: next } });
+      return next;
+    });
   };
 
   return { theme, toggleTheme };

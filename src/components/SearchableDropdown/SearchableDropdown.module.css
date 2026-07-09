@@ -1,16 +1,23 @@
 .searchableDropdown {
     position: relative;
     width: 200px;
+
+    @media (max-width: 768px) {
+        width: 100%;
+    }
 }
 
+/* Matches the year input / sort select: same height, border, radius, surface */
 .dropdownHeader {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.5rem;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background-color: var(--background-color);
+    height: 40px;
+    padding: 0 2rem 0 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--surface-color);
+    box-sizing: border-box;
     cursor: pointer;
     transition: border-color 0.2s;
 
@@ -21,12 +28,13 @@
 
 .dropdownInput {
     flex: 1;
+    min-width: 0;
     border: none;
     background: none;
     padding: 0;
     margin-right: 0.5rem;
-    color: var(--text-color);
-    font-size: 0.9rem;
+    color: var(--text-primary);
+    font-size: 1rem;
 
     &:focus {
         outline: none;

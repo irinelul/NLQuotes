@@ -3,6 +3,7 @@ import express from 'express';
 import morgan from 'morgan';
 import cors from 'cors';
 import quoteModel from './models/postgres.js';
+import { logSearchEvent, logClientEvent, getUsageStats, getTopSearchTopics } from './models/analytics.js';
 import axios from 'axios';
 import fs from 'fs';
 import rateLimit from 'express-rate-limit';
@@ -11,6 +12,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { detectTenant, getTenantById, getAllTenants } from './tenants/tenant-manager.js';
 import { renderTopicHtml } from './utils/renderTopicHtml.js';
+import { isBlockedTopic } from './utils/topicBlocklist.js';
 
 // Load environment variables
 dotenv.config();
@@ -170,7 +172,7 @@ app.use('/api/flag', speedLimiter); // Only apply speed limiting to sensitive en
 const corsOptions = {
   origin: '*',
   methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'If-None-Match'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'If-None-Match', 'X-NLQ-Opt-Out'],
   maxAge: 86400 // 24 hours in seconds
 };
 
@@ -186,8 +188,15 @@ app.use(morgan(':method-path :response-info :response-time ms', {
 }));
 
 // ======= DYNAMIC SITEMAP =======
-// Scans dist/topic/ directory directly so on-demand generated pages appear automatically.
-app.get('/sitemap.xml', (req, res) => {
+// Topic entries come from analytics: the top recently-searched terms, dated by
+// when they were last searched and prioritized by popularity — so the sitemap
+// stays small and fresh instead of accumulating every page ever generated.
+const SITEMAP_TOPIC_LIMIT = 15;
+const SITEMAP_TOPIC_DAYS = 30; // lifespan: terms not searched within this window drop out
+const sitemapCache = new Map(); // tenantId -> { at, topics }
+const SITEMAP_CACHE_MS = 30 * 60 * 1000;
+
+app.get('/sitemap.xml', async (req, res) => {
   const today = new Date().toISOString().slice(0, 10);
   const hostname = req.tenant?.hostnames?.[0] || 'nlquotes.com';
   const base = `https://${hostname}`;
@@ -195,28 +204,63 @@ app.get('/sitemap.xml', (req, res) => {
 
   let topicPages = [];
   try {
-    const topicRoot = path.resolve(__dirname, 'dist', 'topic');
-    if (fs.existsSync(topicRoot)) {
-      const entries = fs.readdirSync(topicRoot);
-      for (const encoded of entries) {
-        const indexPath = path.join(topicRoot, encoded, 'index.html');
-        if (fs.existsSync(indexPath)) {
-          const mtime = fs.statSync(indexPath).mtime;
-          topicPages.push({
-            url: `/topic/${encoded}`,
-            lastmod: mtime.toISOString().slice(0, 10),
-          });
+    const tenantId = req.tenant?.id || 'default';
+    const cached = sitemapCache.get(tenantId);
+    if (cached && Date.now() - cached.at < SITEMAP_CACHE_MS) {
+      topicPages = cached.topics;
+    } else {
+      const topTerms = (await getTopSearchTopics(req.tenant, {
+        days: SITEMAP_TOPIC_DAYS,
+        limit: SITEMAP_TOPIC_LIMIT * 2, // headroom for terms the filters reject
+        minQuotes: TOPIC_MIN_QUOTES,
+      })).filter((t) => isIndexableTopic(t.term) && !isBlockedTopic(t.term))
+        .slice(0, SITEMAP_TOPIC_LIMIT);
+
+      const maxSearches = Math.max(...topTerms.map((t) => t.searches), 1);
+      topicPages = topTerms.map((t) => ({
+        url: `/topic/${encodeURIComponent(t.term)}`,
+        lastmod: new Date(t.lastSearched).toISOString().slice(0, 10),
+        // Popularity-scaled: the most-searched term gets 0.8, the tail 0.5
+        priority: (0.5 + 0.3 * (t.searches / maxSearches)).toFixed(2),
+      }));
+
+      // Until analytics has data, fall back to the newest generated pages on disk
+      if (topicPages.length === 0) {
+        const topicRoot = path.resolve(__dirname, 'dist', 'topic');
+        if (fs.existsSync(topicRoot)) {
+          topicPages = fs.readdirSync(topicRoot)
+            .map((encoded) => {
+              let decoded;
+              try { decoded = decodeURIComponent(encoded); } catch { return null; }
+              if (!isIndexableTopic(decoded) || isBlockedTopic(decoded)) return null;
+              const indexPath = path.join(topicRoot, encoded, 'index.html');
+              if (!fs.existsSync(indexPath)) return null;
+              return { url: `/topic/${encoded}`, mtime: fs.statSync(indexPath).mtime };
+            })
+            .filter(Boolean)
+            .sort((a, b) => b.mtime - a.mtime)
+            .slice(0, SITEMAP_TOPIC_LIMIT)
+            .map((p) => ({
+              url: p.url,
+              lastmod: p.mtime.toISOString().slice(0, 10),
+              priority: '0.5',
+            }));
         }
       }
+
+      sitemapCache.set(tenantId, { at: Date.now(), topics: topicPages });
     }
-  } catch (e) { /* no topic pages yet, that's fine */ }
+  } catch (e) {
+    console.error('Error building sitemap topics:', e.message);
+    topicPages = [];
+  }
 
   const urls = [
     { loc: `${base}/`, lastmod: today, priority: '1.0' },
     ...topicPages.map((p) => ({
       loc: `${base}${p.url}`,
       lastmod: p.lastmod,
-      priority: '0.7',
+      priority: p.priority,
     })),
   ];
 
@@ -272,6 +316,22 @@ app.use((req, res, next) => {
 // In-memory set to prevent concurrent duplicate on-demand topic generation
 const topicGenerating = new Set();
 
+// A topic term earns a static page (and a sitemap slot) only if it looks like a
+// real phrase: 3-40 chars, letters/digits/spaces/'/- only, at most 4 words.
+// Anything a visitor can type becomes a public page otherwise (e.g. the junk
+// `/topic/%22%20a%20lot%20of%20Furry%22` pages already in the sitemap).
+function isIndexableTopic(term) {
+  if (typeof term !== 'string') return false;
+  const t = term.trim();
+  if (t.length < 3 || t.length > 40) return false;
+  if (!/^[\p{L}\p{N}][\p{L}\p{N} '-]*$/u.test(t)) return false;
+  if (t.split(/\s+/).length > 4) return false;
+  return true;
+}
+
+// Minimum matches before a topic page is worth generating — thin pages hurt SEO.
+const TOPIC_MIN_QUOTES = 10;
+
 // Cache for game titles per tenant
 const cachedGameLists = new Map();
 
@@ -288,7 +348,10 @@ async function loadGameTitles(tenant) {
         console.log(`Loaded ${result.length} game titles into cache for tenant ${tenant.id}`);
     } catch (error) {
         console.error(`Error loading game titles into cache for tenant ${tenant.id}:`, error);
-        cachedGameLists.set(tenant.id, []); // Initialize as empty array if query fails
+        // Keep a previously loaded list if we have one; only seed [] when empty
+        if (!cachedGameLists.has(tenant.id)) {
+            cachedGameLists.set(tenant.id, []);
+        }
     }
 }
 
@@ -318,6 +381,7 @@ app.get('/api/tenant', (req, res) => {
       channels: tenant.channels,
       hostnames: tenant.hostnames,
       grafana: tenant.grafana,
+      metabase: tenant.metabase,
       gameFilter: tenant.gameFilter
     };
     
@@ -400,6 +464,23 @@ app.get('/api', async (req, res) => {
         });
         const totalTime = Date.now() - startTime;
         console.log(`[Search] Query completed - Tenant: ${tenantId}, Results: ${result.data?.length || 0}, Total: ${result.total || 0}, Time: ${totalTime}ms`);
+
+        if (searchTerm.trim().length >= 3) {
+            logSearchEvent(req, {
+                event_type: 'search',
+                path: '/search',
+                search_term: searchTerm.trim().toLowerCase(),
+                search_mode: exactPhrase ? 'strict' : 'keyword',
+                game: gameName !== 'all' ? gameName : null,
+                channel: selectedValue !== 'all' ? selectedValue : null,
+                year: year || null,
+                sort_order: sortOrder !== 'default' ? sortOrder : null,
+                page,
+                result_videos: result.total,
+                result_quotes: result.totalQuotes,
+                response_time_ms: totalTime
+            });
+        }
 
         // Set security headers (no CSP needed for API responses)
         res.set({
@@ -561,6 +642,7 @@ app.post('/api/flag', async (req, res) => {
 app.get('/api/random', async (req, res) => {
     try {
         const result = await quoteModel.getRandom(req.tenant);
+        logSearchEvent(req, { event_type: 'random_quote', path: '/' });
         res.json({ quotes: result });
     } catch (error) {
         console.error('Error fetching random quotes:', error);
@@ -568,27 +650,55 @@ app.get('/api/random', async (req, res) => {
     }
 });
 
-app.get('/api/games', (req, res) => {
+app.get('/api/games', async (req, res) => {
     try {
         const tenant = req.tenant || detectTenant(req.get('host') || 'localhost');
         let cachedGameList = cachedGameLists.get(tenant.id);
-        
-        // Load if not cached
-        if (!cachedGameList) {
-            cachedGameList = [];
-            loadGameTitles(tenant);
+
+        // An empty list is a failed load (a healthy DB has games), so treat it
+        // as a cache miss and retry — otherwise one bad query at startup would
+        // serve an empty dropdown until the next restart.
+        if (!cachedGameList || cachedGameList.length === 0) {
+            await loadGameTitles(tenant);
+            cachedGameList = cachedGameLists.get(tenant.id) || [];
         }
-        
-        // Set cache headers - cache for 1 hour on client side
-        res.set({
-            'Cache-Control': 'public, max-age=3600',
-            'ETag': `"${cachedGameList.length}"` // Simple ETag based on number of games
-        });
-        
+
+        // Only let clients cache a populated list; an empty one must be retried.
+        res.set(cachedGameList.length > 0
+            ? { 'Cache-Control': 'public, max-age=3600', 'ETag': `"${cachedGameList.length}"` }
+            : { 'Cache-Control': 'no-store' });
+
         res.json({ games: cachedGameList });
     } catch (error) {
         console.error('Error serving game titles:', error);
         res.status(500).json({ error: 'Failed to fetch game titles' });
+    }
+});
+
+// Aggregate usage stats for the public /stats page. No per-visitor data leaves
+// the server — only counts. Cached 5 minutes per tenant+window in the model.
+app.get('/api/stats/usage', async (req, res) => {
+    try {
+        const days = [7, 30, 90].includes(parseInt(req.query.days)) ? parseInt(req.query.days) : 30;
+        const stats = await getUsageStats(req.tenant, days);
+        res.set({ 'Cache-Control': 'public, max-age=300' });
+        res.json(stats);
+    } catch (error) {
+        console.error('Error building usage stats:', error.message);
+        res.status(500).json({ error: 'Failed to load usage stats' });
+    }
+});
+
+// In-house analytics collector. Path is deliberately terse ("/api/ev") so
+// generic ad-blocker filter rules (/track, /collect, /beacon, ...) don't match.
+// Accepts sendBeacon/fetch JSON bodies; validation lives in models/analytics.js.
+app.post('/api/ev', (req, res) => {
+    try {
+        logClientEvent(req, req.body); // fire-and-forget insert
+        res.status(204).end();
+    } catch (error) {
+        console.error('Error accepting analytics event:', error);
+        res.status(204).end(); // never surface analytics errors to the client
     }
 });
 
@@ -656,6 +766,11 @@ app.get('/topic/:term', async (req, res, next) => {
 
   // Generate on demand
   const term = req.params.term;
+
+  if (isBlockedTopic(term) || !isIndexableTopic(term)) {
+    return next(); // fall through to SPA, no static page generated
+  }
+
   try {
     // If another request is already generating this page, wait briefly then re-check
     if (topicGenerating.has(encoded)) {
@@ -679,15 +794,15 @@ app.get('/topic/:term', async (req, res, next) => {
         gameName: 'all',
         selectedValue: 'all',
         year: '',
-        sortOrder: 'default',
+        sortOrder: 'newest',
         page: 1,
         limit: 10,
         exactPhrase: false,
         tenant: req.tenant,
       });
 
-      if (!topicData?.totalQuotes || topicData.totalQuotes === 0) {
-        // No quotes — fall through to SPA
+      if (!topicData?.totalQuotes || topicData.totalQuotes < TOPIC_MIN_QUOTES) {
+        // Too few quotes for a worthwhile page — fall through to SPA
         return next();
       }
 
@@ -745,7 +860,7 @@ app.use((req, res, next) => {
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.nlquotes.com https://umami.nlquotes.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googlevideo.com https://googlevideo.com https://www.googleapis.com https://apis.google.com; " +
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
     "img-src 'self' " + tenantDomain + " https://api.nlquotes.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://i.ytimg.com https://img.youtube.com https://www.googlevideo.com https://googlevideo.com data: blob:; " +
-    "frame-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://umami.nlquotes.com; " +
+    "frame-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://umami.nlquotes.com https://metabase.nlquotes.com; " +
     "connect-src 'self' https://api.nlquotes.com https://umami.nlquotes.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googlevideo.com https://googlevideo.com; " +
     "media-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googlevideo.com https://googlevideo.com; " +
     "object-src 'none'"
@@ -771,6 +886,7 @@ app.use((req, res, next) => {
         channels: tenant.channels,
         hostnames: tenant.hostnames,
         grafana: tenant.grafana,
+        metabase: tenant.metabase,
         gameFilter: tenant.gameFilter
       };
       

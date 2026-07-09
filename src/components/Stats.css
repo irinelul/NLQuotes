@@ -1,13 +1,17 @@
-.stats-container {
+﻿.stats-container {
   padding: 0;
   max-width: 100%;
   margin: 0;
-  height: 100vh;
+  /* The page must scroll: the embed alone is thousands of px tall. A fixed
+     100vh + overflow:hidden clips it; center children so capped-width
+     sections don't pin to the left edge. */
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
+  align-items: center;
   box-sizing: border-box;
   background-color: var(--background-color);
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 .back-button {
@@ -108,6 +112,58 @@
 
 .dashboard-container:not(.loading) iframe {
   opacity: 1;
+}
+
+/* Metabase public dashboard embed: tall grid, so give it a real height
+   instead of splitting flex space with the other dashboard iframe. */
+.metabase-section {
+  /* Wider than the in-house cards: the embedded grid needs the room.
+     margin auto + align-items center on the parent keep it centered at
+     every width; side padding keeps it off the edges on small screens. */
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 1rem 1rem;
+  box-sizing: border-box;
+}
+
+.ms-title {
+  color: var(--text-primary);
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin: 1.5rem 0 0.25rem;
+}
+
+.ms-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  margin: 0 0 1rem;
+}
+
+.metabase-container {
+  flex: none;
+  width: 100%;
+  min-width: 0;
+  margin-bottom: 1rem;
+}
+
+.metabase-container iframe {
+  flex: none;
+  width: 100%;
+  max-width: 100%;
+  /* Near-full-viewport panel; the dashboard scrolls internally, so all of it
+     is reachable even if Metabase's height postMessage never arrives. When it
+     does arrive, an inline height overrides this and the page scrolls as one. */
+  height: max(calc(100vh - 140px), 480px);
+  border-radius: 8px;
+}
+
+/* #root already pads the page 32px; skip the section's own side padding on
+   small screens so the embed gets every remaining pixel. */
+@media (max-width: 768px) {
+  .metabase-section {
+    padding: 0 0 1rem;
+  }
 }
 
 .error-message {

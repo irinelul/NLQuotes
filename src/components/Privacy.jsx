@@ -19,12 +19,12 @@ const Privacy = () => {
       <button
         type="button"
         onClick={handleBack}
-        style={{ marginBottom: '1.5rem', background: 'none', border: '1px solid #ccc', borderRadius: 6, padding: '0.5rem 1rem', cursor: 'pointer', fontSize: '1rem', fontWeight: 500, color: '#fff' }}
+        style={{ marginBottom: '1.5rem', background: 'none', border: '1px solid #ccc', borderRadius: 6, padding: '0.5rem 1rem', cursor: 'pointer', fontSize: '1rem', fontWeight: 500, color: 'inherit' }}
       >
         Go Back
       </button>
       <h2>Privacy Policy</h2>
-      <p><strong>Last updated: January 2025</strong></p>
+      <p><strong>Last updated: July 2026</strong></p>
 
       <p>
         Your privacy is critically important to us at {siteName}. Our guiding principle is to collect the absolute minimum information necessary and to be transparent about it. This policy explains what we collect and why.
@@ -79,18 +79,21 @@ const Privacy = () => {
       </p>
       <ul>
         <li>
-          <strong>User and Session Hashes:</strong> We generate anonymous hashes to distinguish usage sessions without identifying individuals.
+          <strong>Anonymous Visitor Hashes:</strong> To count unique visitors without identifying anyone, we compute a short hash from your IP address and browser signature combined with a random value that changes every day. Your IP address is never stored, the hash cannot be reversed, and because the random value rotates daily, activity cannot be linked across days.
         </li>
         <li>
-          <strong>Usage Events:</strong> We track events such as search terms, page views, and user interactions with the site.
+          <strong>Usage Events:</strong> We record events such as search terms, filters used (game, channel, year, sort order), page views, pagination, the page that referred you to the site, interactions with quotes (playing, copying, sharing, or flagging a quote), and general feature usage (switching theme, opening the changelog, submitting feedback, or following the GitHub link).
         </li>
         <li>
-          <strong>Device and Browser Info:</strong> We collect general details such as device type, operating system, browser name, screen width and height, pixel ratio, preferred language, timezone, region, and city.
+          <strong>Device and Browser Info:</strong> We collect general details such as device type (mobile/desktop/tablet), operating system, browser name, screen size, preferred language, and country.
         </li>
         <li>
-          <strong>Performance Metrics:</strong> We measure page response times and total pages visited to help optimize site performance.
+          <strong>Performance Metrics:</strong> We measure how long searches take so we can optimize site performance.
         </li>
       </ul>
+      <p>
+        In addition to the opt-out button above, we automatically honor your browser's <strong>Do Not Track</strong> and <strong>Global Privacy Control</strong> signals — if either is enabled, nothing is collected.
+      </p>
 
       <h3>What We Do Not Collect</h3>
       <ul>
@@ -131,6 +134,7 @@ const Privacy = () => {
       <ul>
         <li><strong>January 2025:</strong> Transitioned to Umami analytics, a privacy-focused, self-hosted analytics platform. Umami provides time-on-page tracking, user engagement metrics, and session duration data while maintaining our commitment to privacy: no cookies, respects Do Not Track, and fully respects user opt-out preferences.</li>
         <li><strong>April 26, 2025:</strong> Updated our Privacy Policy to better reflect the anonymous analytics data collected (hashed identifiers, device/browser information, search terms, page views). Transitioned from using Simple Analytics to our own in-house analytics system. No new data collection was introduced — this is a clarification of existing practices.</li>
+        <li><strong>July 2026:</strong> Re-introduced our in-house analytics system alongside Umami. It records the usage events described above (searches, filters, quote interactions) using daily-rotating anonymous hashes — still no cookies, no IP storage, and no cross-day tracking. The opt-out button now covers both systems, and Do Not Track / Global Privacy Control signals are honored automatically.</li>
       </ul>
 
       <h3>Contact</h3>

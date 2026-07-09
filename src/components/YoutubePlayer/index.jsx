@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ensureApiReady, registerPlayer, unregisterPlayer, pauseOtherPlayers, registerInitializingPlayer, unregisterInitializingPlayer } from '../../services/youtubeApiLoader';
+import { track } from '../../services/analytics';
 import styles from './YoutubePlayer.module.css';
 
 // Simpler approach with minimal DOM manipulation
@@ -12,6 +13,38 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
     const isMountedRef = React.useRef(true);
     const containerRef = React.useRef(null);
     const iframeContainerIdRef = React.useRef(`yt-player-${Math.random().toString(36).substr(2, 9)}`);
+
+    // Watch-time accounting: accumulate wall-clock seconds while the player is
+    // in the PLAYING state, and beacon one video_watch event when the viewing
+    // session ends (video ends, player unmounts, or the tab is hidden).
+    const watchStartRef = React.useRef(null);   // timestamp when PLAYING began
+    const watchedSecondsRef = React.useRef(0);  // accumulated across pauses
+    const watchVideoIdRef = React.useRef(null); // the video the accumulated time belongs to
+
+    const flushWatchTime = React.useCallback((reason) => {
+        if (watchStartRef.current) {
+            watchedSecondsRef.current += (Date.now() - watchStartRef.current) / 1000;
+            watchStartRef.current = null;
+        }
+        const seconds = Math.round(watchedSecondsRef.current);
+        watchedSecondsRef.current = 0;
+        // Sub-3s plays are misclicks, not watches.
+        if (seconds >= 3 && watchVideoIdRef.current) {
+            track('video_watch', {
+                video_id: watchVideoIdRef.current,
+                props: { seconds, reason }
+            });
+        }
+        watchVideoIdRef.current = null;
+    }, []);
+
+    // The tab closing or being backgrounded is the last chance to report;
+    // sendBeacon inside track() survives the unload.
+    useEffect(() => {
+        const onPageHide = () => flushWatchTime('pagehide');
+        window.addEventListener('pagehide', onPageHide);
+        return () => window.removeEventListener('pagehide', onPageHide);
+    }, [flushWatchTime]);
 
     // Handle window resize and orientation changes to resize player
     useEffect(() => {
@@ -63,6 +96,7 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
     useEffect(() => {
         // If videoId changed, we need to clean up the old player first
         if (prevVideoIdForCleanupRef.current !== videoId && playerRef.current) {
+            flushWatchTime('switched');
             try {
                 // Destroy the old player completely
                 if (typeof playerRef.current.pauseVideo === 'function') {
@@ -136,19 +170,6 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                     origin = `${window.location.protocol}//${window.location.hostname}${window.location.port ? ':' + window.location.port : ''}`;
                 }
                 
-                console.log(`[YouTubePlayer] Initializing player:`, {
-                    videoId,
-                    timestamp: currentTimestamp,
-                    origin,
-                    windowOrigin: window.location.origin,
-                    protocol: window.location.protocol,
-                    hostname: window.location.hostname,
-                    port: window.location.port,
-                    ytApiReady: !!(window.YT && window.YT.Player),
-                    containerExists: !!iframeRef.current,
-                    containerId: iframeContainerIdRef.current
-                });
-                
                 // Try without origin parameter first - YouTube can auto-detect it
                 // Only add origin if it's a valid URL
                 const playerVars = {
@@ -185,7 +206,6 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                             playerRef.current = event.target;
                             registerPlayer(event.target);
                             unregisterInitializingPlayer(event.target);
-                            console.log(`[YouTubePlayer] Player registered for ${videoId}`);
                             // Pause other players before starting this one
                             pauseOtherPlayers(event.target);
                             event.target.playVideo();
@@ -205,6 +225,20 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                             if (event.data === window.YT.PlayerState.PLAYING) {
                                 // Pause other players when this one starts playing
                                 pauseOtherPlayers(event.target);
+                                if (watchVideoIdRef.current && watchVideoIdRef.current !== videoId) {
+                                    // Leftover time from another video — report it first.
+                                    flushWatchTime('switched');
+                                }
+                                watchVideoIdRef.current = videoId;
+                                if (!watchStartRef.current) watchStartRef.current = Date.now();
+                            } else if (event.data === window.YT.PlayerState.PAUSED) {
+                                // Accumulate but don't report yet — the viewer may resume.
+                                if (watchStartRef.current) {
+                                    watchedSecondsRef.current += (Date.now() - watchStartRef.current) / 1000;
+                                    watchStartRef.current = null;
+                                }
+                            } else if (event.data === window.YT.PlayerState.ENDED) {
+                                flushWatchTime('ended');
                             }
                         },
                         onError: () => {
@@ -292,7 +326,6 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                     // and React will handle the container cleanup
                 } catch (err) {
                     // Ignore cleanup errors - DOM might already be gone or player already destroyed
-                    console.log('Cleanup error (safe to ignore):', err.message);
                 }
             }
         };
@@ -314,29 +347,16 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                                prevVideoIdRef.current !== videoId &&
                                (prevVideoIdRef.current === null || prevVideoIdRef.current !== videoId);
         
-        console.log('[YouTubePlayer] Timestamp effect triggered:', {
-            timestamp,
-            prevTimestamp: prevTimestampRef.current,
-            timestampChanged,
-            videoId,
-            prevVideoId: prevVideoIdRef.current,
-            videoIdChanged,
-            isPlaying,
-            hasPlayer: !!playerRef.current
-        });
-        
         if (timestamp !== null && !isPlaying) {
             // Pause all other players IMMEDIATELY before starting a new video
             // This must happen synchronously before state updates
             pauseOtherPlayers(null);
             setCurrentTimestamp(timestamp);
             setIsPlaying(true);
-            console.log(`[YouTubePlayer] Auto-playing video ${videoId} at timestamp ${timestamp}`);
         } else if (timestamp !== null && playerRef.current) {
             // Player exists - check if we need to reload for timestamp change
             // Video is already playing - reload if timestamp or video changed
             if (videoIdChanged) {
-                console.log(`[YouTubePlayer] Video ID changed from ${prevVideoIdRef.current} to ${videoId}`);
                 // Video ID changed - need to reset and let the initialization effect handle it
                 try {
                     // Destroy the old player
@@ -359,7 +379,6 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                 }, 100);
             } else if (timestampChanged) {
                 // Same video, different timestamp - just reload
-                console.log(`[YouTubePlayer] Timestamp changed from ${prevTimestampRef.current} to ${timestamp}, reloading...`);
                 pauseOtherPlayers(playerRef.current);
                 setCurrentTimestamp(timestamp);
                 // Ensure playing state is set
@@ -373,7 +392,6 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                         const currentVideoId = playerRef.current.getVideoData ? playerRef.current.getVideoData().video_id : null;
                         if (currentVideoId === videoId) {
                             // Same video already loaded - just seek to new timestamp
-                            console.log(`[YouTubePlayer] Seeking to timestamp ${timestamp} in current video`);
                             if (typeof playerRef.current.seekTo === 'function') {
                                 playerRef.current.seekTo(timestamp, true);
                                 playerRef.current.playVideo();
@@ -403,14 +421,12 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                         if (playerRef.current) {
                             playerRef.current._reloadPauseTimeout = reloadPauseTimeout;
                         }
-                        console.log(`[YouTubePlayer] Reloading video ${videoId} at timestamp ${timestamp}`);
                     } else {
                         console.error('[YouTubePlayer] Player exists but loadVideoById is not available');
                     }
                 } catch (err) {
                     console.error('[YouTubePlayer] Error loading video:', err);
                     // If loadVideoById fails, try to reset and reinitialize
-                    console.log('[YouTubePlayer] Attempting to reset player and reinitialize...');
                     setIsPlaying(false);
                     setTimeout(() => {
                         if (isMountedRef.current) {
@@ -419,8 +435,6 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                         }
                     }, 200);
                 }
-            } else {
-                console.log('[YouTubePlayer] No changes detected, skipping reload');
             }
         } else if (timestamp === null && isPlaying && playerRef.current) {
             // If timestamp is set to null, pause the video
@@ -443,6 +457,7 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
         isMountedRef.current = true;
         return () => {
             isMountedRef.current = false;
+            flushWatchTime('closed');
             // Pause all players when this component unmounts
             pauseOtherPlayers(null);
             if (playerRef.current) {
@@ -464,7 +479,9 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
 
     // Handle play button click - load video with iframe
     const handlePlayClick = () => {
-        console.log(`Play button clicked for ${videoId}`);
+        // Direct thumbnail plays don't go through a quote timestamp, so
+        // quote_play never sees them — log them as their own event.
+        track('video_thumbnail_play', { video_id: videoId });
         setCurrentTimestamp(timestamp);
         setIsPlaying(true);
     };

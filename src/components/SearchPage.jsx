@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import GeneralFeedbackButton from './GeneralFeedbackButton';
 import { useTheme } from '../hooks/useTheme';
 import { TENANT, logo, logoFallback } from '../config/tenant';
+import { track } from '../services/analytics';
 
 const SearchPage = ({
     searchInput,
@@ -174,7 +175,7 @@ const SearchPage = ({
             {hasSearched && (
                 <>
                     <div className="total-quotes">
-                        {totalQuotesLabel} {numberFormatter.format(totalQuotes)}
+                        {`${totalQuotesLabel} ${numberFormatter.format(totalQuotes)}`}
                     </div>
                     {quotes.length > 0 && (
                         <PaginationButtons
@@ -200,6 +201,7 @@ const SearchPage = ({
             {/* Improved desktop-only feedback button */}
             <GeneralFeedbackButton
                 onClick={() => {
+                    track('feedback_open');
                     setFeedbackModalOpen(true);
                 }}
                 disabled={submittingFeedback}

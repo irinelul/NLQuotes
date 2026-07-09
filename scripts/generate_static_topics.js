@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import pkg from 'pg';
 import dotenv from 'dotenv';
 import { renderTopicHtml } from '../utils/renderTopicHtml.js';
+import { isBlockedTopic } from '../utils/topicBlocklist.js';
 
 const { Pool } = pkg;
 const __filename = fileURLToPath(import.meta.url);
@@ -161,6 +162,11 @@ async function main() {
     }
     seenTerms.add(encoded);
 
+    if (isBlockedTopic(term)) {
+      console.log(`[static-topics] Skipping blocked term "${term}"`);
+      continue;
+    }
+
     let topicData;
     try {
       topicData = await Promise.race([
@@ -170,7 +176,7 @@ async function main() {
           gameName: 'all',
           selectedValue: 'all',
           year: '',
-          sortOrder: 'default',
+          sortOrder: 'newest',
           page: 1,
           limit: 10,
           exactPhrase: false,

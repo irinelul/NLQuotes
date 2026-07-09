@@ -6,6 +6,7 @@ import { FlagModal } from './Modals/FlagModal';
 import { backdateTimestamp, formatDate, formatTimestamp } from '../services/dateHelpers';
 import { TENANT } from '../config/tenant';
 import query from '../services/quotes';
+import { track } from '../services/analytics';
 
 // `b` is returned from ts_headline when a match is found
 const ALLOWED_TAGS = ['b'];
@@ -27,17 +28,6 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
   
   // Get tenant-aware site URL (hard-bound at import time, no flickering)
   const siteUrl = TENANT.hostnames?.[0] ? `https://${TENANT.hostnames[0]}` : 'https://nlquotes.com';
-
-  // Debug logging
-  useEffect(() => {
-    console.log('[Quotes] Component received props:', {
-      quotesLength: quotes?.length,
-      quotesType: Array.isArray(quotes) ? 'array' : typeof quotes,
-      totalQuotes,
-      searchTerm,
-      firstQuote: quotes?.[0]
-    });
-  }, [quotes, totalQuotes, searchTerm]);
 
   // Reset active timestamp when quotes change (new search) to prevent old videos from playing
   useEffect(() => {
@@ -76,7 +66,58 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
       return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const trackQuoteEvent = (eventType, videoId, seconds, props) => {
+      track(eventType, {
+          video_id: videoId,
+          quote_timestamp: Number.isFinite(Number(seconds)) ? Math.floor(Number(seconds)) : null,
+          search_term: searchTerm ? searchTerm.toLowerCase() : null,
+          ...(props ? { props } : {})
+      });
+  };
+
+  // Engagement timing/depth per result set: when results render, remember the
+  // moment so the first play can report time-to-first-play, and re-arm the
+  // scroll-depth thresholds (each fires once per search).
+  const resultsShownAtRef = React.useRef(null);
+  const firstPlayFiredRef = React.useRef(false);
+  const scrollDepthsFiredRef = React.useRef(new Set());
+
+  useEffect(() => {
+      if (quotes && quotes.length > 0) {
+          resultsShownAtRef.current = Date.now();
+          firstPlayFiredRef.current = false;
+          scrollDepthsFiredRef.current = new Set();
+      }
+  }, [quotes]);
+
+  useEffect(() => {
+      if (!quotes || quotes.length === 0) return;
+      const onScroll = () => {
+          const doc = document.documentElement;
+          const scrollable = doc.scrollHeight - window.innerHeight;
+          if (scrollable <= 0) return;
+          const pct = (window.scrollY / scrollable) * 100;
+          for (const depth of [25, 50, 75, 100]) {
+              if (pct >= depth && !scrollDepthsFiredRef.current.has(depth)) {
+                  scrollDepthsFiredRef.current.add(depth);
+                  track('scroll_depth', {
+                      search_term: searchTerm ? searchTerm.toLowerCase() : null,
+                      props: { depth }
+                  });
+              }
+          }
+      };
+      window.addEventListener('scroll', onScroll, { passive: true });
+      return () => window.removeEventListener('scroll', onScroll);
+  }, [quotes, searchTerm]);
+
   const handleTimestampClick = (videoId, timestamp) => {
+      let playProps;
+      if (!firstPlayFiredRef.current && resultsShownAtRef.current) {
+          firstPlayFiredRef.current = true;
+          playProps = { seconds_to_first_play: Math.round((Date.now() - resultsShownAtRef.current) / 1000) };
+      }
+      trackQuoteEvent('quote_play', videoId, timestamp, playProps);
       // Always pause all other players before starting a new video
       // This ensures only one video plays at a time, especially important on mobile
       pauseOtherPlayers(null); // Passing null to pause all players
@@ -87,6 +128,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
   };
 
   const handleFlagClick = (quote, videoId, title, channel, timestamp) => {
+      trackQuoteEvent('quote_flag', videoId, timestamp);
       setModalState({
           isOpen: true,
           quote,
@@ -109,6 +151,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
               channel: modalState.channel,
               reason
           });
+          trackQuoteEvent('flag_submit', modalState.videoId, modalState.timestamp);
           alert('Quote flagged successfully!');
           setModalState(prev => ({ ...prev, isOpen: false }));
       } catch (error) {
@@ -210,7 +253,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                               textAlign: 'left',
                                               background: 'none',
                                               border: 'none',
-                                              color: '#4A90E2',
+                                              color: 'var(--text-primary)',
                                               cursor: 'pointer',
                                               padding: 0,
                                               font: 'inherit',
@@ -231,7 +274,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                           }}
                                       >
                                           <span style={{ verticalAlign: 'middle' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(quote.text, { ALLOWED_TAGS }) }} />
-                                          <span style={{ verticalAlign: 'middle', marginLeft: '0.5em' }}>
+                                          <span style={{ verticalAlign: 'middle', marginLeft: '0.5em', color: '#4A90E2', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
                                               ({formatTimestamp(backdateTimestamp(quote.timestamp_start))})
                                           </span>
                                       </button>
@@ -244,12 +287,15 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                           flexShrink: 0
                                       }}>
                                           <button
-                                              onClick={() => {
+                                              onClick={(e) => {
+                                                  // Capture before the async clipboard call: the synthetic
+                                                  // event is gone by the time the promise resolves.
+                                                  const button = e.currentTarget;
+                                                  trackQuoteEvent('quote_copy', quoteGroup.video_id, backdateTimestamp(quote.timestamp_start));
                                                   // Strip HTML tags from the text
                                                   const textToCopy = quote.text.replace(/<[^>]*>/g, '');
                                                   navigator.clipboard.writeText(textToCopy).then(() => {
                                                       // Show a temporary success indicator
-                                                      const button = event.currentTarget;
                                                       const originalText = button.innerHTML;
                                                       button.innerHTML = '✓';
                                                       button.style.color = '#4CAF50';
@@ -257,7 +303,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                                           button.innerHTML = originalText;
                                                           button.style.color = '#4A90E2';
                                                       }, 1000);
-                                                  });
+                                                  }).catch(() => {});
                                               }}
                                               style={{
                                                   backgroundColor: 'transparent',
@@ -277,13 +323,14 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                               onMouseOut={e => {
                                                   e.currentTarget.style.transform = 'scale(1)';
                                               }}
-                                              title="Copy quote to clipboard"
+                                              title="Copy quote to clipboard" aria-label="Copy quote to clipboard"
                                           >
                                               📋
                                           </button>
 
                                           <button
                                               onClick={() => {
+                                                  trackQuoteEvent('youtube_open', quoteGroup.video_id, backdateTimestamp(quote.timestamp_start));
                                                   window.open(`https://www.youtube.com/watch?v=${quoteGroup.video_id}&t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`, '_blank');
                                               }}
                                               style={{
@@ -304,13 +351,14 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                               onMouseOut={e => {
                                                   e.currentTarget.style.transform = 'scale(1)';
                                               }}
-                                              title="Open quote in YouTube"
+                                              title="Open quote in YouTube" aria-label="Open quote in YouTube"
                                           >
                                               ↗
                                           </button>
 
                                           <button
                                               onClick={() => {
+                                                  trackQuoteEvent('tweet_share', quoteGroup.video_id, backdateTimestamp(quote.timestamp_start));
                                                   const videoUrl = `https://youtu.be/${quoteGroup.video_id}?t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`;
                                                   const pageUrl = window.location.href;
                                                   const cleanSearchTerm = searchTerm.replace(/"/g, '');
@@ -337,7 +385,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                               onMouseOut={e => {
                                                   e.currentTarget.style.transform = 'scale(1)';
                                               }}
-                                              title="Share quote on X"
+                                              title="Share quote on X" aria-label="Share quote on X"
                                           >
                                               𝕏
                                           </button>
@@ -372,7 +420,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                               onMouseOut={e => {
                                                   e.currentTarget.style.transform = 'scale(1)';
                                               }}
-                                              title="Flag quote as invalid"
+                                              title="Flag quote as invalid" aria-label="Flag quote as invalid"
                                           >
                                               {flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? '⏳' : '🚩'}
                                           </button>
@@ -450,7 +498,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                       textAlign: 'left',
                                       background: 'none',
                                       border: 'none',
-                                      color: '#4A90E2',
+                                      color: 'var(--text-primary)',
                                       cursor: 'pointer',
                                       padding: '0.5rem',
                                       font: 'inherit',
@@ -463,8 +511,9 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                   <span style={{
                                       verticalAlign: 'middle',
                                       marginLeft: '0.5em',
-                                      color: 'var(--text-secondary)',
-                                      fontWeight: 'bold'
+                                      color: '#4A90E2',
+                                      fontWeight: 'bold',
+                                      whiteSpace: 'nowrap'
                                   }}>
                                       ({formatTimestamp(backdateTimestamp(quote.timestamp_start))})
                                   </span>
@@ -478,10 +527,13 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                   borderRadius: '4px'
                               }}>
                                   <button
-                                      onClick={() => {
+                                      onClick={(e) => {
+                                          // Capture before the async clipboard call: the synthetic
+                                          // event is gone by the time the promise resolves.
+                                          const button = e.currentTarget;
+                                          trackQuoteEvent('quote_copy', quoteGroup.video_id, backdateTimestamp(quote.timestamp_start));
                                           const textToCopy = quote.text.replace(/<[^>]*>/g, '');
                                           navigator.clipboard.writeText(textToCopy).then(() => {
-                                              const button = event.currentTarget;
                                               const originalText = button.innerHTML;
                                               button.innerHTML = '✓';
                                               button.style.color = '#4CAF50';
@@ -489,7 +541,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                                   button.innerHTML = originalText;
                                                   button.style.color = '#4A90E2';
                                               }, 1000);
-                                          });
+                                          }).catch(() => {});
                                       }}
                                       style={{
                                           backgroundColor: 'transparent',
@@ -499,13 +551,14 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                           cursor: 'pointer',
                                           fontSize: '1.25rem',
                                       }}
-                                      title="Copy quote to clipboard"
+                                      title="Copy quote to clipboard" aria-label="Copy quote to clipboard"
                                   >
                                       📋
                                   </button>
 
                                   <button
                                       onClick={() => {
+                                          trackQuoteEvent('youtube_open', quoteGroup.video_id, backdateTimestamp(quote.timestamp_start));
                                           window.open(`https://www.youtube.com/watch?v=${quoteGroup.video_id}&t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`, '_blank');
                                       }}
                                       style={{
@@ -516,13 +569,14 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                           cursor: 'pointer',
                                           fontSize: '1.25rem',
                                       }}
-                                      title="Open quote in YouTube"
+                                      title="Open quote in YouTube" aria-label="Open quote in YouTube"
                                   >
                                       ↗
                                   </button>
 
                                   <button
                                       onClick={() => {
+                                          trackQuoteEvent('tweet_share', quoteGroup.video_id, backdateTimestamp(quote.timestamp_start));
                                           const videoUrl = `https://youtu.be/${quoteGroup.video_id}?t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`;
                                           const pageUrl = window.location.href;
                                           const cleanSearchTerm = searchTerm.replace(/"/g, '');
@@ -549,7 +603,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                       onMouseOut={e => {
                                           e.currentTarget.style.transform = 'scale(1)';
                                       }}
-                                      title="Share quote on X"
+                                      title="Share quote on X" aria-label="Share quote on X"
                                   >
                                       𝕏
                                   </button>
@@ -572,7 +626,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                           opacity: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 0.6 : 1,
                                           fontSize: '1.25rem',
                                       }}
-                                      title="Flag quote as invalid"
+                                      title="Flag quote as invalid" aria-label="Flag quote as invalid"
                                   >
                                       {flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? '⏳' : '🚩'}
                                   </button>

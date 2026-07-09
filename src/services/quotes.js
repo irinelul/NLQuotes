@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { analyticsHeaders } from './analytics'
 
 // Detect Render.com environment
 const isOnRender = window.location.hostname.includes('render.com') ||
@@ -25,36 +26,31 @@ const axiosConfig = {
     }
 };
 
-if (isOnRender) {
-    console.log('Running on Render.com, adjusting API paths');
-}
 
 // Helper to try API calls with different path prefixes and base URLs
 const makeApiRequest = async (endpoint, method = 'get', params = null, data = null) => {
     const errors = [];
+    // Merge in the analytics opt-out header so server-side logging respects it
+    const requestConfig = {
+        ...axiosConfig,
+        headers: { ...axiosConfig.headers, ...analyticsHeaders() }
+    };
     
     // If endpoint already starts with /api, use it directly first
     if (endpoint.startsWith('/api')) {
         try {
-            console.log(`Trying API request: ${method.toUpperCase()} ${endpoint}`);
             if (method === 'get') {
-                const response = await axios.get(endpoint, { 
-                    ...axiosConfig,
-                    params 
+                const response = await axios.get(endpoint, {
+                    ...requestConfig,
+                    params
                 });
-                console.log(`API call succeeded with: ${endpoint}`);
                 return response;
             }
             else if (method === 'post') {
-                const response = await axios.post(endpoint, data, axiosConfig);
-                console.log(`API POST call succeeded with: ${endpoint}`);
+                const response = await axios.post(endpoint, data, requestConfig);
                 return response;
             }
         } catch (error) {
-            console.log(`API call failed with: ${endpoint}`, {
-                status: error.response?.status,
-                message: error.message
-            });
             errors.push({
                 path: endpoint,
                 status: error.response?.status,
@@ -82,19 +78,15 @@ const makeApiRequest = async (endpoint, method = 'get', params = null, data = nu
                     fullPath = `${baseUrl}${fullPath}`;
                 }
                 
-                console.log(`Trying API request: ${method.toUpperCase()} ${fullPath}`);
-                
                 if (method === 'get') {
-                    const response = await axios.get(fullPath, { 
-                        ...axiosConfig,
-                        params 
+                    const response = await axios.get(fullPath, {
+                        ...requestConfig,
+                        params
                     });
-                    console.log(`API call succeeded with: ${fullPath}`);
                     return response;
                 }
                 else if (method === 'post') {
-                    const response = await axios.post(fullPath, data, axiosConfig);
-                    console.log(`API POST call succeeded with: ${fullPath}`);
+                    const response = await axios.post(fullPath, data, requestConfig);
                     return response;
                 }
             } catch (error) {
@@ -105,9 +97,7 @@ const makeApiRequest = async (endpoint, method = 'get', params = null, data = nu
                     isSSL: error.message.includes('SSL')
                 };
                 errors.push(errorInfo);
-                
-                console.log(`API call failed with: ${baseUrl}${prefix}${endpoint}`, errorInfo);
-                
+
                 // If we get SSL error, log more details
                 if (error.message.includes('SSL')) {
                     console.error('SSL Error detected:', error);
@@ -137,28 +127,13 @@ const getAll = async (searchTerm, page, strict, selectedValue, selectedMode, yea
             game: gameName || 'all'
         });
         
-        console.log('[quotes.js] API Response:', {
-            hasData: !!response.data,
-            dataType: typeof response.data,
-            dataKeys: response.data ? Object.keys(response.data) : [],
-            dataLength: response.data?.data?.length,
-            total: response.data?.total,
-            totalQuotes: response.data?.totalQuotes
-        });
-        
         // If we get here, one of the attempts succeeded
         const result = {
             data: response.data.data || [],
             total: response.data.total || 0,
             totalQuotes: response.data.totalQuotes || 0
         };
-        
-        console.log('[quotes.js] Returning result:', {
-            dataLength: result.data.length,
-            total: result.total,
-            totalQuotes: result.totalQuotes
-        });
-        
+
         return result;
     } catch (error) {
         console.error('Error fetching quotes:', error);

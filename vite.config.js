@@ -229,6 +229,10 @@ function tenantHtmlPlugin() {
 
 export default defineConfig({
   plugins: [react(), tenantHtmlPlugin()],
+  // Strip debug logging from production bundles; console.error/warn survive.
+  esbuild: {
+    pure: ['console.log', 'console.info', 'console.debug'],
+  },
   define: {
     // Inject TENANT_ID as a build-time constant accessible via import.meta.env
     'import.meta.env.VITE_TENANT_ID': JSON.stringify(TENANT_ID),

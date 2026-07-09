@@ -57,6 +57,8 @@ function createPool(connectionString) {
 const defaultPool = createPool(process.env.DATABASE_URL);
 pools.set('default', defaultPool);
 
+export { getPoolForTenant };
+
 // Warm up the default connection pool
 (async () => {
   try {
@@ -160,6 +162,15 @@ const quoteModel = {
       return { data: [], total: 0, totalQuotes: 0 };
     }
 
+    const hasTerm = !!(searchTerm && searchTerm.trim().length > 2);
+    const hasGameFilter = !!(gameName && gameName !== 'all' && gameName.replace(/['";]/g, '').trim().length > 2);
+
+    // Nothing to search or browse by — answer without touching the database.
+    // (An unfiltered query would otherwise GROUP BY the entire quotes table.)
+    if (!hasTerm && !hasGameFilter) {
+      return { data: [], total: 0, totalQuotes: 0 };
+    }
+
     const offset = (page - 1) * limit;
     const params = [];
     let paramIndex = 1;
@@ -168,11 +179,16 @@ const quoteModel = {
     const tenantId = tenant?.id || 'default';
     console.log(`[Search] PostgreSQL search - Tenant: ${tenantId}, term="${searchTerm}", game="${gameName}", channel=${selectedValue}, year=${year}, sort=${sortOrder}, page=${page}, exactPhrase=${exactPhrase}`);
 
+    // Highlight matches only when there is a term; game-only browsing has no $1 to reference.
+    const textExpr = hasTerm
+      ? `ts_headline('simple', q.text, websearch_to_tsquery('simple', $1),'MaxWords=5, MinWords=5, HighlightAll=TRUE')`
+      : `q.text`;
+
     // Base query structure remains similar
     let query = `
       SELECT q.video_id, q.title, q.upload_date, q.channel_source,
              json_agg(json_build_object(
-               'text', ts_headline('simple', q.text, websearch_to_tsquery('simple', $1),'MaxWords=5, MinWords=5, HighlightAll=TRUE'),
+               'text', ${textExpr},
                'line_number', q.line_number,
                'timestamp_start', q.timestamp_start,
                'title', q.title,          -- Keep for context within quote object
@@ -210,25 +226,22 @@ const quoteModel = {
     }
 
     if (selectedValue && selectedValue !== 'all') { // Assuming selectedValue is channel_source
-      // Tenant-aware channel validation - use tenant config if available
-      let validChannels = ['librarian', 'northernlion']; // Default fallback
-      
-      if (tenant && tenant.channels) {
-        // Extract channel IDs from tenant config (excluding 'all')
-        validChannels = tenant.channels
-          .filter(ch => ch.id !== 'all')
-          .map(ch => ch.id.toLowerCase());
-        console.log(`[Search] Using tenant channels for ${tenant.id}:`, validChannels);
-      }
-      
+      // Resolve the channel id to the exact stored channel_source value from
+      // tenant config (config `name` mirrors the DB value). Exact equality is
+      // index-friendly; LOWER(channel_source) forced a scan of the whole index.
+      const channels = (tenant?.channels?.length ? tenant.channels : [
+        { id: 'librarian', name: 'Librarian' },
+        { id: 'northernlion', name: 'Northernlion' }
+      ]);
       const lowerSelectedValue = selectedValue.toLowerCase();
-      if (validChannels.includes(lowerSelectedValue)) {
-        whereClauses.push(`LOWER(q.channel_source) = $${paramIndex}`);
-        params.push(lowerSelectedValue);
+      const channelMatch = channels.find(ch => ch.id !== 'all' && ch.id.toLowerCase() === lowerSelectedValue);
+      if (channelMatch) {
+        whereClauses.push(`q.channel_source = $${paramIndex}`);
+        params.push(channelMatch.name);
         paramIndex++;
-        console.log(`[Search] Applied channel filter: ${lowerSelectedValue}`);
+        console.log(`[Search] Applied channel filter: ${channelMatch.name}`);
       } else {
-        console.warn(`[Search] Channel "${selectedValue}" not in valid channels list for tenant ${tenant?.id || 'default'}. Valid channels:`, validChannels);
+        console.warn(`[Search] Channel "${selectedValue}" not in valid channels list for tenant ${tenant?.id || 'default'}`);
       }
     }
 
@@ -237,9 +250,11 @@ const quoteModel = {
       try {
         const yearInt = parseInt(year);
         if (!isNaN(yearInt)) {
-          whereClauses.push(`EXTRACT(YEAR FROM q.upload_date) = $${paramIndex}`);
-          params.push(yearInt);
-          paramIndex++;
+          // Range condition instead of EXTRACT(YEAR ...) so the upload_date
+          // btree indexes stay usable.
+          whereClauses.push(`q.upload_date >= $${paramIndex} AND q.upload_date < $${paramIndex + 1}`);
+          params.push(`${yearInt}-01-01`, `${yearInt + 1}-01-01`);
+          paramIndex += 2;
         } else {
           console.error("Invalid year parameter:", year);
         }
@@ -265,8 +280,12 @@ const quoteModel = {
     query += ` GROUP BY q.video_id, q.title, q.upload_date, q.channel_source`;
 
     // --- Sorting (Applied after grouping) ---
+    // Always order deterministically: LIMIT/OFFSET without a stable ORDER BY
+    // lets pages repeat or skip videos between requests.
     if (sortOrder === 'newest' || sortOrder === 'oldest') {
-      query += ` ORDER BY q.upload_date ${sortOrder === 'newest' ? 'DESC' : 'ASC'}`;
+      query += ` ORDER BY q.upload_date ${sortOrder === 'newest' ? 'DESC' : 'ASC'}, q.video_id`;
+    } else {
+      query += ` ORDER BY q.video_id`;
     }
 
 
@@ -287,7 +306,7 @@ const quoteModel = {
           SELECT q.video_id, COUNT(*) AS quote_count
           FROM quotes q
           CROSS JOIN websearch_to_tsquery('simple', $1) AS query
-          WHERE q.fts_text_simple @@ query
+          WHERE q.fts_doc @@ query
       `;
       
       // Skip the first parameter as we already included it in the CROSS JOIN
@@ -418,34 +437,6 @@ const quoteModel = {
     }
   },
 
-  // Get stats (no changes needed, assumes indexes help GROUP BY)
-  async getStats(tenant = null) {
-    const query = `
-      SELECT
-        COALESCE(channel_source, 'Unknown') AS channel_source,
-        COUNT(DISTINCT video_id) AS "videoCount",
-        COUNT(*) AS "totalQuotes"
-      FROM quotes
-      WHERE channel_source IS NOT NULL AND channel_source <> '' -- Added condition to exclude empty strings if needed
-      GROUP BY channel_source
-      ORDER BY "videoCount" DESC
-    `;
-
-    let client;
-    try {
-      const pool = getPoolForTenant(tenant);
-      client = await pool.connect();
-      const result = await client.query(query);
-      return result.rows;
-    } catch (error) {
-      console.error("Error fetching stats:", error);
-      throw new Error(`Failed to fetch stats: ${error.message}`);
-    } finally {
-      if (client) client.release();
-    }
-  },
-
-  // Get random quotes (using TABLESAMPLE SYSTEM for better performance on large tables)
   async getRandom(tenant = null) {
     const query = `
         SELECT
