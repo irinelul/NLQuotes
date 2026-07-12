@@ -16,3 +16,8 @@ backup/
 *.dump
 *.rar
 *.csv
+
+# Local agent/tooling scratch (not part of the app)
+/.pi/
+/.pi-subagents/
+/agents.md
