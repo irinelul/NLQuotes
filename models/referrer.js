@@ -28,7 +28,7 @@ export function categorizeReferrer(referrer) {
     // scripts/migrations/backfill-004.js.
     const host = String(referrer)
         .replace(/^https?:\/\//i, '')
-        .split(/[/?]/, 1)[0]
+        .split(/[/:?]/, 1)[0]
         .toLowerCase();
 
     if (!host) {
