@@ -52,6 +52,14 @@ test('strips scheme, path and query, and lowercases the host', () => {
     expect(categorizeReferrer('Reddit.COM/path')).toEqual({ source: 'social', medium: 'reddit.com' });
 });
 
+test('strips the port from the host (parity with SQL backfill)', () => {
+    // Ports must be stripped so ':8443' / ':8080' / ':443' never leak into
+    // referrer_medium. Mirrors the HOST_EXPR split in backfill-004.js.
+    expect(categorizeReferrer('https://staging.nlquotes.com:8443/x')).toEqual({ source: 'internal', medium: 'staging.nlquotes.com' });
+    expect(categorizeReferrer('http://www.example.org:8080/p?q=1')).toEqual({ source: 'other', medium: 'www.example.org' });
+    expect(categorizeReferrer('https://www.google.com:443/search?q=x')).toEqual({ source: 'organic', medium: 'www.google.com' });
+});
+
 test('truncates medium to 100 chars', () => {
     const longHost = 'a'.repeat(150) + '.example.org';
     const { source, medium } = categorizeReferrer('https://' + longHost + '/path');

@@ -92,6 +92,15 @@ function makeSid() {
 // Read (or create/rotate) the current session and refresh nlq_last. Returns
 // { sid, start } for the live session, or null when storage is unavailable.
 function ensureSession() {
+    // If sessionStorage is unavailable (private mode / disabled), do not mint
+    // a sid — track() then sends events with no session_id rather than a fresh
+    // unique id per event (which would shred session stitching).
+    try {
+        sessionStorage.setItem('__nlq_probe', '1');
+        sessionStorage.removeItem('__nlq_probe');
+    } catch {
+        return null;
+    }
     const now = Date.now();
     const last = ssGetNum(KEY_LAST);
     let sid = ssGet(KEY_SID);
@@ -123,7 +132,7 @@ function sendExit() {
             session_id: sid,
             path: window.location.pathname,
             session_duration_ms: Date.now() - start,
-        });
+        }, { skipSession: true });
     } catch {
         // never break on unload
     }
@@ -154,21 +163,25 @@ function registerExitListeners() {
 // Register the exit listeners on first import (guarded, opt-out aware).
 registerExitListeners();
 
-export function track(eventType, fields = {}) {
+export function track(eventType, fields = {}, opts = {}) {
     if (isOptedOut()) return;
+    const { skipSession = false } = opts;
 
     // --- session lifecycle: rotate when stale, emit session_start once ---
     let session = null;
-    try {
-        session = ensureSession();
-        if (session && startedSid !== session.sid) {
-            // Mark this session as "started" BEFORE the recursive call so the
-            // re-entrant track('session_start') does not loop.
-            startedSid = session.sid;
-            track('session_start', { session_id: session.sid });
+    if (!skipSession) {
+        try {
+            session = ensureSession();
+            if (session && startedSid !== session.sid) {
+                // Mark this session as "started" BEFORE the recursive call so the
+                // re-entrant track('session_start') does not loop.
+                startedSid = session.sid;
+                exitSent = false; // FIX #2: a fresh session may emit its own session_end
+                track('session_start', { session_id: session.sid }, { skipSession: true });
+            }
+        } catch {
+            // session logic must never block the real event
         }
-    } catch {
-        // session logic must never block the real event
     }
 
     const payload = {
