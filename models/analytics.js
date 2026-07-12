@@ -1,5 +1,9 @@
 import crypto from 'crypto';
 import { getPoolForTenant } from './postgres.js';
+import { categorizeReferrer } from './referrer.js';
+
+// Convenience re-export so callers can import everything from one module.
+export { categorizeReferrer } from './referrer.js';
 
 // In-house privacy-friendly analytics (see migrations/003_create_analytics_events.sql).
 // Every write here is fire-and-forget: analytics must never slow down or break
@@ -27,6 +31,8 @@ const CLIENT_EVENT_TYPES = new Set([
     'nldle_start',
     'nldle_guess',          // props: { round, correct }
     'nldle_finish',         // props: { score, total, perfect, streak }
+    'session_start',        // front-end session beacon
+    'session_end',          // props: { duration_ms } — final beacon before unload
 ]);
 
 // ---- opt-out ----------------------------------------------------------------
@@ -125,8 +131,9 @@ async function insertEvent(tenant, fields) {
             screen_width, screen_height,
             search_term, search_mode, game, channel, year, sort_order, page,
             result_videos, result_quotes, response_time_ms,
-            video_id, quote_timestamp, props
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)`,
+            video_id, quote_timestamp, props,
+            session_id, referrer_source, referrer_medium, session_duration_ms
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30)`,
         [
             tenant?.id || 'default', fields.source, fields.event_type, fields.visitor_hash,
             trunc(fields.path, 500), trunc(fields.referrer, 500), trunc(fields.country, 2),
@@ -137,6 +144,8 @@ async function insertEvent(tenant, fields) {
             toInt(fields.result_videos), toInt(fields.result_quotes), toInt(fields.response_time_ms),
             trunc(fields.video_id, 20), toInt(fields.quote_timestamp),
             fields.props ? JSON.stringify(fields.props) : null,
+            trunc(fields.session_id, 36), trunc(fields.referrer_source, 20),
+            trunc(fields.referrer_medium, 100), toInt(fields.session_duration_ms),
         ]
     );
 }
@@ -157,11 +166,18 @@ export function logSearchEvent(req, event) {
     if (ctx.device === 'bot') return;
     const tenant = req.tenant;
     const pool = getPoolForTenant(tenant);
+    // Server-side search events have no body.referrer, so derive the referrer
+    // from the request's Referer header and categorize it for source dashboards.
+    const referrer = req.get('referer') || null;
+    const { source: referrer_source, medium: referrer_medium } = categorizeReferrer(referrer);
     visitorHash(req, pool)
         .then((hash) => insertEvent(tenant, {
             source: 'server',
             visitor_hash: hash,
             ...ctx,
+            referrer,
+            referrer_source,
+            referrer_medium,
             ...event,
         }))
         .catch((err) => console.error('[Analytics] failed to log search event:', err.message));
@@ -376,6 +392,7 @@ export function logClientEvent(req, body) {
 
     const tenant = req.tenant;
     const pool = getPoolForTenant(tenant);
+    const { source: referrer_source, medium: referrer_medium } = categorizeReferrer(body.referrer);
     visitorHash(req, pool)
         .then((hash) => insertEvent(tenant, {
             source: 'client',
@@ -395,6 +412,10 @@ export function logClientEvent(req, body) {
             page: body.page,
             video_id: body.video_id,
             quote_timestamp: body.quote_timestamp,
+            session_id: body.session_id,
+            referrer_source,
+            referrer_medium,
+            session_duration_ms: body.session_duration_ms,
             props,
         }))
         .catch((err) => console.error('[Analytics] failed to log client event:', err.message));
