@@ -33,16 +33,7 @@ export const FeedbackModal = ({ isOpen, onClose, onSubmit }) => {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="Email (optional)"
-                        style={{
-                            width: '100%',
-                            padding: '0.5rem',
-                            marginTop: '0.5rem',
-                            marginBottom: '1rem',
-                            border: '1px solid #ccc',
-                            borderRadius: '4px',
-                            fontSize: '1rem',
-                            boxSizing: 'border-box'
-                        }}
+                        className={styles.emailInput}
                     />
                     <div className={styles.modalButtons}>
                         <button type="button" onClick={onClose}>

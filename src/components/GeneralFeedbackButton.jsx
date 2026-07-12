@@ -1,8 +1,9 @@
 import React from 'react';
+import styles from './GeneralFeedbackButton.module.css';
 
 const GeneralFeedbackButton = ({ onClick, disabled }) => (
     <button
-        className="floating-feedback-button"
+        className={styles.floatingFeedbackButton}
         onClick={onClick}
         disabled={disabled}
     >
