@@ -1,0 +1,69 @@
+.container {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: var(--surface-color);
+  border-radius: 12px;
+}
+
+.backButton {
+  margin-bottom: 1.5rem;
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  color: inherit;
+}
+
+.heading {
+  margin-top: 0;
+}
+
+.paragraph {
+  margin: 1rem 0;
+  line-height: 1.6;
+}
+
+.paragraphSmall {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.paragraphNote {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.analyticsSection {
+  margin-bottom: 1.5rem;
+}
+
+.analyticsButton {
+  background: var(--analytics-button-bg, #f44336);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.analyticsButton:hover {
+  opacity: 0.9;
+}
+
+.list {
+  margin: 1rem 0;
+  padding-left: 2rem;
+}
+
+.listItem {
+  margin: 0.5rem 0;
+  line-height: 1.6;
+}

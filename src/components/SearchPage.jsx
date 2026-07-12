@@ -11,6 +11,7 @@ import GeneralFeedbackButton from './GeneralFeedbackButton';
 import { useTheme } from '../hooks/useTheme';
 import { TENANT, logo, logoFallback } from '../config/tenant';
 import { track } from '../services/analytics';
+import styles from './SearchPage.module.css';
 
 const SearchPage = ({
     searchInput,
@@ -64,9 +65,9 @@ const SearchPage = ({
     ];
 
     return (
-        <div className='main-container'>
-            <div className="logo-section">
-                <div className="logo-container" onClick={handleLogoClick}>
+        <div className={styles.mainContainer}>
+            <div className={styles.logoSection}>
+                <div className={styles.logoContainer} onClick={handleLogoClick}>
                     <img 
                         src={logo} 
                         alt={`${TENANT.name || 'NLQuotes'} Logo`}
@@ -78,10 +79,10 @@ const SearchPage = ({
                         }}
                     />
                 </div>
-                <div className="logo-nav">
+                <div className={styles.logoNav}>
                     <button
                         onClick={toggleTheme}
-                        className="logo-nav-button theme-toggle-button"
+                        className={`${styles.logoNavButton} ${styles.themeToggleButton}`}
                         title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
                     >
                         {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
@@ -90,7 +91,7 @@ const SearchPage = ({
                         onClick={() => {
                             navigate('/stats');
                         }}
-                        className="logo-nav-button stats-button"
+                        className={`${styles.logoNavButton} ${styles.statsButton}`}
                     >
                         📊 Stats
                     </button>
@@ -98,15 +99,14 @@ const SearchPage = ({
                         onClick={() => {
                             onChangelogClick();
                         }}
-                        className="logo-nav-button"
-                        style={{ background: '#4CAF50' }}
+                        className={`${styles.logoNavButton} ${styles.changelogButton}`}
                         title="View Changelog"
                     >
                         📋 Changelog
                     </button>
                 </div>
             </div>
-            <div className="input-container">
+            <div className={styles.inputContainer}>
                 <button
                     onClick={handleRandomQuotes}
                     disabled={loading}
@@ -123,23 +123,21 @@ const SearchPage = ({
                     onChange={(e) => setSearchInput(e.target.value)}
                     onKeyDown={handleKeyPress}
                     placeholder={searchPlaceholder}
-                    className="search-input"
-                    style={{ boxSizing: "border-box" }}
+                    className={styles.searchInput}
                 />
                 <button onClick={handleSearch}>
                     Search
                 </button>
                 <button
                     onClick={handleResetSearch}
-                    style={{ marginLeft: '0.5rem' }}
                 >
                     Reset Search
                 </button>
             </div>
 
-            {error && <div className="error-message">{error || errorMessage}</div>}
+            {error && <div className={styles.errorMessage}>{error || errorMessage}</div>}
 
-            <div className="radio-group channel-tooltip">
+            <div className={`${styles.radioGroup} ${styles.channelTooltip}`}>
                 {channels.map((ch) => (
                     <ChannelRadioButton
                         key={ch.id}
@@ -174,7 +172,7 @@ const SearchPage = ({
             {loading && <div>{loadingMessage}</div>}
             {hasSearched && (
                 <>
-                    <div className="total-quotes">
+                    <div className={styles.totalQuotes}>
                         {`${totalQuotesLabel} ${numberFormatter.format(totalQuotes)}`}
                     </div>
                     {quotes.length > 0 && (
