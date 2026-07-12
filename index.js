@@ -3,7 +3,7 @@ import express from 'express';
 import morgan from 'morgan';
 import cors from 'cors';
 import quoteModel from './models/postgres.js';
-import { logSearchEvent, logClientEvent, getUsageStats, getTopSearchTopics } from './models/analytics.js';
+import { logSearchEvent, logClientEvent, getTopSearchTopics } from './models/analytics.js';
 import axios from 'axios';
 import fs from 'fs';
 import rateLimit from 'express-rate-limit';
@@ -672,20 +672,6 @@ app.get('/api/games', async (req, res) => {
     } catch (error) {
         console.error('Error serving game titles:', error);
         res.status(500).json({ error: 'Failed to fetch game titles' });
-    }
-});
-
-// Aggregate usage stats for the public /stats page. No per-visitor data leaves
-// the server — only counts. Cached 5 minutes per tenant+window in the model.
-app.get('/api/stats/usage', async (req, res) => {
-    try {
-        const days = [7, 30, 90].includes(parseInt(req.query.days)) ? parseInt(req.query.days) : 30;
-        const stats = await getUsageStats(req.tenant, days);
-        res.set({ 'Cache-Control': 'public, max-age=300' });
-        res.json(stats);
-    } catch (error) {
-        console.error('Error building usage stats:', error.message);
-        res.status(500).json({ error: 'Failed to load usage stats' });
     }
 });
 

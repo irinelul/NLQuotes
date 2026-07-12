@@ -8,7 +8,6 @@ import { useFetchGames } from './hooks/useFetchGames';
 import { useSearchState } from './hooks/useSearchState';
 import Privacy from './components/Privacy';
 import SearchPage from './components/SearchPage';
-import NLDLE from './components/NLDLE/NLDLE';
 import Stats from './components/Stats';
 import { TopicPage } from './components/TopicPage';
 
@@ -330,7 +329,6 @@ const App = () => {
             <Route path="/" element={searchPageElement} />
             <Route path="/search" element={searchPageElement} />
             <Route path="/privacy" element={<Privacy />} />
-            <Route path="/nldle" element={<NLDLE />} />
             <Route path="/stats" element={<Stats />} />
             <Route path="/topic/:term" element={<TopicPage />} />
         </Routes>
