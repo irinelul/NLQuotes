@@ -540,8 +540,12 @@ app.post('/api/flag', async (req, res) => {
         const timestamp = req.body.timestamp ? parseFloat(req.body.timestamp) : null;
         
         // Validate videoId format (YouTube IDs are 11 chars)
-        const videoId = /^[a-zA-Z0-9_-]{11}$/.test(req.body.videoId) ? 
+        const videoId = /^[a-zA-Z0-9_-]{11}$/.test(req.body.videoId) ?
                         req.body.videoId : "invalid";
+
+        // line_number is stored as text in the DB; accept digits only
+        const lineNumber = /^\d{1,10}$/.test(String(req.body.lineNumber ?? '')) ?
+                           String(req.body.lineNumber) : null;
         
         const title = sanitizeInput(req.body.title);
         const channel = sanitizeInput(req.body.channel);
@@ -589,6 +593,11 @@ app.post('/api/flag', async (req, res) => {
                         value: `\`${videoId}\``,
                         inline: true
                     }] : []),
+                    ...(videoId !== "invalid" && lineNumber ? [{
+                        name: "Line",
+                        value: `\`${lineNumber}\``,
+                        inline: true
+                    }] : []),
                     {
                         name: "Quote",
                         value: quote,
@@ -604,6 +613,17 @@ app.post('/api/flag', async (req, res) => {
                         value: reason ? `\`\`\`${reason}\`\`\`` : "No feedback provided",
                         inline: false
                     },
+                    // Copy-paste query to locate the flagged row; videoId and
+                    // lineNumber are regex-validated above so interpolation is safe
+                    ...(videoId !== "invalid" ? [{
+                        name: "DB Query",
+                        value: [
+                            '```sql',
+                            `SELECT * FROM quotes WHERE video_id = '${videoId}'${lineNumber ? ` AND line_number = '${lineNumber}'` : ''};`,
+                            '```'
+                        ].join('\n'),
+                        inline: false
+                    }] : []),
                     ...(email ? [{
                         name: "Email",
                         value: email,

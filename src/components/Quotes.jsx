@@ -4,7 +4,6 @@ import DOMPurify from 'dompurify';
 import { YouTubePlayer } from './YoutubePlayer';
 import { FlagModal } from './Modals/FlagModal';
 import { backdateTimestamp, formatDate, formatTimestamp } from '../services/dateHelpers';
-import { TENANT } from '../config/tenant';
 import query from '../services/quotes';
 import { track } from '../services/analytics';
 import styles from './Quotes.module.css';
@@ -20,15 +19,13 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = fal
       videoId: null,
       title: null,
       channel: null,
-      timestamp: null
+      timestamp: null,
+      lineNumber: null
   });
   const [activeTimestamp, setActiveTimestamp] = useState({ videoId: null, timestamp: null });
   const [showEmbeddedVideos] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
   const [isMobileView, setIsMobileView] = useState(window.innerWidth <= 768);
-  
-  // Get tenant-aware site URL (hard-bound at import time, no flickering)
-  const siteUrl = TENANT.hostnames?.[0] ? `https://${TENANT.hostnames[0]}` : 'https://nlquotes.com';
 
   // Reset active timestamp when quotes change (new search) to prevent old videos from playing
   useEffect(() => {
@@ -128,7 +125,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = fal
       setActiveTimestamp({ videoId, timestamp });
   };
 
-  const handleFlagClick = (quote, videoId, title, channel, timestamp) => {
+  const handleFlagClick = (quote, videoId, title, channel, timestamp, lineNumber) => {
       trackQuoteEvent('quote_flag', videoId, timestamp);
       setModalState({
           isOpen: true,
@@ -136,13 +133,17 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = fal
           videoId,
           title,
           channel,
-          timestamp
+          timestamp,
+          lineNumber
       });
   };
 
+  // Success/error is shown inline by the modal, which closes itself; a
+  // rethrow here is what flips it to the error state.
   const handleFlagSubmit = async (reason) => {
+      const flagKey = `${modalState.videoId}-${modalState.timestamp}`;
       try {
-          setFlagging(prev => ({ ...prev, [`${modalState.videoId}-${modalState.timestamp}`]: true }));
+          setFlagging(prev => ({ ...prev, [flagKey]: true }));
           await query.flagQuote({
               quote: modalState.quote,
               searchTerm,
@@ -150,16 +151,15 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = fal
               videoId: modalState.videoId,
               title: modalState.title,
               channel: modalState.channel,
+              lineNumber: modalState.lineNumber,
               reason
           });
           trackQuoteEvent('flag_submit', modalState.videoId, modalState.timestamp);
-          alert('Quote flagged successfully!');
-          setModalState(prev => ({ ...prev, isOpen: false }));
       } catch (error) {
           console.error('Error flagging quote:', error);
-          alert(`Unable to flag quote due to database connection issues. If you're on the deployed site, please try the main site at ${siteUrl}.`);
+          throw error;
       } finally {
-          setFlagging(prev => ({ ...prev, [`${modalState.video_id}-${modalState.timestamp}`]: false }));
+          setFlagging(prev => ({ ...prev, [flagKey]: false }));
       }
   };
 
@@ -266,7 +266,8 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = fal
                                                   quoteGroup.video_id,
                                                   quoteGroup.quotes[0]?.title,
                                                   quoteGroup.quotes[0]?.channel_source,
-                                                  quote.timestamp_start
+                                                  quote.timestamp_start,
+                                                  quote.line_number
                                               )}
                                               disabled={flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]}
                                               className={`${styles.actionButton} ${styles.flagButton}`}
@@ -383,7 +384,8 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = fal
                                           quoteGroup.video_id,
                                           quoteGroup.quotes[0]?.title,
                                           quoteGroup.quotes[0]?.channel_source,
-                                          quote.timestamp_start
+                                          quote.timestamp_start,
+                                          quote.line_number
                                       )}
                                       disabled={flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]}
                                       className={`${styles.mobileActionButton} ${styles.flagButton}`}

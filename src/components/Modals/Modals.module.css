@@ -60,6 +60,7 @@
 
 .modalButtons {
     display: flex;
+    align-items: center;
     justify-content: flex-end;
     gap: 0.5rem;
 
@@ -92,6 +93,24 @@
             background-color: #FF6B6B;
         }
     }
+}
+
+/* Inline submit status, shown left of the buttons */
+.statusMessage {
+    margin-right: auto;
+    font-size: 0.9rem;
+}
+
+.statusSuccess {
+    color: #4CAF50;
+}
+
+[data-theme="light"] .statusSuccess {
+    color: #2E7D32;
+}
+
+.statusError {
+    color: var(--accent-color);
 }
 
 /* Feedback modal specific styles */

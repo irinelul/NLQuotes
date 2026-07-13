@@ -31,7 +31,6 @@ const App = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
-    const [, setSubmittingFeedback] = useState(false);
     
     const strict = false;
 
@@ -245,9 +244,10 @@ const App = () => {
 
     const numberFormatter = new Intl.NumberFormat('en-US');
 
+    // Success/error is shown inline by the modal, which closes itself; a
+    // rethrow here is what flips it to the error state.
     const handleFeedbackSubmit = async (feedback, email) => {
         try {
-            setSubmittingFeedback(true);
             await query.flagQuote({
                 quote: "Website Feedback",
                 searchTerm: "Feedback",
@@ -259,14 +259,9 @@ const App = () => {
                 email: email || undefined
             });
             track('feedback_submit');
-            alert('Thank you for your feedback!');
-            setFeedbackModalOpen(false);
         } catch (error) {
             console.error('Error submitting feedback:', error);
-            const errorMessage = error.response?.data?.error || error.message || 'Unknown error';
-            alert(`Unable to submit feedback: ${errorMessage}. Please check your connection and try again.`);
-        } finally {
-            setSubmittingFeedback(false);
+            throw error;
         }
     };
 
