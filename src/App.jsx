@@ -3,7 +3,6 @@ import query from './services/quotes';
 import { track } from './services/analytics';
 import { useNavigate, Routes, Route, useSearchParams, useLocation } from 'react-router-dom';
 import { ChangelogModal } from './components/Modals/ChangelogModal';
-import './App.css';
 import { useFetchGames } from './hooks/useFetchGames';
 import { useSearchState } from './hooks/useSearchState';
 import Privacy from './components/Privacy';

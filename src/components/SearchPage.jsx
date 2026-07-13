@@ -110,10 +110,6 @@ const SearchPage = ({
                 <button
                     onClick={handleRandomQuotes}
                     disabled={loading}
-                    style={{
-                        opacity: loading ? 0.7 : 1,
-                        cursor: loading ? 'not-allowed' : 'pointer',
-                    }}
                 >
                     {loading ? loadingMessage : randomQuotesText}
                 </button>

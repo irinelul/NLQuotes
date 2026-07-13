@@ -170,25 +170,15 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
       <table className={styles.quotesTable}>
           <thead>
               <tr>
-                  <th style={{ width: '720px', textAlign: 'center' }}>Video</th>
-                  <th style={{ width: 'calc(100% - 720px)', textAlign: 'center' }}>Quotes with Timestamps</th>
+                  <th>Video</th>
+                  <th>Quotes with Timestamps</th>
               </tr>
           </thead>
           <tbody>
               {quotes.map((quoteGroup, index) => (
                   <React.Fragment key={quoteGroup.video_id || `quote-group-${index}`}>
-                      <tr style={{
-                          borderBottom: '2px solid var(--border-color)',
-                          height: '450px',
-                          padding: '1rem 0'
-                      }}>
-                      <td style={{
-                          padding: '1rem',
-                          verticalAlign: 'middle',
-                          height: '100%',
-                          textAlign: 'center',
-                          width: '720px'
-                      }}>
+                      <tr className={styles.videoRow}>
+                      <td className={styles.videoCell}>
                           <div className={styles.videoInfoContainer}>
                               <div className={styles.videoInfoTitle}>
                                   {quoteGroup.quotes[0]?.title || 'N/A'}
@@ -206,33 +196,15 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                               </div>
                           </div>
                       </td>
-                      <td style={{
-                          verticalAlign: 'middle',
-                          height: '100%',
-                          padding: '1rem',
-                          maxHeight: '450px',
-                          overflow: 'visible',
-                          textAlign: 'center',
-                          position: 'relative'
-                      }}>
-                          <div style={{
-                              width: '100%',
-                              height: quoteGroup.quotes?.length > 2 ? '450px' : 'auto',
-                              overflowY: quoteGroup.quotes?.length > 2 ? 'auto' : 'visible',
-                              padding: '0.5rem 0',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              justifyContent: quoteGroup.quotes?.length > 2 ? 'flex-start' : 'center',
-                              alignItems: 'flex-start',
-                              position: 'relative'
-                          }}>
+                      <td className={styles.quotesCell}>
+                          <div className={`${styles.quotesScroller} ${quoteGroup.quotes?.length > 2 ? styles.scrollable : ''}`}>
                               {quoteGroup.quotes?.map((quote, index) => (
                                   <div className={`${styles.quoteItem} ${index === quoteGroup.quotes.length - 1 ? styles.quoteItemLast : ''}`} key={index}>
                                       <button
                                           onClick={() => handleTimestampClick(quoteGroup.video_id, backdateTimestamp(quote.timestamp_start))}
                                           className={styles.quoteItemButton}
                                       >
-                                          <span style={{ verticalAlign: 'middle' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(quote.text, { ALLOWED_TAGS }) }} />
+                                          <span className={styles.quoteText} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(quote.text, { ALLOWED_TAGS }) }} />
                                           <span className={styles.quoteTimestamp}>
                                               ({formatTimestamp(backdateTimestamp(quote.timestamp_start))})
                                           </span>
@@ -247,10 +219,10 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                                   navigator.clipboard.writeText(textToCopy).then(() => {
                                                       const originalText = button.innerHTML;
                                                       button.innerHTML = '✓';
-                                                      button.style.color = '#4CAF50';
+                                                      button.classList.add(styles.copied);
                                                       setTimeout(() => {
                                                           button.innerHTML = originalText;
-                                                          button.style.color = '#4A90E2';
+                                                          button.classList.remove(styles.copied);
                                                       }, 1000);
                                                   }).catch(() => {});
                                               }}
@@ -349,7 +321,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                   onClick={() => handleTimestampClick(quoteGroup.video_id, backdateTimestamp(quote.timestamp_start))}
                                   className={styles.mobileQuoteButton}
                               >
-                                  <span style={{ verticalAlign: 'middle' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(quote.text, { ALLOWED_TAGS }) }} />
+                                  <span className={styles.quoteText} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(quote.text, { ALLOWED_TAGS }) }} />
                                   <span className={styles.quoteTimestamp}>
                                       ({formatTimestamp(backdateTimestamp(quote.timestamp_start))})
                                   </span>
@@ -364,10 +336,10 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                           navigator.clipboard.writeText(textToCopy).then(() => {
                                               const originalText = button.innerHTML;
                                               button.innerHTML = '✓';
-                                              button.style.color = '#4CAF50';
+                                              button.classList.add(styles.copied);
                                               setTimeout(() => {
                                                   button.innerHTML = originalText;
-                                                  button.style.color = '#4A90E2';
+                                                  button.classList.remove(styles.copied);
                                               }, 1000);
                                           }).catch(() => {});
                                       }}

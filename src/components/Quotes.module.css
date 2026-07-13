@@ -1,8 +1,8 @@
 /* Quotes.module.css */
-/* Copied from index.css and App.css for Quotes component */
 
 /* Desktop quotes table */
 .quotesTable {
+    --video-col: 720px;
     width: 98%;
     max-width: 2700px;
     border-collapse: collapse;
@@ -20,6 +20,11 @@
     text-align: center;
     font-weight: 600;
     border-bottom: 2px solid var(--border-color);
+    width: var(--video-col);
+}
+
+.quotesTable th:nth-child(2) {
+    width: calc(100% - var(--video-col));
 }
 
 .quotesTable td {
@@ -30,94 +35,67 @@
     line-height: 1.5;
 }
 
-.quotesTable td:first-child {
-    width: 480px;
-    padding: 1rem;
-    vertical-align: top;
-}
-
-.quotesTable td:first-child > div {
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 270px;
-}
-
-.quotesTable td:last-child {
-    border-bottom: none;
-    max-height: 270px;
-    overflow-y: auto;
-    padding: 0;
-}
-
-.quotesTable td:last-child > div {
-    padding: 1rem;
-}
-
-.quotesTable td:last-child > div > div {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 0.75rem;
-    padding: 0.75rem 0;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.quotesTable td:last-child > div > div:last-child {
-    border-bottom: none;
-}
-
-/* Custom scrollbar for the quotes section */
-.quotesTable td:last-child::-webkit-scrollbar {
-    width: 8px;
-}
-
-.quotesTable td:last-child::-webkit-scrollbar-track {
-    background: var(--surface-color);
-}
-
-.quotesTable td:last-child::-webkit-scrollbar-thumb {
-    background: var(--border-color);
-    border-radius: 4px;
-}
-
-.quotesTable td:last-child::-webkit-scrollbar-thumb:hover {
-    background: var(--primary-color);
-}
-
 .quotesTable tr:hover {
     background-color: rgba(192, 192, 192, 0.05);
 }
 
-/* Quotes table links */
-.quotesTable a {
-    color: #4A90E2;
-    text-decoration: none;
-    transition: all 0.2s ease;
-    font-weight: 500;
+/* Row: one video (left) + its quotes (right) */
+.videoRow {
+    height: 450px;
+    border-bottom: 2px solid var(--border-color);
 }
 
-.quotesTable a:hover {
-    color: #357ABD;
-    text-decoration: underline;
+/* Video cell */
+.videoCell {
+    width: var(--video-col);
+    height: 100%;
+    vertical-align: middle;
+    text-align: center;
 }
 
-.quotesTable td a[href*="Video Link"] {
-    color: var(--primary-color);
-    font-weight: 600;
-    text-decoration: none;
-    padding: 0.5rem 1rem;
+/* Quotes cell */
+.quotesTable td.quotesCell {
+    height: 100%;
+    max-height: 450px;
+    vertical-align: middle;
+    text-align: center;
+    overflow: visible;
+    position: relative;
+    border-bottom: none;
+}
+
+/* Quote list inside the cell; centered when short, scrolls when >2 quotes */
+.quotesScroller {
+    width: 100%;
+    padding: 0.5rem 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    position: relative;
+}
+
+.scrollable {
+    height: 450px;
+    overflow-y: auto;
+    justify-content: flex-start;
+}
+
+.scrollable::-webkit-scrollbar {
+    width: 8px;
+}
+
+.scrollable::-webkit-scrollbar-track {
+    background: var(--surface-color);
+}
+
+.scrollable::-webkit-scrollbar-thumb {
+    background: var(--border-color);
     border-radius: 4px;
-    background-color: rgba(192, 192, 192, 0.1);
-    transition: all 0.2s ease;
 }
 
-.quotesTable td a[href*="Video Link"]:hover {
-    background-color: rgba(192, 192, 192, 0.2);
-    text-decoration: none;
+.scrollable::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-color);
 }
 
 /* Light mode adjustments for quotes table */
@@ -142,25 +120,25 @@
     background-color: rgba(0, 0, 0, 0.05);
 }
 
-:global([data-theme="light"]) .quotesTable td:first-child > div {
+:global([data-theme="light"]) .videoInfoContainer {
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
     background-color: #E5E5E5;
     border: 1px solid #D0D0D0;
 }
 
-:global([data-theme="light"]) .quotesTable td:last-child > div > div {
-    border-bottom: 1px solid #D0D0D0;
+:global([data-theme="light"]) .quoteItem {
+    border-bottom-color: #D0D0D0;
 }
 
-:global([data-theme="light"]) .quotesTable td:last-child::-webkit-scrollbar-track {
+:global([data-theme="light"]) .scrollable::-webkit-scrollbar-track {
     background: #E0E0E0;
 }
 
-:global([data-theme="light"]) .quotesTable td:last-child::-webkit-scrollbar-thumb {
+:global([data-theme="light"]) .scrollable::-webkit-scrollbar-thumb {
     background: #B0B0B0;
 }
 
-:global([data-theme="light"]) .quotesTable td:last-child::-webkit-scrollbar-thumb:hover {
+:global([data-theme="light"]) .scrollable::-webkit-scrollbar-thumb:hover {
     background: #909090;
 }
 
@@ -205,6 +183,11 @@
 
 .quoteItemButton:hover {
     transform: scale(1.02);
+}
+
+/* Quote text (rendered from sanitized HTML) */
+.quoteText {
+    vertical-align: middle;
 }
 
 /* Quote timestamp styling */
@@ -257,13 +240,17 @@
     transform: scale(1.3);
 }
 
-/* Video info container */
+/* Video info container: title + player + channel/date, boxed and centered */
 .videoInfoContainer {
     display: flex;
     flex-direction: column;
+    align-items: center;
+    justify-content: center;
     gap: 0.5rem;
-    height: 470px;
-    justify-content: space-between;
+    height: 270px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .videoInfoTitle {
@@ -353,10 +340,6 @@
     border-radius: 4px;
 }
 
-.mobileQuoteItemLast {
-    border-bottom: none;
-}
-
 /* Mobile action button */
 .mobileActionButton {
     background-color: transparent;
@@ -379,13 +362,15 @@
     font-size: 1.1rem;
 }
 
-/* Light theme: classic highlighter yellow reads better at a stronger wash */
-:global([data-theme="light"]) b {
-    background-color: rgba(255, 220, 0, 0.45);
-}
-
 /* Quote text reads in primary ink; the timestamp carries the link color. */
 .quoteItem button,
 .mobileQuoteItem button {
     color: var(--text-primary);
+}
+
+/* Copy-button success flash, toggled from JS. Doubled-up selectors so it
+   outranks the `.quoteItem button` primary-ink rule above. */
+.actionButton.copied,
+.mobileActionButton.copied {
+    color: #4CAF50;
 }
