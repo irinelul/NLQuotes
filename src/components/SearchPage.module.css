@@ -38,7 +38,6 @@
 .logoContainer img {
     height: 125px;
     width: 156.25px;
-    padding: 1em;
     will-change: filter;
     transition: all 0.3s ease;
     object-fit: contain;
@@ -302,9 +301,9 @@
         padding: 15px 0;
         z-index: 100;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        /* Must equal the rendered height (img 95px + 2em img padding +
-           30px container padding) so the space is reserved pre-load (no CLS). */
-        min-height: 157px;
+        /* Must equal the rendered height (img 95px + 30px container
+           padding) so the space is reserved pre-load (no CLS). */
+        min-height: 125px;
         margin-bottom: 0;
     }
 
@@ -350,9 +349,9 @@
     .logoContainer {
         margin-bottom: 2rem;
         cursor: pointer;
-        /* Must equal the rendered height (img 120px + 2em img padding +
-           1rem container padding) so the space is reserved pre-load (no CLS). */
-        min-height: 168px;
+        /* Must equal the rendered height (img 120px + 1rem container
+           padding) so the space is reserved pre-load (no CLS). */
+        min-height: 136px;
     }
 
     .logoContainer img {
@@ -370,7 +369,10 @@
     .radioGroup {
         display: flex;
         gap: 15px;
-        margin: 10px auto;
+        /* 2.5rem bottom clearance: the channel tooltip (below) and the
+           year/sort/game tooltips (above) both open into this gap — the
+           bubble needs ~42px so it doesn't cover the neighboring row. */
+        margin: 10px auto 2.5rem;
         justify-content: center;
     }
 }
