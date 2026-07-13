@@ -151,7 +151,17 @@
     align-items: center;
     gap: 0.75rem;
     margin-bottom: 0.75rem;
-    padding: 0.75rem 0;
+    /* Horizontal padding gives the quote button breathing room for its
+       hover scale(1.02). Without it the button sits flush against the
+       scroller edge, so the ~1% left expansion is clipped by .scrollable's
+       overflow-x:hidden (the >2-quotes groups) — which is why only the
+       result boxes that scroll clipped their text on hover. We use a
+       percentage so the buffer tracks the column width and always covers
+       the scale's percentage overflow at any viewport (1% of the scroller
+       is always >= 1% of the narrower button). Same idea as the
+       .actionButtons padding-right below; non-scrollable groups are
+       unaffected since their parent is overflow:visible. */
+    padding: 0.75rem 1%;
     border-bottom: 1px solid var(--border-color);
     flex-shrink: 0;
     width: 100%;
