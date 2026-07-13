@@ -107,7 +107,7 @@ const Disclaimer = () => {
             <span>📊</span>
             <div>
               <strong>Analytics Notice</strong>
-              <p>We collect anonymous usage statistics to help improve the service. This includes information about how you use the site, such as page views and search terms. All data is anonymous and cannot be used to identify you. You can opt out at any time in the <a href="/privacy" style={{ color: 'var(--primary-color)', textDecoration: 'underline' }}>Privacy Policy</a>.</p>
+              <p>We collect anonymous usage statistics to help improve the service. This includes information about how you use the site, such as page views and search terms. All data is anonymous and cannot be used to identify you. You can opt out at any time in the <a href="/privacy" className={styles.inlineLink}>Privacy Policy</a>.</p>
             </div>
           </div>
         </div>

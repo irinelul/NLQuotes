@@ -39,35 +39,18 @@ export const ChangelogModal = ({ isOpen, onClose }) => {
 
     return (
         <div className={styles.modalOverlay} onClick={onClose}>
-            <div className={styles.modalContent} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+            <div className={`${styles.modalContent} ${styles.changelogModalContent}`} onClick={(e) => e.stopPropagation()}>
                 <h3>Changelog</h3>
-                <div style={{ maxHeight: '70vh', overflowY: 'auto', padding: '1rem 0' }}>
+                <div className={styles.changelogEntries}>
                     {changelogEntries.map((entry, index) => (
-                        <div key={index} style={{ marginBottom: '2rem' }}>
-                            <h4 style={{ 
-                                color: 'var(--accent-color)', 
-                                marginBottom: '0.5rem',
-                                fontSize: '1.1rem',
-                                fontWeight: '600'
-                            }}>
+                        <div key={index} className={styles.changelogEntry}>
+                            <h4 className={styles.changelogDate}>
                                 {entry.date}
                             </h4>
-                            <ul style={{ 
-                                listStyle: 'none', 
-                                paddingLeft: '0',
-                                margin: 0
-                            }}>
+                            <ul className={styles.changelogList}>
                                 {entry.items.map((item, itemIndex) => (
-                                    <li key={itemIndex} style={{ 
-                                        marginBottom: '0.5rem',
-                                        paddingLeft: '1.5rem',
-                                        position: 'relative'
-                                    }}>
-                                        <span style={{
-                                            position: 'absolute',
-                                            left: '0',
-                                            color: 'var(--accent-color)'
-                                        }}>•</span>
+                                    <li key={itemIndex} className={styles.changelogListItem}>
+                                        <span className={styles.changelogBullet}>•</span>
                                         {item}
                                     </li>
                                 ))}

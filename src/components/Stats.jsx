@@ -1,9 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { useTenant } from '../hooks/useTenant';
 import { TENANT as TENANT_CONFIG, IS_HIVEMIND } from '../config/tenant';
-import './Stats.css';
+import styles from './Stats.module.css';
 
 // Public Metabase dashboard (view-only, aggregate data) embedded in the page.
 // Hash params control Metabase's embed chrome: theme follows the site,
@@ -42,6 +42,7 @@ const MetabaseDashboard = ({ url, theme, siteName }) => {
       const height = Math.ceil(parseFloat(h));
       if (height > 0 && frameRef.current) {
         frameRef.current.style.height = `${height}px`;
+        frameRef.current.classList.add(styles.dashboardContainerIframeLoaded);
       }
     };
 
@@ -124,12 +125,12 @@ const MetabaseDashboard = ({ url, theme, siteName }) => {
   if (!url) return null;
   const hash = `#refresh=1800&bordered=false&titled=false${theme === 'dark' ? '&theme=night' : ''}`;
   return (
-    <section className="metabase-section">
-      <h2 className="ms-title">Community dashboard</h2>
-      <p className="ms-subtitle">
-        What everyone's searching, playing, and sharing — live, anonymous, aggregates only.
+    <section className={styles.metabaseSection}>
+      <h2 className={styles.msTitle}>Community dashboard</h2>
+      <p className={styles.msSubtitle}>
+        What everyone&apos;s searching, playing, and sharing — live, anonymous, aggregates only.
       </p>
-      <div className="dashboard-container metabase-container">
+      <div className={`${styles.dashboardContainer} ${styles.metabaseContainer}`}>
         <iframe
           ref={frameRef}
           key={`metabase-${theme}`}
@@ -138,6 +139,7 @@ const MetabaseDashboard = ({ url, theme, siteName }) => {
           sandbox="allow-scripts allow-same-origin allow-popups"
           loading="eager"
           referrerPolicy="no-referrer"
+          className={styles.dashboardContainerIframe}
         />
       </div>
     </section>
@@ -152,7 +154,7 @@ const Stats = () => {
   // Wait for tenant to load before rendering
   if (tenantLoading) {
     return (
-      <div className="stats-container">
+      <div className={styles.statsContainer}>
         <h1>Loading...</h1>
       </div>
     );
@@ -166,10 +168,10 @@ const Stats = () => {
   const isHiveQuotes = IS_HIVEMIND;
 
   return (
-    <div className="stats-container">
-      <div className="title-section">
-        <h1 className="dashboard-title">{statsTitle}</h1>
-        <div className="stats-summary">
+    <div className={styles.statsContainer}>
+      <div className={styles.titleSection}>
+        <h1 className={styles.dashboardTitle}>{statsTitle}</h1>
+        <div className={styles.statsSummary}>
           {!isHiveQuotes && tenant?.channels && (
             <>
               {tenant.channels.find(c => c.id === 'librarian') && (
@@ -180,7 +182,7 @@ const Stats = () => {
               )}
             </>
           )}
-          <button className="back-button" onClick={() => navigate('/')}>
+          <button className={styles.backButton} onClick={() => navigate('/')}>
             ← Back to Search
           </button>
         </div>
@@ -188,7 +190,7 @@ const Stats = () => {
       {metabaseUrl ? (
         <MetabaseDashboard url={metabaseUrl} theme={theme} siteName={siteName} />
       ) : (
-        <div className="error-message">
+        <div className={styles.errorMessage}>
           <p>No dashboard configured for this site yet.</p>
         </div>
       )}

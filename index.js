@@ -45,7 +45,7 @@ if (!PORT) {
       const tenant = getTenantById(forcedTenantId);
       PORT = tenant?.port || 8080;
       console.log(`Using port ${PORT} from tenant config for ${forcedTenantId}`);
-    } catch (e) {
+    } catch {
       PORT = 8080;
     }
   } else {
@@ -829,7 +829,7 @@ app.use((req, res, next) => {
 
 // SPA fallback for React Router with CSP header
 // This must be LAST so it doesn't catch API routes
-app.use((req, res, next) => {
+app.use((req, res) => {
   // Don't serve index.html for missing static assets (prevents MIME type errors)
   const staticExtensions = /\.(js|css|map|png|jpg|jpeg|gif|svg|webp|woff|woff2|ttf|eot|ico|json)$/i;
   if (staticExtensions.test(req.path)) {
@@ -988,7 +988,8 @@ app.use((req, res, next) => {
 });
 
 // Global error handler — must be last, after all routes
-app.use((err, req, res, next) => {
+// _next: Express needs arity 4 to treat this as an error handler
+app.use((err, req, res, _next) => {
     console.error('Unhandled application error:', err.stack);
 
     if (err.name === 'CastError') {

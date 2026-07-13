@@ -1,0 +1,283 @@
+/* Main container with centering and padding */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem 2rem 2rem;
+}
+
+/* Loading section */
+.loadingSection {
+  text-align: center;
+}
+
+/* Spinner animation */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+  border-radius: 50%;
+  height: 3rem;
+  width: 3rem;
+  border: 2px solid var(--border-color);
+  border-bottom-color: var(--accent-color);
+  margin: 0 auto;
+}
+
+.loadingText {
+  margin-top: 1rem;
+  color: var(--text-secondary);
+}
+
+/* Error section */
+.errorText {
+  color: #dc2626;
+}
+
+.retryButton {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.retryButton:hover {
+  background: #2563eb;
+}
+
+.retryButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Page header */
+.headerSection {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.pageTitle {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+}
+
+.pageDescription {
+  font-size: 1.125rem;
+  color: var(--text-secondary);
+  max-width: 42rem;
+  margin: 0 auto;
+}
+
+.pageMetadata {
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+/* Pagination */
+.paginationContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.paginationButton {
+  padding: 0.5rem 1rem;
+  background: var(--surface-color);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.paginationButton:hover:not(:disabled) {
+  background: var(--border-color);
+}
+
+.paginationButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.paginationText {
+  padding: 0.5rem 1rem;
+  color: var(--text-primary);
+}
+
+/* Quotes list */
+.quotesList {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+/* Video card */
+.videoCard {
+  background: var(--surface-color);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+/* Video header */
+.videoHeader {
+  background: var(--background-color);
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.videoTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.videoMetadata {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+/* Video player */
+.playerContainer {
+  padding: 1.5rem;
+}
+
+/* Quotes section */
+.quotesSection {
+  padding: 0 1.5rem 1.5rem;
+}
+
+.quotesHeading {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+}
+
+/* Quote items */
+.quoteItems {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.quoteItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.timestampButton {
+  flex-shrink: 0;
+  padding: 0.25rem 0.75rem;
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.timestampButton:hover {
+  background: #2563eb;
+}
+
+.quoteText {
+  color: var(--text-primary);
+  line-height: 1.6;
+  flex: 1;
+}
+
+/* Empty state */
+.emptyState {
+  text-align: center;
+  padding: 3rem 0;
+}
+
+.emptyText {
+  color: var(--text-secondary);
+  font-size: 1.125rem;
+}
+
+/* Navigation links */
+.navigationLinks {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.backToSearchButton {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  text-decoration: none;
+}
+
+.backToSearchButton:hover {
+  background: #2563eb;
+}
+
+.backToSearchButton svg {
+  width: 1rem;
+  height: 1rem;
+  margin-right: 0.5rem;
+}
+
+/* Mobile styles */
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem 0.75rem 0.75rem;
+  }
+
+  .pageTitle {
+    font-size: 1.5rem;
+  }
+
+  .pageDescription {
+    font-size: 1rem;
+  }
+
+  .paginationContainer {
+    flex-wrap: wrap;
+  }
+
+  .quoteItem {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .timestampButton {
+    align-self: flex-start;
+  }
+}

@@ -74,3 +74,55 @@
         }
     }
 }
+
+/* Changelog modal specific styles */
+.changelogModalContent {
+    max-width: 600px;
+}
+
+.changelogEntries {
+    max-height: 70vh;
+    overflow-y: auto;
+    padding: 1rem 0;
+}
+
+.changelogEntry {
+    margin-bottom: 2rem;
+}
+
+.changelogDate {
+    color: var(--accent-color);
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.changelogList {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.changelogListItem {
+    margin-bottom: 0.5rem;
+    padding-left: 1.5rem;
+    position: relative;
+}
+
+.changelogBullet {
+    position: absolute;
+    left: 0;
+    color: var(--accent-color);
+}
+
+/* Feedback modal specific styles */
+.emailInput {
+    width: 100%;
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+    margin-bottom: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+    box-sizing: border-box;
+}

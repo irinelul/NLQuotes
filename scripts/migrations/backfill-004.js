@@ -49,8 +49,8 @@ const HOST_EXPR = "lower(substring(referrer from '(?:https?://)?([^/?:]+)'))";
 const SOURCE_EXPR = `CASE
     WHEN referrer IS NULL OR referrer = '' OR referrer = '/' THEN 'DIRECT'
     WHEN ${HOST_EXPR} LIKE '%nlquotes.com' THEN 'INTERNAL'
-    WHEN ${HOST_EXPR} ~ 'google|bing\.com|duckduckgo\.com|yahoo|yandex|ecosia\.org|search\.brave\.com|startpage\.com' THEN 'ORGANIC'
-    WHEN ${HOST_EXPR} ~ 'reddit\.com|twitter\.com|x\.com|youtube\.com|youtu\.be|discord\.com|discord\.gg|tiktok\.com|facebook\.com|instagram\.com|linkedin\.com|twitch\.tv' THEN 'SOCIAL'
+    WHEN ${HOST_EXPR} ~ 'google|bing\\.com|duckduckgo\\.com|yahoo|yandex|ecosia\\.org|search\\.brave\\.com|startpage\\.com' THEN 'ORGANIC'
+    WHEN ${HOST_EXPR} ~ 'reddit\\.com|twitter\\.com|x\\.com|youtube\\.com|youtu\\.be|discord\\.com|discord\\.gg|tiktok\\.com|facebook\\.com|instagram\\.com|linkedin\\.com|twitch\\.tv' THEN 'SOCIAL'
     ELSE 'OTHER'
   END`;
 

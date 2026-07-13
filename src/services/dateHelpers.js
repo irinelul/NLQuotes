@@ -26,7 +26,7 @@ export const formatDate = (date) => {
     try {
         const dateObj = new Date(date);
         return format(dateObj, 'dd MMMM yyyy');
-    } catch (e) {
+    } catch {
         return 'Invalid Date';
     }
 };

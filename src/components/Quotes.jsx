@@ -7,6 +7,7 @@ import { backdateTimestamp, formatDate, formatTimestamp } from '../services/date
 import { TENANT } from '../config/tenant';
 import query from '../services/quotes';
 import { track } from '../services/analytics';
+import styles from './Quotes.module.css';
 
 // `b` is returned from ts_headline when a match is found
 const ALLOWED_TAGS = ['b'];
@@ -166,36 +167,20 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
   const renderDesktopLayout = () => {
 
     return (
-      <table className="quotes-table">
+      <table className={styles.quotesTable}>
           <thead>
               <tr>
-                  <th style={{ width: '720px', textAlign: 'center' }}>Video</th>
-                  <th style={{ width: 'calc(100% - 720px)', textAlign: 'center' }}>Quotes with Timestamps</th>
+                  <th>Video</th>
+                  <th>Quotes with Timestamps</th>
               </tr>
           </thead>
           <tbody>
               {quotes.map((quoteGroup, index) => (
                   <React.Fragment key={quoteGroup.video_id || `quote-group-${index}`}>
-                      <tr style={{
-                          borderBottom: '2px solid var(--border-color)',
-                          height: '450px',
-                          padding: '1rem 0'
-                      }}>
-                      <td style={{
-                          padding: '1rem',
-                          verticalAlign: 'middle',
-                          height: '100%',
-                          textAlign: 'center',
-                          width: '720px'
-                      }}>
-                          <div style={{
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: '0.5rem',
-                              height: '470px',
-                              justifyContent: 'space-between'
-                          }}>
-                              <div style={{ fontWeight: 'bold' }}>
+                      <tr className={styles.videoRow}>
+                      <td className={styles.videoCell}>
+                          <div className={styles.videoInfoContainer}>
+                              <div className={styles.videoInfoTitle}>
                                   {quoteGroup.quotes[0]?.title || 'N/A'}
                               </div>
                               <YouTubePlayer
@@ -211,118 +196,37 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                               </div>
                           </div>
                       </td>
-                      <td style={{
-                          verticalAlign: 'middle',
-                          height: '100%',
-                          padding: '1rem',
-                          maxHeight: '450px',
-                          overflow: 'visible',
-                          textAlign: 'center',
-                          position: 'relative'
-                      }}>
-                          <div style={{
-                              width: '100%',
-                              height: quoteGroup.quotes?.length > 2 ? '450px' : 'auto',
-                              overflowY: quoteGroup.quotes?.length > 2 ? 'auto' : 'visible',
-                              padding: '0.5rem 0',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              justifyContent: quoteGroup.quotes?.length > 2 ? 'flex-start' : 'center',
-                              alignItems: 'flex-start',
-                              position: 'relative'
-                          }}>
+                      <td className={styles.quotesCell}>
+                          <div className={`${styles.quotesScroller} ${quoteGroup.quotes?.length > 2 ? styles.scrollable : ''}`}>
                               {quoteGroup.quotes?.map((quote, index) => (
-                                  <div className="quote-item" key={index} style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: '0.75rem',
-                                      marginBottom: '0.75rem',
-                                      padding: '0.75rem 0',
-                                      borderBottom: index < quoteGroup.quotes.length - 1 ? '1px solid var(--border-color)' : 'none',
-                                      borderColor: 'var(--border-color)',
-                                      flexShrink: 0,
-                                      width: '100%',
-                                      overflow: 'visible',
-                                      wordBreak: 'break-word',
-                                      position: 'relative'
-                                  }}>
+                                  <div className={`${styles.quoteItem} ${index === quoteGroup.quotes.length - 1 ? styles.quoteItemLast : ''}`} key={index}>
                                       <button
                                           onClick={() => handleTimestampClick(quoteGroup.video_id, backdateTimestamp(quote.timestamp_start))}
-                                          style={{
-                                              flex: 1,
-                                              textAlign: 'left',
-                                              background: 'none',
-                                              border: 'none',
-                                              color: 'var(--text-primary)',
-                                              cursor: 'pointer',
-                                              padding: 0,
-                                              font: 'inherit',
-                                              minWidth: 0,
-                                              overflow: 'visible',
-                                              textOverflow: 'ellipsis',
-                                              whiteSpace: 'normal',
-                                              wordBreak: 'break-word',
-                                              transition: 'transform 0.2s ease',
-                                              position: 'relative',
-                                              zIndex: 2
-                                          }}
-                                          onMouseOver={e => {
-                                              e.currentTarget.style.transform = 'scale(1.02)';
-                                          }}
-                                          onMouseOut={e => {
-                                              e.currentTarget.style.transform = 'scale(1)';
-                                          }}
+                                          className={styles.quoteItemButton}
                                       >
-                                          <span style={{ verticalAlign: 'middle' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(quote.text, { ALLOWED_TAGS }) }} />
-                                          <span style={{ verticalAlign: 'middle', marginLeft: '0.5em', color: '#4A90E2', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                                          <span className={styles.quoteText} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(quote.text, { ALLOWED_TAGS }) }} />
+                                          <span className={styles.quoteTimestamp}>
                                               ({formatTimestamp(backdateTimestamp(quote.timestamp_start))})
                                           </span>
                                       </button>
 
-                                      <div style={{
-                                          display: 'flex',
-                                          flexDirection: 'column',
-                                          gap: '0.5rem',
-                                          marginLeft: 'auto',
-                                          flexShrink: 0
-                                      }}>
+                                      <div className={styles.actionButtons}>
                                           <button
                                               onClick={(e) => {
-                                                  // Capture before the async clipboard call: the synthetic
-                                                  // event is gone by the time the promise resolves.
                                                   const button = e.currentTarget;
                                                   trackQuoteEvent('quote_copy', quoteGroup.video_id, backdateTimestamp(quote.timestamp_start));
-                                                  // Strip HTML tags from the text
                                                   const textToCopy = quote.text.replace(/<[^>]*>/g, '');
                                                   navigator.clipboard.writeText(textToCopy).then(() => {
-                                                      // Show a temporary success indicator
                                                       const originalText = button.innerHTML;
                                                       button.innerHTML = '✓';
-                                                      button.style.color = '#4CAF50';
+                                                      button.classList.add(styles.copied);
                                                       setTimeout(() => {
                                                           button.innerHTML = originalText;
-                                                          button.style.color = '#4A90E2';
+                                                          button.classList.remove(styles.copied);
                                                       }, 1000);
                                                   }).catch(() => {});
                                               }}
-                                              style={{
-                                                  backgroundColor: 'transparent',
-                                                  color: '#4A90E2',
-                                                  border: 'none',
-                                                  padding: '0.5rem',
-                                                  cursor: 'pointer',
-                                                  fontSize: '1.25rem',
-                                                  display: 'flex',
-                                                  alignItems: 'center',
-                                                  justifyContent: 'center',
-                                                  transition: 'transform 0.2s'
-                                              }}
-                                              onMouseOver={e => {
-                                                  e.currentTarget.style.transform = 'scale(1.3)';
-                                              }}
-                                              onMouseOut={e => {
-                                                  e.currentTarget.style.transform = 'scale(1)';
-                                              }}
+                                              className={styles.actionButton}
                                               title="Copy quote to clipboard" aria-label="Copy quote to clipboard"
                                           >
                                               📋
@@ -333,24 +237,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                                   trackQuoteEvent('youtube_open', quoteGroup.video_id, backdateTimestamp(quote.timestamp_start));
                                                   window.open(`https://www.youtube.com/watch?v=${quoteGroup.video_id}&t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`, '_blank');
                                               }}
-                                              style={{
-                                                  backgroundColor: 'transparent',
-                                                  color: '#4A90E2',
-                                                  border: 'none',
-                                                  padding: '0.5rem',
-                                                  cursor: 'pointer',
-                                                  fontSize: '1.25rem',
-                                                  display: 'flex',
-                                                  alignItems: 'center',
-                                                  justifyContent: 'center',
-                                                  transition: 'transform 0.2s'
-                                              }}
-                                              onMouseOver={e => {
-                                                  e.currentTarget.style.transform = 'scale(1.3)';
-                                              }}
-                                              onMouseOut={e => {
-                                                  e.currentTarget.style.transform = 'scale(1)';
-                                              }}
+                                              className={styles.actionButton}
                                               title="Open quote in YouTube" aria-label="Open quote in YouTube"
                                           >
                                               ↗
@@ -367,24 +254,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                                       : `Just one of ${totalQuotes} quotes mentioning "${cleanSearchTerm}": ${videoUrl}\n\nSee them all here! ${pageUrl}`;
                                                   window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`, '_blank');
                                               }}
-                                              style={{
-                                                  backgroundColor: 'transparent',
-                                                  color: '#4A90E2',
-                                                  border: 'none',
-                                                  padding: '0.5rem',
-                                                  cursor: 'pointer',
-                                                  fontSize: '1.25rem',
-                                                  display: 'flex',
-                                                  alignItems: 'center',
-                                                  justifyContent: 'center',
-                                                  transition: 'transform 0.2s'
-                                              }}
-                                              onMouseOver={e => {
-                                                  e.currentTarget.style.transform = 'scale(1.3)';
-                                              }}
-                                              onMouseOut={e => {
-                                                  e.currentTarget.style.transform = 'scale(1)';
-                                              }}
+                                              className={styles.actionButton}
                                               title="Share quote on X" aria-label="Share quote on X"
                                           >
                                               𝕏
@@ -399,27 +269,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                                   quote.timestamp_start
                                               )}
                                               disabled={flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]}
-                                              style={{
-                                                  backgroundColor: 'transparent',
-                                                  color: 'var(--accent-color)',
-                                                  border: 'none',
-                                                  padding: '0.5rem',
-                                                  cursor: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 'not-allowed' : 'pointer',
-                                                  opacity: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 0.6 : 1,
-                                                  fontSize: '1.25rem',
-                                                  display: 'flex',
-                                                  alignItems: 'center',
-                                                  justifyContent: 'center',
-                                                  transition: 'transform 0.2s'
-                                              }}
-                                              onMouseOver={e => {
-                                                  if (!flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]) {
-                                                      e.currentTarget.style.transform = 'scale(1.3)';
-                                                  }
-                                              }}
-                                              onMouseOut={e => {
-                                                  e.currentTarget.style.transform = 'scale(1)';
-                                              }}
+                                              className={`${styles.actionButton} ${styles.flagButton}`}
                                               title="Flag quote as invalid" aria-label="Flag quote as invalid"
                                           >
                                               {flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? '⏳' : '🚩'}
@@ -441,21 +291,15 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
   const renderMobileLayout = () => {
 
     return (
-      <div className="mobile-quotes-container">
+      <div className={styles.mobileQuotesContainer}>
           {quotes.map((quoteGroup, index) => (
               <React.Fragment key={quoteGroup.video_id || `quote-group-${index}`}>
-                  <div className="mobile-quote-group">
-                  <div className="mobile-video-title" style={{ fontWeight: 'bold', padding: '1rem 0.5rem', textAlign: 'center' }}>
+                  <div className={styles.mobileQuoteGroup}>
+                  <div className={styles.mobileVideoTitle}>
                       {quoteGroup.quotes[0]?.title || 'N/A'}
                   </div>
 
-                  <div className="mobile-video-container" style={{ 
-                      width: '100%', 
-                      maxWidth: '100%', 
-                      margin: '0 auto',
-                      padding: '0 1rem',
-                      boxSizing: 'border-box'
-                  }}>
+                  <div className={styles.mobileVideoContainer}>
                       <YouTubePlayer
                           key={`${quoteGroup.video_id}-${retryCount}`}
                           videoId={quoteGroup.video_id}
@@ -464,93 +308,42 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                       />
                   </div>
 
-                  <div className="mobile-video-info" style={{
-                      textAlign: 'center',
-                      padding: '0.5rem',
-                      color: 'var(--text-secondary)',
-                      borderBottom: '1px solid var(--border-color)'
-                  }}>
+                  <div className={styles.mobileVideoInfo}>
                       {quoteGroup.quotes[0]?.channel_source || 'N/A'} - {quoteGroup.quotes[0]?.upload_date
                           ? formatDate(quoteGroup.quotes[0].upload_date)
                           : 'N/A'}
                   </div>
 
-                  <div className="mobile-quotes-list" style={{
-                      maxHeight: '500px',
-                      overflowY: 'auto',
-                      padding: '0.5rem',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '1rem'
-                  }}>
+                  <div className={styles.mobileQuotesList}>
                       {quoteGroup.quotes?.map((quote, index) => (
-                          <div className="mobile-quote-item" key={index} style={{
-                              padding: '0.75rem',
-                              borderBottom: index < quoteGroup.quotes.length - 1 ? '1px solid var(--border-color)' : 'none',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: '0.75rem'
-                          }}>
+                          <div className={`${styles.mobileQuoteItem} ${index === quoteGroup.quotes.length - 1 ? styles.mobileQuoteItemLast : ''}`} key={index}>
                               <button
                                   onClick={() => handleTimestampClick(quoteGroup.video_id, backdateTimestamp(quote.timestamp_start))}
-                                  style={{
-                                      width: '100%',
-                                      textAlign: 'left',
-                                      background: 'none',
-                                      border: 'none',
-                                      color: 'var(--text-primary)',
-                                      cursor: 'pointer',
-                                      padding: '0.5rem',
-                                      font: 'inherit',
-                                      wordBreak: 'break-word',
-                                      borderRadius: '4px',
-                                      backgroundColor: 'var(--surface-color)',
-                                  }}
+                                  className={styles.mobileQuoteButton}
                               >
-                                  <span style={{ verticalAlign: 'middle' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(quote.text, { ALLOWED_TAGS }) }} />
-                                  <span style={{
-                                      verticalAlign: 'middle',
-                                      marginLeft: '0.5em',
-                                      color: '#4A90E2',
-                                      fontWeight: 'bold',
-                                      whiteSpace: 'nowrap'
-                                  }}>
+                                  <span className={styles.quoteText} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(quote.text, { ALLOWED_TAGS }) }} />
+                                  <span className={styles.quoteTimestamp}>
                                       ({formatTimestamp(backdateTimestamp(quote.timestamp_start))})
                                   </span>
                               </button>
 
-                              <div style={{
-                                  display: 'flex',
-                                  justifyContent: 'space-around',
-                                  padding: '0.5rem',
-                                  backgroundColor: 'var(--surface-color)',
-                                  borderRadius: '4px'
-                              }}>
+                              <div className={styles.mobileActionButtons}>
                                   <button
                                       onClick={(e) => {
-                                          // Capture before the async clipboard call: the synthetic
-                                          // event is gone by the time the promise resolves.
                                           const button = e.currentTarget;
                                           trackQuoteEvent('quote_copy', quoteGroup.video_id, backdateTimestamp(quote.timestamp_start));
                                           const textToCopy = quote.text.replace(/<[^>]*>/g, '');
                                           navigator.clipboard.writeText(textToCopy).then(() => {
                                               const originalText = button.innerHTML;
                                               button.innerHTML = '✓';
-                                              button.style.color = '#4CAF50';
+                                              button.classList.add(styles.copied);
                                               setTimeout(() => {
                                                   button.innerHTML = originalText;
-                                                  button.style.color = '#4A90E2';
+                                                  button.classList.remove(styles.copied);
                                               }, 1000);
                                           }).catch(() => {});
                                       }}
-                                      style={{
-                                          backgroundColor: 'transparent',
-                                          color: '#4A90E2',
-                                          border: 'none',
-                                          padding: '0.5rem',
-                                          cursor: 'pointer',
-                                          fontSize: '1.25rem',
-                                      }}
+                                      className={styles.mobileActionButton}
                                       title="Copy quote to clipboard" aria-label="Copy quote to clipboard"
                                   >
                                       📋
@@ -561,14 +354,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                           trackQuoteEvent('youtube_open', quoteGroup.video_id, backdateTimestamp(quote.timestamp_start));
                                           window.open(`https://www.youtube.com/watch?v=${quoteGroup.video_id}&t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`, '_blank');
                                       }}
-                                      style={{
-                                          backgroundColor: 'transparent',
-                                          color: '#4A90E2',
-                                          border: 'none',
-                                          padding: '0.5rem',
-                                          cursor: 'pointer',
-                                          fontSize: '1.25rem',
-                                      }}
+                                      className={styles.mobileActionButton}
                                       title="Open quote in YouTube" aria-label="Open quote in YouTube"
                                   >
                                       ↗
@@ -585,24 +371,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                               : `Just one of ${totalQuotes} quotes mentioning "${cleanSearchTerm}": ${videoUrl}\n\nSee them all here! ${pageUrl}`;
                                           window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`, '_blank');
                                       }}
-                                      style={{
-                                          backgroundColor: 'transparent',
-                                          color: '#4A90E2',
-                                          border: 'none',
-                                          padding: '0.5rem',
-                                          cursor: 'pointer',
-                                          fontSize: '1.25rem',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                          transition: 'transform 0.2s'
-                                      }}
-                                      onMouseOver={e => {
-                                          e.currentTarget.style.transform = 'scale(1.3)';
-                                      }}
-                                      onMouseOut={e => {
-                                          e.currentTarget.style.transform = 'scale(1)';
-                                      }}
+                                      className={styles.mobileActionButton}
                                       title="Share quote on X" aria-label="Share quote on X"
                                   >
                                       𝕏
@@ -617,15 +386,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                                           quote.timestamp_start
                                       )}
                                       disabled={flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`]}
-                                      style={{
-                                          backgroundColor: 'transparent',
-                                          color: 'var(--accent-color)',
-                                          border: 'none',
-                                          padding: '0.5rem',
-                                          cursor: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 'not-allowed' : 'pointer',
-                                          opacity: flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? 0.6 : 1,
-                                          fontSize: '1.25rem',
-                                      }}
+                                      className={`${styles.mobileActionButton} ${styles.flagButton}`}
                                       title="Flag quote as invalid" aria-label="Flag quote as invalid"
                                   >
                                       {flagging[`${quoteGroup.video_id}-${quote.timestamp_start}`] ? '⏳' : '🚩'}
@@ -648,12 +409,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
                   {isMobileView ? renderMobileLayout() : renderDesktopLayout()}
               </>
           ) : (
-              <div style={{
-                  textAlign: 'center',
-                  color: 'var(--text-secondary)',
-                  padding: '2rem',
-                  fontSize: '1.1rem'
-              }}>
+              <div className={styles.noQuotes}>
                   No quotes found
               </div>
           )}

@@ -9,22 +9,13 @@ const initializeTheme = () => {
 };
 
 // Initialize immediately
-const initialTheme = initializeTheme();
+initializeTheme();
 
 export const useTheme = () => {
   const [theme, setTheme] = useState(() => {
     // Read from localStorage on each component mount to ensure sync
     return localStorage.getItem('theme') || 'dark';
   });
-
-  useEffect(() => {
-    // Sync with localStorage on mount in case it changed on another page
-    const savedTheme = localStorage.getItem('theme') || 'dark';
-    if (savedTheme !== theme) {
-      setTheme(savedTheme);
-      document.documentElement.setAttribute('data-theme', savedTheme);
-    }
-  }, []);
 
   useEffect(() => {
     // Listen for storage changes (when theme changes in another tab/page)
