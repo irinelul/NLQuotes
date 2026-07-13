@@ -5,8 +5,6 @@ import { Quotes } from './Quotes';
 import { PaginationButtons } from './PaginationButtons';
 import { Footer } from './Footer';
 import { FeedbackModal } from './Modals/FeedbackModal';
-import { useNavigate } from 'react-router-dom';
-import GeneralFeedbackButton from './GeneralFeedbackButton';
 import { useTheme } from '../hooks/useTheme';
 import { TENANT, logo, logoFallback } from '../config/tenant';
 import { track } from '../services/analytics';
@@ -82,13 +80,10 @@ const SearchPage = ({
     strict,
     feedbackModalOpen,
     setFeedbackModalOpen,
-    submittingFeedback,
     handleFeedbackSubmit,
     handleLogoClick,
     handlePageChange,
-    onChangelogClick,
 }) => {
-    const navigate = useNavigate();
     const { theme, toggleTheme } = useTheme();
     
     // Use hard-bound tenant config (resolved at build time, no flickering)
@@ -139,23 +134,6 @@ const SearchPage = ({
                         title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
                     >
                         {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
-                    </button>
-                    <button
-                        onClick={() => {
-                            navigate('/stats');
-                        }}
-                        className={`${styles.logoNavButton} ${styles.statsButton}`}
-                    >
-                        📊 Stats
-                    </button>
-                    <button
-                        onClick={() => {
-                            onChangelogClick();
-                        }}
-                        className={`${styles.logoNavButton} ${styles.changelogButton}`}
-                        title="View Changelog"
-                    >
-                        📋 Changelog
                     </button>
                 </div>
             </div>
@@ -291,16 +269,7 @@ const SearchPage = ({
                 </>
             )}
 
-            <Footer onChangelogClick={onChangelogClick} />
-
-            {/* Improved desktop-only feedback button */}
-            <GeneralFeedbackButton
-                onClick={() => {
-                    track('feedback_open');
-                    setFeedbackModalOpen(true);
-                }}
-                disabled={submittingFeedback}
-            />
+            <Footer onFeedbackClick={() => { track('feedback_open'); setFeedbackModalOpen(true); }} />
 
             <FeedbackModal
                 isOpen={feedbackModalOpen}

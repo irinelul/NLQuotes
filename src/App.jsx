@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import query from './services/quotes';
 import { track } from './services/analytics';
 import { useNavigate, Routes, Route, useSearchParams, useLocation } from 'react-router-dom';
-import { ChangelogModal } from './components/Modals/ChangelogModal';
+import Changelog from './components/Changelog';
+import ScrollToTop from './components/ScrollToTop';
 import { useFetchGames } from './hooks/useFetchGames';
 import { useSearchState } from './hooks/useSearchState';
 import Privacy from './components/Privacy';
@@ -30,8 +31,7 @@ const App = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
-    const [submittingFeedback, setSubmittingFeedback] = useState(false);
-    const [changelogModalOpen, setChangelogModalOpen] = useState(false);
+    const [, setSubmittingFeedback] = useState(false);
     
     const strict = false;
 
@@ -334,30 +334,23 @@ const App = () => {
         strict={strict}
         feedbackModalOpen={feedbackModalOpen}
         setFeedbackModalOpen={setFeedbackModalOpen}
-        submittingFeedback={submittingFeedback}
         handleFeedbackSubmit={handleFeedbackSubmit}
         handleLogoClick={handleLogoClick}
         fetchQuotes={fetchQuotes}
         handlePageChange={handlePageChange}
-        onChangelogClick={() => {
-            track('changelog_open');
-            setChangelogModalOpen(true);
-        }}
     />;
 
     return (
         <>
+        <ScrollToTop />
         <Routes>
             <Route path="/" element={searchPageElement} />
             <Route path="/search" element={searchPageElement} />
             <Route path="/privacy" element={<Privacy />} />
+            <Route path="/changelog" element={<Changelog />} />
             <Route path="/stats" element={<Stats />} />
             <Route path="/topic/:term" element={<TopicPage />} />
         </Routes>
-        <ChangelogModal
-            isOpen={changelogModalOpen}
-            onClose={() => setChangelogModalOpen(false)}
-        />
         </>
     );
 };

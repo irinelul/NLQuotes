@@ -1,4 +1,5 @@
-import styles from './Modals.module.css';
+import { useNavigate } from 'react-router-dom';
+import styles from './Changelog.module.css';
 
 // Newest first
 const changelogEntries = [
@@ -34,37 +35,41 @@ const changelogEntries = [
     }
 ];
 
-export const ChangelogModal = ({ isOpen, onClose }) => {
-    if (!isOpen) return null;
+const Changelog = () => {
+    const navigate = useNavigate();
+
+    const handleBack = () => {
+        navigate('/');
+    };
+
+    // NOTE: No separate track('changelog_open') call here. usePageviewTracking()
+    // in App.jsx fires a `page_view` event on every route change, so navigating
+    // to /changelog is already tracked — a separate event would double-count.
 
     return (
-        <div className={styles.modalOverlay} onClick={onClose}>
-            <div className={`${styles.modalContent} ${styles.changelogModalContent}`} onClick={(e) => e.stopPropagation()}>
-                <h3>Changelog</h3>
-                <div className={styles.changelogEntries}>
-                    {changelogEntries.map((entry, index) => (
-                        <div key={index} className={styles.changelogEntry}>
-                            <h4 className={styles.changelogDate}>
-                                {entry.date}
-                            </h4>
-                            <ul className={styles.changelogList}>
-                                {entry.items.map((item, itemIndex) => (
-                                    <li key={itemIndex} className={styles.changelogListItem}>
-                                        <span className={styles.changelogBullet}>•</span>
-                                        {item}
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    ))}
+        <div className={styles.container}>
+            <button
+                type="button"
+                onClick={handleBack}
+                className={styles.backButton}
+            >
+                Go Back
+            </button>
+            <h2 className={styles.heading}>Changelog</h2>
+            {changelogEntries.map((entry, index) => (
+                <div key={index} className={styles.entryGroup}>
+                    <h4 className={styles.entryDate}>{entry.date}</h4>
+                    <ul className={styles.list}>
+                        {entry.items.map((item, itemIndex) => (
+                            <li key={itemIndex} className={styles.listItem}>
+                                {item}
+                            </li>
+                        ))}
+                    </ul>
                 </div>
-                <div className={styles.modalButtons}>
-                    <button type="button" onClick={onClose}>
-                        Close
-                    </button>
-                </div>
-            </div>
+            ))}
         </div>
     );
 };
 
+export default Changelog;

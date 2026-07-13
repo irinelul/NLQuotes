@@ -67,6 +67,8 @@
     cursor: pointer;
     transition: all 0.3s ease;
     font-size: 0.9rem;
+    font-family: inherit;
+    text-decoration: none;
     opacity: 0.9;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -79,14 +81,6 @@
 
 .themeToggleButton {
     background: #9C27B0;
-}
-
-.statsButton {
-    background: #2196F3;
-}
-
-.changelogButton {
-    background: #4CAF50;
 }
 
 /* Input container */
