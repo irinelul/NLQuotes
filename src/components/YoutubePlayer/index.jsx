@@ -1,7 +1,14 @@
+/* eslint-disable react-hooks/set-state-in-effect -- This component syncs React
+   state with the imperative YouTube IFrame API: destroying a player and
+   resetting state inside effects is the mechanism that forces a fresh iframe
+   remount when videoId/timestamp props change. */
 import React, { useState, useEffect } from 'react';
 import { ensureApiReady, registerPlayer, unregisterPlayer, pauseOtherPlayers, registerInitializingPlayer, unregisterInitializingPlayer } from '../../services/youtubeApiLoader';
 import { track } from '../../services/analytics';
 import styles from './YoutubePlayer.module.css';
+
+// Unique per-player DOM container id; impure, so only called from effects/handlers
+const newContainerId = () => `yt-player-${Math.random().toString(36).substr(2, 9)}`;
 
 // Simpler approach with minimal DOM manipulation
 export const YouTubePlayer = ({ videoId, timestamp }) => {
@@ -12,7 +19,8 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
     const playerRef = React.useRef(null);
     const isMountedRef = React.useRef(true);
     const containerRef = React.useRef(null);
-    const iframeContainerIdRef = React.useRef(`yt-player-${Math.random().toString(36).substr(2, 9)}`);
+    // Generated lazily in effects (never during render) to keep render pure.
+    const iframeContainerIdRef = React.useRef(null);
 
     // Watch-time accounting: accumulate wall-clock seconds while the player is
     // in the PLAYING state, and beacon one video_watch event when the viewing
@@ -114,7 +122,7 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                 setCurrentTimestamp(null);
                 
                 // Create a new container ID to force fresh iframe
-                iframeContainerIdRef.current = `yt-player-${Math.random().toString(36).substr(2, 9)}`;
+                iframeContainerIdRef.current = newContainerId();
             } catch (err) {
                 console.error('Error cleaning up old player:', err);
             }
@@ -129,6 +137,9 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
             pauseOtherPlayers(null);
             
             // Ensure we have a fresh iframe container
+            if (!iframeContainerIdRef.current) {
+                iframeContainerIdRef.current = newContainerId();
+            }
             let iframeContainer = containerRef.current.querySelector(`#${iframeContainerIdRef.current}`);
             if (!iframeContainer) {
                 // Create new iframe container
@@ -198,7 +209,7 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                                 try {
                                     event.target.destroy();
                                     unregisterInitializingPlayer(event.target);
-                                } catch (e) {
+                                } catch {
                                     // Ignore
                                 }
                                 return;
@@ -307,7 +318,7 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                     if (cleanupPlayer && typeof cleanupPlayer.getPlayerState === 'function') {
                         try {
                             cleanupPlayer.getPlayerState(); // Test if player is still valid
-                        } catch (e) {
+                        } catch {
                             // Player is already destroyed, skip cleanup
                             return;
                         }
@@ -324,7 +335,7 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                     unregisterPlayer(cleanupPlayer);
                     // Don't try to remove the iframe container - YouTube's destroy() already did that
                     // and React will handle the container cleanup
-                } catch (err) {
+                } catch {
                     // Ignore cleanup errors - DOM might already be gone or player already destroyed
                 }
             }
@@ -469,7 +480,7 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                         playerRef.current.destroy();
                     }
                     unregisterPlayer(playerRef.current);
-                } catch (err) {
+                } catch {
                     // Ignore errors during cleanup
                 }
                 playerRef.current = null;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { YouTubePlayer } from './YoutubePlayer';
 import { formatDate } from '../services/dateHelpers';
@@ -59,7 +59,7 @@ export const TopicPage = () => {
       <div className={styles.container}>
         <div className={styles.loadingSection}>
           <div className={styles.spinner}></div>
-          <p className={styles.loadingText}>Loading quotes about "{term}"...</p>
+          <p className={styles.loadingText}>Loading quotes about &quot;{term}&quot;...</p>
         </div>
       </div>
     );
@@ -88,10 +88,10 @@ export const TopicPage = () => {
       {/* Header */}
       <div className={styles.headerSection}>
         <h1 className={styles.pageTitle}>
-          Quotes about "{decodedTerm}"
+          Quotes about &quot;{decodedTerm}&quot;
         </h1>
         <p className={styles.pageDescription}>
-          Discover memorable moments and quotes featuring "{decodedTerm}". 
+          Discover memorable moments and quotes featuring &quot;{decodedTerm}&quot;. 
           Click on any timestamp to jump directly to that moment in the video.
         </p>
         <div className={styles.pageMetadata}>
@@ -127,7 +127,7 @@ export const TopicPage = () => {
       {/* Quotes List */}
       {quotes.length > 0 ? (
         <div className={styles.quotesList}>
-          {quotes.map((videoGroup, videoIndex) => (
+          {quotes.map((videoGroup) => (
             <div key={videoGroup.video_id} className={styles.videoCard}>
               {/* Video Header */}
               <div className={styles.videoHeader}>
@@ -151,10 +151,10 @@ export const TopicPage = () => {
               {/* Quotes List */}
               <div className={styles.quotesSection}>
                 <h4 className={styles.quotesHeading}>
-                  Quotes featuring "{decodedTerm}" ({videoGroup.quotes.length})
+                  Quotes featuring &quot;{decodedTerm}&quot; ({videoGroup.quotes.length})
                 </h4>
                 <div className={styles.quoteItems}>
-                  {videoGroup.quotes.map((quote, quoteIndex) => (
+                  {videoGroup.quotes.map((quote) => (
                     <div key={`${videoGroup.video_id}-${quote.line_number}`} className={styles.quoteItem}>
                       {/* Timestamp Button */}
                       <button
@@ -180,7 +180,7 @@ export const TopicPage = () => {
       ) : (
         <div className={styles.emptyState}>
           <p className={styles.emptyText}>
-            No quotes found for "{decodedTerm}". Try a different search term.
+            No quotes found for &quot;{decodedTerm}&quot;. Try a different search term.
           </p>
         </div>
       )}

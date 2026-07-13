@@ -1,4 +1,3 @@
-import React, { useEffect } from 'react';
 import { ChannelRadioButton } from './ChannelRadioButton';
 import { Filters } from './Filters';
 import Disclaimer from './Disclaimer';

@@ -2,7 +2,6 @@ import { SearchableDropdown } from "../SearchableDropdown";
 import styles from './Filters.module.css';
 
 export const Filters = ({
-    selectedYear,
     handleYearChange,
     sortOrder,
     handleSortChange,

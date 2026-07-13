@@ -1,7 +1,6 @@
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAnalyticsOptOut } from '../hooks/useAnalyticsOptOut';
-import { IS_NORTHERNLION, TENANT } from '../config/tenant';
+import { TENANT } from '../config/tenant';
 import styles from './Privacy.module.css';
 
 const Privacy = () => {
@@ -9,7 +8,6 @@ const Privacy = () => {
   const { isOptedOut, toggleOptOut } = useAnalyticsOptOut();
   // Use build-time tenant config (no runtime checks needed)
   const siteName = TENANT.displayName || TENANT.metadata?.siteName || 'NL Quotes';
-  const isNL = IS_NORTHERNLION;
 
   const handleBack = () => {
     navigate('/');
@@ -81,7 +79,7 @@ const Privacy = () => {
         </li>
       </ul>
       <p className={styles.paragraph}>
-        In addition to the opt-out button above, we automatically honor your browser's <strong>Do Not Track</strong> and <strong>Global Privacy Control</strong> signals — if either is enabled, nothing is collected.
+        In addition to the opt-out button above, we automatically honor your browser&apos;s <strong>Do Not Track</strong> and <strong>Global Privacy Control</strong> signals — if either is enabled, nothing is collected.
       </p>
 
       <h3 className={styles.heading}>What We Do Not Collect</h3>
@@ -111,7 +109,7 @@ const Privacy = () => {
 
       <h3 className={styles.heading}>Cookies and Tracking</h3>
       <p className={styles.paragraph}>
-        We do not use cookies or any other persistent tracking technologies to monitor your browsing history on our site or across the web. Umami does not use cookies for tracking and respects your browser's "Do Not Track" setting.
+        We do not use cookies or any other persistent tracking technologies to monitor your browsing history on our site or across the web. Umami does not use cookies for tracking and respects your browser&apos;s &quot;Do Not Track&quot; setting.
       </p>
 
       <h3 className={styles.heading}>Changes to This Policy</h3>

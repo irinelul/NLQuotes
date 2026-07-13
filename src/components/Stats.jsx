@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { useTenant } from '../hooks/useTenant';
@@ -128,7 +128,7 @@ const MetabaseDashboard = ({ url, theme, siteName }) => {
     <section className={styles.metabaseSection}>
       <h2 className={styles.msTitle}>Community dashboard</h2>
       <p className={styles.msSubtitle}>
-        What everyone's searching, playing, and sharing — live, anonymous, aggregates only.
+        What everyone&apos;s searching, playing, and sharing — live, anonymous, aggregates only.
       </p>
       <div className={`${styles.dashboardContainer} ${styles.metabaseContainer}`}>
         <iframe
