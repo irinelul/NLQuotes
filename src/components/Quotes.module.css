@@ -78,6 +78,9 @@
 .scrollable {
     height: 450px;
     overflow-y: auto;
+    /* overflow-y alone computes overflow-x to auto; the hover scale on the
+       action buttons would then flash a horizontal scrollbar */
+    overflow-x: hidden;
     justify-content: flex-start;
 }
 
@@ -199,13 +202,15 @@
     white-space: nowrap;
 }
 
-/* Action button container */
+/* Action button container; right padding leaves room for the hover scale
+   so it neither overflows the scroller nor gets clipped by it */
 .actionButtons {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
     margin-left: auto;
     flex-shrink: 0;
+    padding-right: 0.375rem;
 }
 
 /* Action button base styles */
@@ -247,7 +252,7 @@
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    height: 270px;
+    padding: 0.5rem 0;
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
