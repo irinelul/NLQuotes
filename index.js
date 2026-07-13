@@ -584,6 +584,11 @@ app.post('/api/flag', async (req, res) => {
                         value: title,
                         inline: true
                     },
+                    ...(videoId !== "invalid" ? [{
+                        name: "Video ID",
+                        value: `\`${videoId}\``,
+                        inline: true
+                    }] : []),
                     {
                         name: "Quote",
                         value: quote,
