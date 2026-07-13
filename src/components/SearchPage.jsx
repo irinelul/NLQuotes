@@ -11,6 +11,46 @@ import { useTheme } from '../hooks/useTheme';
 import { TENANT, logo, logoFallback } from '../config/tenant';
 import { track } from '../services/analytics';
 import styles from './SearchPage.module.css';
+// Reused so the loading skeleton is byte-for-byte the same height as real
+// results (.quotesTable chrome + 10 x .videoRow at 450px) — this is what makes
+// the skeleton itself the reserved space, so first-load => data is shift-free.
+import quotesStyles from './Quotes.module.css';
+
+// Number of placeholder rows in the first-load skeleton. Real result pages are
+// 10 rows, so the skeleton matches that height exactly.
+const SKELETON_ROW_COUNT = 10;
+
+// Loading skeleton: a real <table> mirroring the results table (same thead +
+// 10 .videoRow rows) so its rendered height equals a full results page. Pure
+// DOM/CSS — no JS sizing, SSR-safe.
+const ResultsSkeleton = () => (
+    <table className={quotesStyles.quotesTable} aria-hidden="true">
+        <thead>
+            <tr>
+                <th>Video</th>
+                <th>Quotes with Timestamps</th>
+            </tr>
+        </thead>
+        <tbody>
+            {Array.from({ length: SKELETON_ROW_COUNT }).map((_, i) => (
+                <tr key={i} className={quotesStyles.videoRow}>
+                    <td className={quotesStyles.videoCell}>
+                        <div className={styles.skeletonVideo}>
+                            <div className={`${styles.skeletonBar} ${styles.skeletonShimmer}`} />
+                        </div>
+                    </td>
+                    <td className={quotesStyles.quotesCell}>
+                        <div className={styles.skeletonQuotes}>
+                            <div className={`${styles.skeletonLine} ${styles.skeletonShimmer}`} />
+                            <div className={`${styles.skeletonLine} ${styles.skeletonShimmer}`} />
+                            <div className={`${styles.skeletonLine} ${styles.skeletonShimmer}`} />
+                        </div>
+                    </td>
+                </tr>
+            ))}
+        </tbody>
+    </table>
+);
 
 const SearchPage = ({
     searchInput,
@@ -63,6 +103,19 @@ const SearchPage = ({
         { id: 'northernlion', name: 'Northernlion' }
     ];
 
+    // Single derived results state — exactly one region renders at a time so
+    // there is never a height swap between states (the CLS root cause):
+    //   idle       !hasSearched                    -> <Disclaimer/>
+    //   first-load loading && quotes.length === 0   -> 10-row skeleton
+    //   refetch    loading && quotes.length > 0     -> real results, dimmed
+    //   empty      !loading && quotes.length === 0  -> "No quotes found"
+    //   data       !loading && quotes.length > 0    -> the table
+    const resultsState = !hasSearched
+        ? 'idle'
+        : loading
+            ? (quotes.length > 0 ? 'refetch' : 'first-load')
+            : (quotes.length > 0 ? 'data' : 'empty');
+
     return (
         <div className={styles.mainContainer}>
             <div className={styles.logoSection}>
@@ -72,6 +125,7 @@ const SearchPage = ({
                         alt={`${TENANT.name || 'NLQuotes'} Logo`}
                         width={156}
                         height={125}
+                        fetchPriority="high"
                         onError={(e) => {
                             e.target.onerror = null;
                             e.target.src = logoFallback;
@@ -162,14 +216,27 @@ const SearchPage = ({
                 gameFilterConfig={TENANT.gameFilter}
             />
 
-            {!hasSearched && <Disclaimer />}
-
-            {loading && <div>{loadingMessage}</div>}
-            {hasSearched && (
+            {/* Results region: a single 5-state machine. Each state reserves
+                its own space (skeleton == real height, stale results stay
+                mounted), so loading never changes the page height (no CLS). */}
+            {resultsState === 'idle' ? (
+                <Disclaimer />
+            ) : (
                 <>
-                    <div className={styles.totalQuotes}>
-                        {`${totalQuotesLabel} ${numberFormatter.format(totalQuotes)}`}
-                    </div>
+                    {/* Suppress the total-count label during first-load:
+                        totalQuotes is 0 there, so "Total quotes found: 0"
+                        above the skeleton is misleading and shifts when the
+                        real count arrives. Shown in data/refetch/empty (0 is
+                        correct once loading is done, including the empty state). */}
+                    {resultsState !== 'first-load' && (
+                        <div className={styles.totalQuotes}>
+                            {`${totalQuotesLabel} ${numberFormatter.format(totalQuotes)}`}
+                        </div>
+                    )}
+
+                    {/* Top pagination bar. Stays mounted across refetch
+                        (keep-previous-data) so it never reattaches/detaches
+                        mid-fetch; gated on having results. */}
                     {quotes.length > 0 && (
                         <PaginationButtons
                             page={page}
@@ -177,16 +244,51 @@ const SearchPage = ({
                             handlePageChange={handlePageChange}
                         />
                     )}
-                    <Quotes quotes={quotes} searchTerm={searchTerm} totalQuotes={totalQuotes} />
-                </>
-            )}
 
-            {quotes.length > 0 && (
-                <PaginationButtons
-                    page={page}
-                    totalPages={totalPages}
-                    handlePageChange={handlePageChange}
-                />
+                    <div
+                        className={resultsState === 'refetch' ? styles.resultsStale : undefined}
+                        aria-busy={loading}
+                    >
+                        {/* Accessible loading status: announced to AT, visually
+                            hidden (the skeleton/dim is the visual affordance). */}
+                        {loading && (
+                            <span role="status" aria-live="polite" className={styles.srOnly}>
+                                {loadingMessage}
+                            </span>
+                        )}
+
+                        {resultsState === 'first-load' && <ResultsSkeleton />}
+
+                        {(resultsState === 'data' || resultsState === 'refetch') && (
+                            <Quotes
+                                quotes={quotes}
+                                searchTerm={searchTerm}
+                                totalQuotes={totalQuotes}
+                                loading={loading}
+                            />
+                        )}
+
+                        {resultsState === 'empty' && (
+                            <Quotes
+                                quotes={quotes}
+                                searchTerm={searchTerm}
+                                totalQuotes={totalQuotes}
+                                loading={false}
+                            />
+                        )}
+                    </div>
+
+                    {/* Bottom pagination bar — mirrors the top (top+bottom is
+                        intentional). Gated identically so the two stay in sync
+                        and neither vanishes/reattaches during loading. */}
+                    {quotes.length > 0 && (
+                        <PaginationButtons
+                            page={page}
+                            totalPages={totalPages}
+                            handlePageChange={handlePageChange}
+                        />
+                    )}
+                </>
             )}
 
             <Footer onChangelogClick={onChangelogClick} />

@@ -136,6 +136,12 @@ app.use((req, res, next) => {
     // NEVER cache index.html — it contains references to hashed assets
     // Stale HTML after redeployment causes MIME type errors
     res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+  } else if (/^\/(nlquotes|hivemind|jrequotes|vinesauce|lttquotes)\//.test(req.path)) {
+    // Tenant branding/logo folders are unhashed public assets (not under
+    // /assets/): cache briefly but always revalidate so a branding change
+    // (e.g. a new logo upload) propagates within an hour. NOT immutable —
+    // these files are not content-hashed, unlike /assets/*.
+    res.set('Cache-Control', 'public, max-age=3600, must-revalidate');
   }
   
   next();

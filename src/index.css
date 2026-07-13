@@ -31,6 +31,12 @@
     box-sizing: border-box;
 }
 
+/* Reserve space for the viewport scrollbar at all times so centered content
+   does not reflow horizontally when a page becomes scrollable (desktop CLS). */
+html {
+    scrollbar-gutter: stable;
+}
+
 body {
     margin: 0;
     min-width: 320px;
@@ -47,7 +53,9 @@ body {
 #root {
     box-sizing: border-box;
     max-width: 3000px;
-    height: 100vh;
+    /* min-height (not fixed height) so the page can grow taller than the
+       viewport instead of clipping long result sets. */
+    min-height: 100vh;
     width: 100%;
     margin: 0 auto;
     padding: 2rem;

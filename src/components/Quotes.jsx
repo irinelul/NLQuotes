@@ -12,7 +12,7 @@ import styles from './Quotes.module.css';
 // `b` is returned from ts_headline when a match is found
 const ALLOWED_TAGS = ['b'];
 
-export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
+export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = false }) => {
   const [flagging, setFlagging] = useState({});
   const [modalState, setModalState] = useState({
       isOpen: false,
@@ -408,7 +408,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0 }) => {
               <>
                   {isMobileView ? renderMobileLayout() : renderDesktopLayout()}
               </>
-          ) : (
+          ) : loading ? null : (
               <div className={styles.noQuotes}>
                   No quotes found
               </div>

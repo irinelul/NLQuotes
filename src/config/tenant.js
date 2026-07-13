@@ -33,6 +33,12 @@ const tenantConfig = tenantConfigs[TENANT_ID] || tenantConfigs.northernlion;
 // Logo assets
 let logo, logoFallback, favicon;
 
+// INVARIANT: each logo/favicon string below MUST exactly match the
+// `branding.logo` value in tenants/<id>.json AND a real file under public/.
+// vite.config.js reuses these same JSON values to build-time-preload the
+// logo, so any drift here causes a preload/<img src> mismatch (wasted fetch
+// or 404). Keep all three sources in sync when changing branding.
+
 if (TENANT_ID === 'hivemind') {
   // Import hivemind assets
   logo = '/hivemind/hivemind.jpg';

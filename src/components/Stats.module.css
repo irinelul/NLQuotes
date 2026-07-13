@@ -108,6 +108,12 @@
   display: block;
   opacity: 0;
   transition: opacity 0.3s ease;
+  /* Grow-only floor: this is the selector actually applied to the iframe
+     (Stats.jsx). The postMessage resize sets an inline height on top of this;
+     a min-height floor means that resize can only GROW the frame, never
+     shrink-then-grow (which would be continuous CLS). No height transition is
+     added (that too would shift). The opacity fade above is fine. */
+  min-height: max(calc(100vh - 140px), 480px);
 }
 
 .dashboardContainerIframeLoaded {
@@ -145,17 +151,6 @@
   width: 100%;
   min-width: 0;
   margin-bottom: 1rem;
-}
-
-.metabaseContainerIframe {
-  flex: none;
-  width: 100%;
-  max-width: 100%;
-  /* Near-full-viewport panel; the dashboard scrolls internally, so all of it
-     is reachable even if Metabase's height postMessage never arrives. When it
-     does arrive, an inline height overrides this and the page scrolls as one. */
-  height: max(calc(100vh - 140px), 480px);
-  border-radius: 8px;
 }
 
 .errorMessage {

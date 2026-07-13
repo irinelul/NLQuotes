@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import query from './services/quotes';
 import { track } from './services/analytics';
 import { useNavigate, Routes, Route, useSearchParams, useLocation } from 'react-router-dom';
@@ -45,6 +45,12 @@ const App = () => {
     const sort = searchParams.get('sort') || 'default';
     const game = searchParams.get('game') || 'all';
 
+    // Track the previous search term. The URL-param effect uses this to tell a
+    // NEW query (different term → clear stale results, show the first-load
+    // skeleton) from a same-query refinement (page/channel/year/sort/game
+    // change → keep previous results mounted and dimmed during refetch).
+    const prevSearchTermRef = useRef(searchTerm);
+
     // Add local state for search input
     const [searchInput, setSearchInput] = useState(searchTerm);
 
@@ -65,9 +71,18 @@ const App = () => {
     // Effect to handle URL parameter changes
     useEffect(() => {
         if (searchTerm.trim().length > 2) {
+            // Clear previous results ONLY when the search TERM changes. A new
+            // term means any currently-mounted results belong to a different
+            // query, so dimming them would show the wrong videos/total (a
+            // semantic bug). Same-term changes (page/filter/sort) keep results
+            // mounted and dimmed — the "keep previous data" pattern that
+            // avoids a CLS height swap mid-fetch.
+            if (searchTerm !== prevSearchTermRef.current) {
+                setQuotes([]);
+            }
+            prevSearchTermRef.current = searchTerm;
             setLoading(true);
             setError(null);
-            setQuotes([]);
             setHasSearched(true);
             fetchQuotes(page, channel, year, sort, strict, game);
         } else if (!searchTerm) {
@@ -192,6 +207,14 @@ const App = () => {
         setLoading(true);
         setError(null);
         setHasSearched(true);
+        // Random Quotes is a fresh, unrelated action — not a refinement of the
+        // current search — so clear previous results and show the first-load
+        // skeleton rather than dimming unrelated stale results.
+        setQuotes([]);
+        // Random results belong to no search term, so invalidate the term
+        // tracker: any later search/page change must be treated as "new" and
+        // clear (otherwise random cards would dim as if they were the query).
+        prevSearchTermRef.current = null;
         try {
             const response = await query.getRandomQuotes();
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { YouTubePlayer } from './YoutubePlayer';
 import { formatDate } from '../services/dateHelpers';
@@ -16,10 +16,16 @@ export const TopicPage = () => {
   const [limit] = useState(10);
   const [activeTimestamp, setActiveTimestamp] = useState({ videoId: null, timestamp: null });
 
+  // Track the previous topic term. A NEW topic clears results (first-load
+  // skeleton, no stale cross-topic cards dimmed) while a same-topic page
+  // change keeps the previous page mounted and dimmed.
+  const prevTermRef = useRef(term);
+
   useEffect(() => {
     const fetchTopicQuotes = async () => {
       try {
         setLoading(true);
+        setError(null);
         const response = await fetch(`/api/topic/${encodeURIComponent(term)}?page=${page}&limit=${limit}`);
         if (!response.ok) {
           throw new Error('Failed to fetch topic quotes');
@@ -37,6 +43,14 @@ export const TopicPage = () => {
     };
 
     if (term) {
+      // New topic: previous data belongs to a different query → clear so the
+      // first-load skeleton shows (no stale cross-topic results dimmed).
+      // Same-topic page change: keep the previous page mounted (dimmed on
+      // render) instead of swapping to the skeleton (avoids CLS on paginate).
+      if (term !== prevTermRef.current) {
+        setQuotes([]);
+      }
+      prevTermRef.current = term;
       fetchTopicQuotes();
     }
   }, [term, page, limit]);
@@ -54,12 +68,32 @@ export const TopicPage = () => {
     window.scrollTo(0, 0);
   };
 
-  if (loading) {
+  if (loading && quotes.length === 0) {
     return (
       <div className={styles.container}>
-        <div className={styles.loadingSection}>
+        <div className={styles.loadingSection} role="status" aria-live="polite">
           <div className={styles.spinner}></div>
           <p className={styles.loadingText}>Loading quotes about &quot;{term}&quot;...</p>
+        </div>
+        {/* Skeleton card list reserves the space the real list will fill, so
+            the spinner→content swap does not shift the layout. Card count
+            matches the page limit so it never under-reserves (grow-shift).
+            Decorative. */}
+        <div className={styles.quotesList} aria-hidden="true">
+          {Array.from({ length: limit }).map((_, i) => (
+            <div key={i} className={`${styles.videoCard} ${styles.skeletonCard}`}>
+              <div className={styles.skeletonHeader}>
+                <div className={`${styles.skeletonLine} ${styles.skeletonShimmer}`} />
+                <div className={`${styles.skeletonLine} ${styles.skeletonShimmer}`} />
+              </div>
+              <div className={`${styles.skeletonPlayer} ${styles.skeletonShimmer}`} />
+              <div className={styles.skeletonQuoteSection}>
+                <div className={`${styles.skeletonLine} ${styles.skeletonShimmer}`} />
+                <div className={`${styles.skeletonLine} ${styles.skeletonShimmer}`} />
+                <div className={`${styles.skeletonLine} ${styles.skeletonShimmer}`} />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -124,9 +158,21 @@ export const TopicPage = () => {
         </div>
       )}
 
-      {/* Quotes List */}
+      {/* Quotes List. On pagination (loading with previous data) the previous
+          page stays mounted and dims instead of swapping to the full skeleton
+          — avoids the height collapse/CLS the skeleton caused mid-pagination.
+          First load returns the skeleton above, so reaching here while loading
+          always means "refetch with previous data". */}
       {quotes.length > 0 ? (
-        <div className={styles.quotesList}>
+        <div
+          className={loading ? `${styles.quotesList} ${styles.resultsStale}` : styles.quotesList}
+          aria-busy={loading}
+        >
+          {loading && (
+            <span role="status" aria-live="polite" className={styles.srOnly}>
+              Loading more quotes about &quot;{decodeURIComponent(term)}&quot;...
+            </span>
+          )}
           {quotes.map((videoGroup) => (
             <div key={videoGroup.video_id} className={styles.videoCard}>
               {/* Video Header */}
