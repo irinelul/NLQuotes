@@ -1,0 +1,55 @@
+/* Shared hover-tooltip recipe.
+ * Consumers compose a placement variant and provide the text via the
+ * `--tooltip-text` custom property (in their class or an inline style):
+ *
+ *   .myTooltip {
+ *       composes: tooltipAbove from '../styles/tooltip.module.css';
+ *       --tooltip-text: "Helpful hint";
+ *   }
+ */
+
+.tooltipBase {
+    position: relative;
+    display: inline-flex;
+}
+
+.tooltipBase::before {
+    content: var(--tooltip-text, "");
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.5rem 1rem;
+    background-color: var(--surface-color);
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+}
+
+.tooltipBase:hover::before {
+    opacity: 1;
+}
+
+.tooltipAbove {
+    composes: tooltipBase;
+}
+
+.tooltipAbove::before {
+    bottom: 100%;
+    margin-bottom: 0.5rem;
+}
+
+.tooltipBelow {
+    composes: tooltipBase;
+}
+
+.tooltipBelow::before {
+    top: 100%;
+    margin-top: 0.5rem;
+}

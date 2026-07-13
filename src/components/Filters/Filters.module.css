@@ -131,3 +131,21 @@
         pointer-events: none;
     }
 }
+
+/* Tooltips share the app-wide recipe; each class only supplies its text.
+   The game tooltip's text can be overridden per tenant via an inline
+   `--tooltip-text` (see Filters/index.jsx). */
+.yearTooltip {
+    composes: tooltipAbove from '../../styles/tooltip.module.css';
+    --tooltip-text: "Filter by video upload year";
+}
+
+.sortTooltip {
+    composes: tooltipAbove from '../../styles/tooltip.module.css';
+    --tooltip-text: "Sort results by upload date";
+}
+
+.gameTooltip {
+    composes: tooltipAbove from '../../styles/tooltip.module.css';
+    --tooltip-text: "Filter by game (type to search).";
+}

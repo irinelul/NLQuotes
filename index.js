@@ -45,7 +45,7 @@ if (!PORT) {
       const tenant = getTenantById(forcedTenantId);
       PORT = tenant?.port || 8080;
       console.log(`Using port ${PORT} from tenant config for ${forcedTenantId}`);
-    } catch (e) {
+    } catch {
       PORT = 8080;
     }
   } else {
@@ -136,6 +136,12 @@ app.use((req, res, next) => {
     // NEVER cache index.html — it contains references to hashed assets
     // Stale HTML after redeployment causes MIME type errors
     res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+  } else if (/^\/(nlquotes|hivemind|jrequotes|vinesauce|lttquotes)\//.test(req.path)) {
+    // Tenant branding/logo folders are unhashed public assets (not under
+    // /assets/): cache briefly but always revalidate so a branding change
+    // (e.g. a new logo upload) propagates within an hour. NOT immutable —
+    // these files are not content-hashed, unlike /assets/*.
+    res.set('Cache-Control', 'public, max-age=3600, must-revalidate');
   }
   
   next();
@@ -534,8 +540,12 @@ app.post('/api/flag', async (req, res) => {
         const timestamp = req.body.timestamp ? parseFloat(req.body.timestamp) : null;
         
         // Validate videoId format (YouTube IDs are 11 chars)
-        const videoId = /^[a-zA-Z0-9_-]{11}$/.test(req.body.videoId) ? 
+        const videoId = /^[a-zA-Z0-9_-]{11}$/.test(req.body.videoId) ?
                         req.body.videoId : "invalid";
+
+        // line_number is stored as text in the DB; accept digits only
+        const lineNumber = /^\d{1,10}$/.test(String(req.body.lineNumber ?? '')) ?
+                           String(req.body.lineNumber) : null;
         
         const title = sanitizeInput(req.body.title);
         const channel = sanitizeInput(req.body.channel);
@@ -578,6 +588,16 @@ app.post('/api/flag', async (req, res) => {
                         value: title,
                         inline: true
                     },
+                    ...(videoId !== "invalid" ? [{
+                        name: "Video ID",
+                        value: `\`${videoId}\``,
+                        inline: true
+                    }] : []),
+                    ...(videoId !== "invalid" && lineNumber ? [{
+                        name: "Line",
+                        value: `\`${lineNumber}\``,
+                        inline: true
+                    }] : []),
                     {
                         name: "Quote",
                         value: quote,
@@ -593,6 +613,17 @@ app.post('/api/flag', async (req, res) => {
                         value: reason ? `\`\`\`${reason}\`\`\`` : "No feedback provided",
                         inline: false
                     },
+                    // Copy-paste query to locate the flagged row; videoId and
+                    // lineNumber are regex-validated above so interpolation is safe
+                    ...(videoId !== "invalid" ? [{
+                        name: "DB Query",
+                        value: [
+                            '```sql',
+                            `SELECT * FROM quotes WHERE video_id = '${videoId}'${lineNumber ? ` AND line_number = '${lineNumber}'` : ''};`,
+                            '```'
+                        ].join('\n'),
+                        inline: false
+                    }] : []),
                     ...(email ? [{
                         name: "Email",
                         value: email,
@@ -829,7 +860,7 @@ app.use((req, res, next) => {
 
 // SPA fallback for React Router with CSP header
 // This must be LAST so it doesn't catch API routes
-app.use((req, res, next) => {
+app.use((req, res) => {
   // Don't serve index.html for missing static assets (prevents MIME type errors)
   const staticExtensions = /\.(js|css|map|png|jpg|jpeg|gif|svg|webp|woff|woff2|ttf|eot|ico|json)$/i;
   if (staticExtensions.test(req.path)) {
@@ -988,7 +1019,8 @@ app.use((req, res, next) => {
 });
 
 // Global error handler — must be last, after all routes
-app.use((err, req, res, next) => {
+// _next: Express needs arity 4 to treat this as an error handler
+app.use((err, req, res, _next) => {
     console.error('Unhandled application error:', err.stack);
 
     if (err.name === 'CastError') {

@@ -157,6 +157,11 @@
     }
 }
 
+.inlineLink {
+    color: var(--primary-color);
+    text-decoration: underline;
+}
+
 .exampleTitle {
     color: var(--accent-color);
     font-weight: bold;

@@ -1,0 +1,41 @@
+.footerMessage {
+    color: #9f9f9f;
+    text-align: center;
+    padding: 2rem 0;
+    font-size: 0.95rem;
+    font-style: italic;
+    margin-top: auto;
+    letter-spacing: 0.3px;
+}
+
+.footerMessage span {
+    display: inline-block;
+    transform: translateY(1px);
+    margin: 0 0.3rem;
+    filter: brightness(1.1);
+}
+
+.footerLink {
+    color: inherit;
+    text-decoration: underline;
+}
+
+.footerButton {
+    background: none;
+    border: none;
+    color: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+    font: inherit;
+    padding: 0;
+    margin: 0;
+}
+
+/* Mobile responsive styles - matches App.css mobile override */
+@media (max-width: 768px) {
+    .footerMessage {
+        width: 90%;
+        font-size: 0.8rem;
+        margin: 10px auto;
+    }
+}

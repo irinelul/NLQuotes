@@ -1,0 +1,372 @@
+/* SearchPage.module.css */
+/* Copied from index.css and App.css for SearchPage component */
+
+/* Main container */
+.mainContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 2rem;
+    width: 100%;
+    height: 100%;
+}
+
+/* Logo section */
+.logoSection {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    position: relative;
+}
+
+.logoContainer {
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    margin-bottom: 2rem;
+    text-align: center;
+    padding: 0.5rem;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.logoContainer:hover {
+    background-color: rgba(192, 192, 192, 0.1);
+}
+
+.logoContainer img {
+    height: 125px;
+    width: 156.25px;
+    will-change: filter;
+    transition: all 0.3s ease;
+    object-fit: contain;
+    aspect-ratio: 1.25;
+}
+
+.logoContainer img:hover {
+    filter: drop-shadow(0 0 1em var(--primary-color));
+    transform: scale(1.05);
+}
+
+/* Logo navigation */
+.logoNav {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    display: flex;
+    gap: 0.5rem;
+    z-index: 1000;
+}
+
+.logoNavButton {
+    padding: 0.4rem 0.8rem;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+    font-family: inherit;
+    text-decoration: none;
+    opacity: 0.9;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.logoNavButton:hover {
+    opacity: 1;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.themeToggleButton {
+    background: #9C27B0;
+}
+
+/* Input container */
+.inputContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.inputContainer button {
+    min-width: 120px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: grey;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 1rem;
+    letter-spacing: 0.3px;
+    transform: none;
+    transition: background-color 0.2s ease;
+}
+
+.inputContainer button:hover:not(:disabled) {
+    background-color: var(--hover-color);
+    box-shadow: 0 4px 12px rgba(192, 192, 192, 0.3);
+}
+
+.inputContainer button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.searchInput {
+    flex: 1;
+    padding: 0.5rem 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--surface-color);
+    color: var(--text-primary);
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    letter-spacing: 0.3px;
+    height: 40px;
+    min-width: 300px;
+    box-sizing: border-box;
+}
+
+.searchInput:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(192, 192, 192, 0.2);
+}
+
+.resetButton {
+    margin-left: 0.5rem;
+}
+
+/* Radio group */
+.radioGroup {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+    margin: 0.75rem 0 2.5rem 0;
+    flex-wrap: wrap;
+    position: relative;
+}
+
+/* Tooltip shares the app-wide recipe (see src/styles/tooltip.module.css) */
+.channelTooltip {
+    composes: tooltipBelow from '../styles/tooltip.module.css';
+    --tooltip-text: "Filter videos based on channel source";
+}
+
+/* Error message */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.errorMessage {
+    color: #ff4444;
+    background-color: rgba(255, 68, 68, 0.1);
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+    text-align: center;
+    font-size: 1rem;
+    animation: fadeIn 0.3s ease;
+}
+
+/* Total quotes */
+.totalQuotes {
+    text-align: center;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+/* Refetch affordance: keep previous results mounted but dim them so the user
+   sees the data is stale. Opacity only — no height/size change, so no CLS. */
+.resultsStale {
+    opacity: 0.55;
+    transition: opacity 0.2s ease;
+}
+
+/* Visually hidden but available to assistive tech (used for the loading
+   status announcement). */
+.srOnly {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ===== Loading skeleton =====
+   Row height comes from Quotes' .videoRow (450px) via the imported
+   quotesStyles module, so the skeleton occupies exactly the same space as a
+   full results page. These rules only style the placeholder content. */
+.skeletonVideo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 270px;
+    border-radius: 8px;
+}
+
+.skeletonBar {
+    width: 50%;
+    height: 1.25rem;
+    border-radius: 4px;
+    background-color: var(--border-color);
+}
+
+.skeletonQuotes {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.75rem 0;
+}
+
+.skeletonLine {
+    height: 1rem;
+    border-radius: 4px;
+    background-color: var(--border-color);
+}
+
+.skeletonLine:nth-child(1) { width: 90%; }
+.skeletonLine:nth-child(2) { width: 75%; }
+.skeletonLine:nth-child(3) { width: 60%; }
+
+/* Gentle opacity pulse (no size/position change => no CLS). */
+.skeletonShimmer {
+    animation: skeletonShimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes skeletonShimmer {
+    0% { opacity: 0.25; }
+    50% { opacity: 0.5; }
+    100% { opacity: 0.25; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .skeletonShimmer {
+        animation: none;
+    }
+}
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+    .logoSection {
+        margin-bottom: 1rem;
+    }
+
+    .logoNav {
+        top: 0.5rem;
+        right: 0.5rem;
+        gap: 0.3rem;
+    }
+
+    .logoNavButton {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.8rem;
+    }
+
+    .logoContainer {
+        background-color: var(--background-color);
+        width: 100%;
+        text-align: center;
+        padding: 15px 0;
+        z-index: 100;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        /* Must equal the rendered height (img 95px + 30px container
+           padding) so the space is reserved pre-load (no CLS). */
+        min-height: 125px;
+        margin-bottom: 0;
+    }
+
+    .logoContainer img {
+        height: 95px;
+        width: auto;
+        display: block;
+        margin: 0 auto;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+    }
+
+    .logoContainer img:hover {
+        transform: scale(1.05);
+    }
+
+    .inputContainer {
+        flex-direction: column;
+        width: 90% !important;
+        gap: 10px;
+        margin-top: 1rem;
+    }
+
+    .inputContainer button {
+        width: 100%;
+        margin: 5px 0 !important;
+    }
+
+    .searchInput {
+        width: 100% !important;
+    }
+
+    .radioGroup {
+        flex-wrap: wrap;
+        justify-content: center;
+        width: 100%;
+        margin: 0 auto;
+    }
+}
+
+/* Desktop responsive styles */
+@media (min-width: 769px) {
+    .logoContainer {
+        margin-bottom: 2rem;
+        cursor: pointer;
+        /* Must equal the rendered height (img 120px + 1rem container
+           padding) so the space is reserved pre-load (no CLS). */
+        min-height: 136px;
+    }
+
+    .logoContainer img {
+        height: 120px;
+        width: auto;
+        display: block;
+        margin: 0 auto;
+        transition: transform 0.2s ease;
+    }
+
+    .logoContainer img:hover {
+        transform: scale(1.05);
+    }
+
+    .radioGroup {
+        display: flex;
+        gap: 15px;
+        /* 2.5rem bottom clearance: the channel tooltip (below) and the
+           year/sort/game tooltips (above) both open into this gap — the
+           bubble needs ~42px so it doesn't cover the neighboring row. */
+        margin: 10px auto 2.5rem;
+        justify-content: center;
+    }
+}

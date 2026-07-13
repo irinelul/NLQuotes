@@ -22,7 +22,6 @@ const CLIENT_EVENT_TYPES = new Set([
     'flag_submit',
     'feedback_open',
     'feedback_submit',
-    'changelog_open',
     'theme_toggle',
     'external_link',
     'video_watch',          // props: { seconds, reason } — how long a clip actually played

@@ -3,11 +3,27 @@ import styles from './Modals.module.css';
 
 export const FlagModal = ({ isOpen, onClose, onSubmit }) => {
     const [reason, setReason] = useState('');
+    const [status, setStatus] = useState(null); // null | 'sending' | 'success' | 'error'
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        onSubmit(reason);
-        setReason('');
+        setStatus('sending');
+        try {
+            await onSubmit(reason);
+            setStatus('success');
+            setReason('');
+            setTimeout(() => {
+                setStatus(null);
+                onClose();
+            }, 2500);
+        } catch {
+            setStatus('error');
+        }
+    };
+
+    const handleClose = () => {
+        setStatus(null);
+        onClose();
     };
 
     if (!isOpen) return null;
@@ -27,11 +43,21 @@ export const FlagModal = ({ isOpen, onClose, onSubmit }) => {
                         required
                     />
                     <div className={styles.modalButtons}>
-                        <button type="button" onClick={onClose}>
+                        {status === 'success' && (
+                            <span className={`${styles.statusMessage} ${styles.statusSuccess}`}>
+                                Report received, thank you!
+                            </span>
+                        )}
+                        {status === 'error' && (
+                            <span className={`${styles.statusMessage} ${styles.statusError}`}>
+                                Something went wrong — please try again.
+                            </span>
+                        )}
+                        <button type="button" onClick={handleClose}>
                             Cancel
                         </button>
-                        <button type="submit">
-                            Submit
+                        <button type="submit" disabled={status === 'sending' || status === 'success'}>
+                            {status === 'sending' ? 'Sending…' : 'Submit'}
                         </button>
                     </div>
                 </form>

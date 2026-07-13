@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import query from './services/quotes';
 import { track } from './services/analytics';
 import { useNavigate, Routes, Route, useSearchParams, useLocation } from 'react-router-dom';
-import { ChangelogModal } from './components/Modals/ChangelogModal';
-import './App.css';
+import Changelog from './components/Changelog';
+import ScrollToTop from './components/ScrollToTop';
 import { useFetchGames } from './hooks/useFetchGames';
 import { useSearchState } from './hooks/useSearchState';
 import Privacy from './components/Privacy';
@@ -31,8 +31,6 @@ const App = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
-    const [submittingFeedback, setSubmittingFeedback] = useState(false);
-    const [changelogModalOpen, setChangelogModalOpen] = useState(false);
     
     const strict = false;
 
@@ -45,6 +43,12 @@ const App = () => {
     const year = searchParams.get('year') || '';
     const sort = searchParams.get('sort') || 'default';
     const game = searchParams.get('game') || 'all';
+
+    // Track the previous search term. The URL-param effect uses this to tell a
+    // NEW query (different term → clear stale results, show the first-load
+    // skeleton) from a same-query refinement (page/channel/year/sort/game
+    // change → keep previous results mounted and dimmed during refetch).
+    const prevSearchTermRef = useRef(searchTerm);
 
     // Add local state for search input
     const [searchInput, setSearchInput] = useState(searchTerm);
@@ -66,9 +70,18 @@ const App = () => {
     // Effect to handle URL parameter changes
     useEffect(() => {
         if (searchTerm.trim().length > 2) {
+            // Clear previous results ONLY when the search TERM changes. A new
+            // term means any currently-mounted results belong to a different
+            // query, so dimming them would show the wrong videos/total (a
+            // semantic bug). Same-term changes (page/filter/sort) keep results
+            // mounted and dimmed — the "keep previous data" pattern that
+            // avoids a CLS height swap mid-fetch.
+            if (searchTerm !== prevSearchTermRef.current) {
+                setQuotes([]);
+            }
+            prevSearchTermRef.current = searchTerm;
             setLoading(true);
             setError(null);
-            setQuotes([]);
             setHasSearched(true);
             fetchQuotes(page, channel, year, sort, strict, game);
         } else if (!searchTerm) {
@@ -193,6 +206,14 @@ const App = () => {
         setLoading(true);
         setError(null);
         setHasSearched(true);
+        // Random Quotes is a fresh, unrelated action — not a refinement of the
+        // current search — so clear previous results and show the first-load
+        // skeleton rather than dimming unrelated stale results.
+        setQuotes([]);
+        // Random results belong to no search term, so invalidate the term
+        // tracker: any later search/page change must be treated as "new" and
+        // clear (otherwise random cards would dim as if they were the query).
+        prevSearchTermRef.current = null;
         try {
             const response = await query.getRandomQuotes();
 
@@ -223,9 +244,10 @@ const App = () => {
 
     const numberFormatter = new Intl.NumberFormat('en-US');
 
+    // Success/error is shown inline by the modal, which closes itself; a
+    // rethrow here is what flips it to the error state.
     const handleFeedbackSubmit = async (feedback, email) => {
         try {
-            setSubmittingFeedback(true);
             await query.flagQuote({
                 quote: "Website Feedback",
                 searchTerm: "Feedback",
@@ -237,14 +259,9 @@ const App = () => {
                 email: email || undefined
             });
             track('feedback_submit');
-            alert('Thank you for your feedback!');
-            setFeedbackModalOpen(false);
         } catch (error) {
             console.error('Error submitting feedback:', error);
-            const errorMessage = error.response?.data?.error || error.message || 'Unknown error';
-            alert(`Unable to submit feedback: ${errorMessage}. Please check your connection and try again.`);
-        } finally {
-            setSubmittingFeedback(false);
+            throw error;
         }
     };
 
@@ -312,30 +329,23 @@ const App = () => {
         strict={strict}
         feedbackModalOpen={feedbackModalOpen}
         setFeedbackModalOpen={setFeedbackModalOpen}
-        submittingFeedback={submittingFeedback}
         handleFeedbackSubmit={handleFeedbackSubmit}
         handleLogoClick={handleLogoClick}
         fetchQuotes={fetchQuotes}
         handlePageChange={handlePageChange}
-        onChangelogClick={() => {
-            track('changelog_open');
-            setChangelogModalOpen(true);
-        }}
     />;
 
     return (
         <>
+        <ScrollToTop />
         <Routes>
             <Route path="/" element={searchPageElement} />
             <Route path="/search" element={searchPageElement} />
             <Route path="/privacy" element={<Privacy />} />
+            <Route path="/changelog" element={<Changelog />} />
             <Route path="/stats" element={<Stats />} />
             <Route path="/topic/:term" element={<TopicPage />} />
         </Routes>
-        <ChangelogModal
-            isOpen={changelogModalOpen}
-            onClose={() => setChangelogModalOpen(false)}
-        />
         </>
     );
 };

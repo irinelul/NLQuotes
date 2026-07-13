@@ -1,0 +1,52 @@
+/* Mirrors Privacy.module.css sizing/layout so the two info pages are uniform.
+   Desktop (≥769px) widens to 1000px; mobile (≤768px) is unchanged. */
+.container {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: var(--surface-color);
+  border-radius: 12px;
+}
+
+@media (min-width: 769px) {
+  .container {
+    max-width: 1000px;
+  }
+}
+
+.backButton {
+  margin-bottom: 1.5rem;
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  color: inherit;
+}
+
+.heading {
+  margin-top: 0;
+}
+
+.entryGroup {
+  margin-bottom: 2rem;
+}
+
+.entryDate {
+  color: var(--accent-color);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.list {
+  margin: 1rem 0;
+  padding-left: 2rem;
+}
+
+.listItem {
+  margin: 0.5rem 0;
+  line-height: 1.6;
+}

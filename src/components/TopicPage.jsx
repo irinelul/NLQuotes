@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { YouTubePlayer } from './YoutubePlayer';
 import { formatDate } from '../services/dateHelpers';
 import { pauseOtherPlayers } from '../services/youtubeApiLoader';
+import styles from './TopicPage.module.css';
 
 export const TopicPage = () => {
   const { term } = useParams();
@@ -15,10 +16,16 @@ export const TopicPage = () => {
   const [limit] = useState(10);
   const [activeTimestamp, setActiveTimestamp] = useState({ videoId: null, timestamp: null });
 
+  // Track the previous topic term. A NEW topic clears results (first-load
+  // skeleton, no stale cross-topic cards dimmed) while a same-topic page
+  // change keeps the previous page mounted and dimmed.
+  const prevTermRef = useRef(term);
+
   useEffect(() => {
     const fetchTopicQuotes = async () => {
       try {
         setLoading(true);
+        setError(null);
         const response = await fetch(`/api/topic/${encodeURIComponent(term)}?page=${page}&limit=${limit}`);
         if (!response.ok) {
           throw new Error('Failed to fetch topic quotes');
@@ -36,6 +43,14 @@ export const TopicPage = () => {
     };
 
     if (term) {
+      // New topic: previous data belongs to a different query → clear so the
+      // first-load skeleton shows (no stale cross-topic results dimmed).
+      // Same-topic page change: keep the previous page mounted (dimmed on
+      // render) instead of swapping to the skeleton (avoids CLS on paginate).
+      if (term !== prevTermRef.current) {
+        setQuotes([]);
+      }
+      prevTermRef.current = term;
       fetchTopicQuotes();
     }
   }, [term, page, limit]);
@@ -53,12 +68,32 @@ export const TopicPage = () => {
     window.scrollTo(0, 0);
   };
 
-  if (loading) {
+  if (loading && quotes.length === 0) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading quotes about "{term}"...</p>
+      <div className={styles.container}>
+        <div className={styles.loadingSection} role="status" aria-live="polite">
+          <div className={styles.spinner}></div>
+          <p className={styles.loadingText}>Loading quotes about &quot;{term}&quot;...</p>
+        </div>
+        {/* Skeleton card list reserves the space the real list will fill, so
+            the spinner→content swap does not shift the layout. Card count
+            matches the page limit so it never under-reserves (grow-shift).
+            Decorative. */}
+        <div className={styles.quotesList} aria-hidden="true">
+          {Array.from({ length: limit }).map((_, i) => (
+            <div key={i} className={`${styles.videoCard} ${styles.skeletonCard}`}>
+              <div className={styles.skeletonHeader}>
+                <div className={`${styles.skeletonLine} ${styles.skeletonShimmer}`} />
+                <div className={`${styles.skeletonLine} ${styles.skeletonShimmer}`} />
+              </div>
+              <div className={`${styles.skeletonPlayer} ${styles.skeletonShimmer}`} />
+              <div className={styles.skeletonQuoteSection}>
+                <div className={`${styles.skeletonLine} ${styles.skeletonShimmer}`} />
+                <div className={`${styles.skeletonLine} ${styles.skeletonShimmer}`} />
+                <div className={`${styles.skeletonLine} ${styles.skeletonShimmer}`} />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -66,12 +101,12 @@ export const TopicPage = () => {
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center text-red-600">
+      <div className={styles.container}>
+        <div className={`${styles.loadingSection} ${styles.errorText}`}>
           <p>{error}</p>
           <button 
             onClick={() => window.location.reload()} 
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className={styles.retryButton}
           >
             Try Again
           </button>
@@ -83,64 +118,76 @@ export const TopicPage = () => {
   const decodedTerm = decodeURIComponent(term);
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className={styles.container}>
       {/* Header */}
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          Quotes about "{decodedTerm}"
+      <div className={styles.headerSection}>
+        <h1 className={styles.pageTitle}>
+          Quotes about &quot;{decodedTerm}&quot;
         </h1>
-        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-          Discover memorable moments and quotes featuring "{decodedTerm}". 
+        <p className={styles.pageDescription}>
+          Discover memorable moments and quotes featuring &quot;{decodedTerm}&quot;. 
           Click on any timestamp to jump directly to that moment in the video.
         </p>
-        <div className="mt-4 text-sm text-gray-500">
+        <div className={styles.pageMetadata}>
           Found {totalQuotes} quotes across {totalPages} pages
         </div>
       </div>
 
       {/* Top Pagination */}
       {totalPages > 1 && (
-        <div className="flex justify-center items-center space-x-2 mb-8">
+        <div className={styles.paginationContainer}>
           <button
             onClick={() => handlePageChange(page - 1)}
             disabled={page === 1}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300"
+            className={styles.paginationButton}
           >
             Previous
           </button>
           
-          <span className="px-4 py-2 text-gray-700">
+          <span className={styles.paginationText}>
             Page {page} of {totalPages}
           </span>
           
           <button
             onClick={() => handlePageChange(page + 1)}
             disabled={page === totalPages}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300"
+            className={styles.paginationButton}
           >
             Next
           </button>
         </div>
       )}
 
-      {/* Quotes List */}
+      {/* Quotes List. On pagination (loading with previous data) the previous
+          page stays mounted and dims instead of swapping to the full skeleton
+          — avoids the height collapse/CLS the skeleton caused mid-pagination.
+          First load returns the skeleton above, so reaching here while loading
+          always means "refetch with previous data". */}
       {quotes.length > 0 ? (
-        <div className="space-y-6 mb-8">
-          {quotes.map((videoGroup, videoIndex) => (
-            <div key={videoGroup.video_id} className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div
+          className={loading ? `${styles.quotesList} ${styles.resultsStale}` : styles.quotesList}
+          aria-busy={loading}
+        >
+          {loading && (
+            <span role="status" aria-live="polite" className={styles.srOnly}>
+              Loading more quotes about &quot;{decodeURIComponent(term)}&quot;...
+            </span>
+          )}
+          {quotes.map((videoGroup) => (
+            <div key={videoGroup.video_id} className={styles.videoCard}>
               {/* Video Header */}
-              <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <div className={styles.videoHeader}>
+                <h3 className={styles.videoTitle}>
                   {videoGroup.title}
                 </h3>
-                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                <div className={styles.videoMetadata}>
                   <span>Channel: {videoGroup.channel_source}</span>
                   <span>Uploaded: {formatDate(videoGroup.upload_date)}</span>
                 </div>
               </div>
 
               {/* Video Player */}
-              <div className="p-6">
+              <div className={styles.playerContainer}>
                 <YouTubePlayer 
                   videoId={videoGroup.video_id}
                   timestamp={activeTimestamp.videoId === videoGroup.video_id ? activeTimestamp.timestamp : null}
@@ -148,24 +195,24 @@ export const TopicPage = () => {
               </div>
 
               {/* Quotes List */}
-              <div className="px-6 pb-6">
-                <h4 className="text-md font-medium text-gray-700 mb-4">
-                  Quotes featuring "{decodedTerm}" ({videoGroup.quotes.length})
+              <div className={styles.quotesSection}>
+                <h4 className={styles.quotesHeading}>
+                  Quotes featuring &quot;{decodedTerm}&quot; ({videoGroup.quotes.length})
                 </h4>
-                <div className="space-y-4">
-                  {videoGroup.quotes.map((quote, quoteIndex) => (
-                    <div key={`${videoGroup.video_id}-${quote.line_number}`} className="flex items-start space-x-4">
+                <div className={styles.quoteItems}>
+                  {videoGroup.quotes.map((quote) => (
+                    <div key={`${videoGroup.video_id}-${quote.line_number}`} className={styles.quoteItem}>
                       {/* Timestamp Button */}
                       <button
                         onClick={() => handleTimestampClick(videoGroup.video_id, quote.timestamp_start)}
-                        className="flex-shrink-0 px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors duration-200"
+                        className={styles.timestampButton}
                       >
                         {quote.timestamp_start}
                       </button>
                       
                       {/* Quote Text */}
-                      <div className="flex-1">
-                        <p className="text-gray-800 leading-relaxed">
+                      <div className={styles.quoteText}>
+                        <p>
                           {quote.text}
                         </p>
                       </div>
@@ -177,32 +224,32 @@ export const TopicPage = () => {
           ))}
         </div>
       ) : (
-        <div className="text-center py-12">
-          <p className="text-gray-600 text-lg">
-            No quotes found for "{decodedTerm}". Try a different search term.
+        <div className={styles.emptyState}>
+          <p className={styles.emptyText}>
+            No quotes found for &quot;{decodedTerm}&quot;. Try a different search term.
           </p>
         </div>
       )}
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex justify-center items-center space-x-2 mb-8">
+        <div className={styles.paginationContainer}>
           <button
             onClick={() => handlePageChange(page - 1)}
             disabled={page === 1}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300"
+            className={styles.paginationButton}
           >
             Previous
           </button>
           
-          <span className="px-4 py-2 text-gray-700">
+          <span className={styles.paginationText}>
             Page {page} of {totalPages}
           </span>
           
           <button
             onClick={() => handlePageChange(page + 1)}
             disabled={page === totalPages}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300"
+            className={styles.paginationButton}
           >
             Next
           </button>
@@ -210,12 +257,12 @@ export const TopicPage = () => {
       )}
 
       {/* Navigation Links */}
-      <div className="flex justify-center space-x-4 mt-8">
+      <div className={styles.navigationLinks}>
         <Link
           to="/"
-          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded hover:bg-blue-700 transition-colors duration-200"
+          className={styles.backToSearchButton}
         >
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           Back to Search

@@ -78,10 +78,19 @@ function tenantHtmlPlugin() {
         iconType = 'image/jpeg';
       }
       
-      // Add new icon links after charset meta tag
+      // Add new icon links after charset meta tag.
+      // Also inject a BUILD-TIME logo preload: the logo is the LCP element but
+      // only renders after the ~388KB JS bundle parses, so preloading starts
+      // its fetch during HTML parse (before JS). The href uses the exact
+      // tenantBranding.logo, which (per the tenant.js invariant) equals the
+      // baked <img src> in SearchPage — guaranteed to match, single fetch.
+      // Same-origin public asset: NO crossorigin (that would force a CORS
+      // fetch and discard the preload). Build-time only — never injected at
+      // runtime in index.js, to avoid double-injection and keep the preload
+      // URL identical to the baked <img src>.
       transformedHtml = transformedHtml.replace(
         /(<meta charset="UTF-8" \/>)/,
-        `$1\n    <link rel="icon" href="${favicon}" type="${iconType}" />\n    <link rel="apple-touch-icon" href="${favicon}" />`
+        `$1\n    <link rel="icon" href="${favicon}" type="${iconType}" />\n    <link rel="apple-touch-icon" href="${favicon}" />\n    <link rel="preload" as="image" href="${tenantBranding.logo || '/nlquotes/nlquotes.svg'}" fetchpriority="high" />`
       );
 
       // Inject Umami script in dev HTML so custom event tracking works with npm run dev.

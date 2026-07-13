@@ -22,7 +22,7 @@ export function ensureApiReady() {
     return loadingPromise;
   }
 
-  loadingPromise = new Promise((resolve, reject) => {
+  loadingPromise = new Promise((resolve) => {
     waitingQueue.push(resolve); // Add to queue
 
     if (!window.onYouTubeIframeAPIReady) {
@@ -151,7 +151,7 @@ export function cleanupRegistry() {
         // Try to get player state - if it works, player is still valid
         player.getPlayerState();
         validPlayers.push(player);
-      } catch (e) {
+      } catch {
         // Player is destroyed/invalid, don't keep it
       }
     }
@@ -193,7 +193,7 @@ export function pauseOtherPlayers(currentPlayer) {
           if (player.stopVideo && typeof player.stopVideo === 'function') {
             player.stopVideo();
           }
-        } catch (e) {
+        } catch {
           // Player is invalid, remove from registry
           unregisterPlayer(player);
         }
@@ -207,7 +207,7 @@ export function pauseOtherPlayers(currentPlayer) {
         if (player && typeof player.destroy === 'function') {
           player.destroy();
         }
-      } catch (e) {
+      } catch {
         // Ignore — player already destroyed
       }
     });

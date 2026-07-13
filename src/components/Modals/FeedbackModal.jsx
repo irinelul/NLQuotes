@@ -4,12 +4,28 @@ import styles from './Modals.module.css';
 export const FeedbackModal = ({ isOpen, onClose, onSubmit }) => {
     const [feedback, setFeedback] = useState('');
     const [email, setEmail] = useState('');
+    const [status, setStatus] = useState(null); // null | 'sending' | 'success' | 'error'
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        onSubmit(feedback, email);
-        setFeedback('');
-        setEmail('');
+        setStatus('sending');
+        try {
+            await onSubmit(feedback, email);
+            setStatus('success');
+            setFeedback('');
+            setEmail('');
+            setTimeout(() => {
+                setStatus(null);
+                onClose();
+            }, 2500);
+        } catch {
+            setStatus('error');
+        }
+    };
+
+    const handleClose = () => {
+        setStatus(null);
+        onClose();
     };
 
     if (!isOpen) return null;
@@ -33,23 +49,24 @@ export const FeedbackModal = ({ isOpen, onClose, onSubmit }) => {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="Email (optional)"
-                        style={{
-                            width: '100%',
-                            padding: '0.5rem',
-                            marginTop: '0.5rem',
-                            marginBottom: '1rem',
-                            border: '1px solid #ccc',
-                            borderRadius: '4px',
-                            fontSize: '1rem',
-                            boxSizing: 'border-box'
-                        }}
+                        className={styles.emailInput}
                     />
                     <div className={styles.modalButtons}>
-                        <button type="button" onClick={onClose}>
+                        {status === 'success' && (
+                            <span className={`${styles.statusMessage} ${styles.statusSuccess}`}>
+                                Feedback received, thank you!
+                            </span>
+                        )}
+                        {status === 'error' && (
+                            <span className={`${styles.statusMessage} ${styles.statusError}`}>
+                                Something went wrong — please try again.
+                            </span>
+                        )}
+                        <button type="button" onClick={handleClose}>
                             Cancel
                         </button>
-                        <button type="submit">
-                            Submit
+                        <button type="submit" disabled={status === 'sending' || status === 'success'}>
+                            {status === 'sending' ? 'Sending…' : 'Submit'}
                         </button>
                     </div>
                 </form>

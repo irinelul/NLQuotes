@@ -17,9 +17,9 @@ function getPoolForTenant(tenant) {
     }
     return pools.get(defaultId);
   }
-  
+
   const tenantId = tenant.id || 'default';
-  
+
   if (!pools.has(tenantId)) {
     const dbUrl = getTenantDatabaseUrl(tenant);
     if (!dbUrl) {
@@ -28,7 +28,7 @@ function getPoolForTenant(tenant) {
     pools.set(tenantId, createPool(dbUrl));
     console.log(`Created database pool for tenant: ${tenantId}`);
   }
-  
+
   return pools.get(tenantId);
 }
 
@@ -40,16 +40,21 @@ function createPool(connectionString) {
     min: 2,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
+    // Server-side cancellation of slow queries. The previous Promise.race
+    // timeouts abandoned the query but left it running on the connection,
+    // so the next request checking out that pooled connection queued
+    // behind the still-running statement.
+    statement_timeout: 10000,
     allowExitOnIdle: false,
     keepAlive: true,
     keepAliveInitialDelayMillis: 5000
   });
-  
+
   // Better connection error handling
   pool.on('error', (err) => {
     console.error('PostgreSQL Error:', err.message);
   });
-  
+
   return pool;
 }
 
@@ -67,12 +72,12 @@ export { getPoolForTenant };
     try {
       const tableRes = await client.query(`
         SELECT EXISTS (
-          SELECT FROM information_schema.tables 
-          WHERE table_schema = 'public' 
+          SELECT FROM information_schema.tables
+          WHERE table_schema = 'public'
           AND table_name = 'quotes'
         ) as table_exists
       `);
-      
+
       if (tableRes.rows[0].table_exists) {
         const countRes = await client.query('SELECT COUNT(*) as quote_count FROM quotes');
         const sampleRes = await client.query('SELECT video_id, text FROM quotes LIMIT 1');
@@ -98,7 +103,7 @@ const checkDatabaseHealth = async (tenant = null) => {
     const result = await client.query('SELECT 1 as healthcheck, NOW() as server_time');
     const endTime = Date.now();
     const responseTime = endTime - startTime;
-    
+
     return {
       healthy: true,
       responseTime: `${responseTime}ms`,
@@ -127,7 +132,7 @@ const checkDatabaseHealth = async (tenant = null) => {
 const quoteModel = {
   // Database health check exposed to API
   checkHealth: checkDatabaseHealth,
-  
+
   // Get list of unique games
   async getGameList(tenant = null) {
     try {
@@ -135,9 +140,9 @@ const quoteModel = {
       const client = await pool.connect();
       try {
         const result = await client.query(`
-          SELECT DISTINCT game_name 
-          FROM quotes 
-          WHERE game_name IS NOT NULL 
+          SELECT DISTINCT game_name
+          FROM quotes
+          WHERE game_name IS NOT NULL
           ORDER BY game_name ASC
         `);
         return result.rows.map(row => row.game_name);
@@ -149,14 +154,14 @@ const quoteModel = {
       return [];
     }
   },
-  
+
   // Search quotes with pagination using PostgreSQL FTS
   async search({ searchTerm, searchPath: _searchPath, gameName, selectedValue, year, sortOrder, page = 1, limit = 10, exactPhrase = false, tenant = null }) {
     // Validate and sanitize inputs
     // Ensure page and limit are positive integers
     page = Math.max(1, parseInt(page) || 1);
     limit = Math.min(50, Math.max(1, parseInt(limit) || 10)); // Cap at 50 items
-    
+
     // Validate search term length
     if (searchTerm && searchTerm.trim().length < 3) {
       return { data: [], total: 0, totalQuotes: 0 };
@@ -174,46 +179,18 @@ const quoteModel = {
     const offset = (page - 1) * limit;
     const params = [];
     let paramIndex = 1;
-    // We only search in text now, so no need to validate searchPath
-    // log search parameters with tenant info
     const tenantId = tenant?.id || 'default';
     console.log(`[Search] PostgreSQL search - Tenant: ${tenantId}, term="${searchTerm}", game="${gameName}", channel=${selectedValue}, year=${year}, sort=${sortOrder}, page=${page}, exactPhrase=${exactPhrase}`);
 
-    // Highlight matches only when there is a term; game-only browsing has no $1 to reference.
-    const textExpr = hasTerm
-      ? `ts_headline('simple', q.text, websearch_to_tsquery('simple', $1),'MaxWords=5, MinWords=5, HighlightAll=TRUE')`
-      : `q.text`;
-
-    // Base query structure remains similar
-    let query = `
-      SELECT q.video_id, q.title, q.upload_date, q.channel_source,
-             json_agg(json_build_object(
-               'text', ${textExpr},
-               'line_number', q.line_number,
-               'timestamp_start', q.timestamp_start,
-               'title', q.title,          -- Keep for context within quote object
-               'upload_date', q.upload_date,  -- Keep for context within quote object
-               'channel_source', q.channel_source -- Keep for context within quote object
-             ) ORDER BY q.line_number::int) AS quotes
-      FROM quotes q
-    `; // WHERE clause will be built dynamically
-
-    let whereClauses = []; // Start with an empty array for WHERE conditions
+    const whereClauses = [];
 
     // --- Search Term Conditions ---
-    let cleanSearchTerm = '';
-    
-    if (searchTerm && searchTerm.trim() !== '') {
-      // Extra sanitization - remove any SQL injection patterns 
-      cleanSearchTerm = searchTerm.trim(); 
-    
-      if (cleanSearchTerm.length > 2) {
-        whereClauses.push(`q.fts_doc @@ websearch_to_tsquery('simple', $${paramIndex})`);
-        params.push(cleanSearchTerm);
-        paramIndex += 1;
-      }
+    if (hasTerm) {
+      whereClauses.push(`q.fts_doc @@ websearch_to_tsquery('simple', $${paramIndex})`);
+      params.push(searchTerm.trim());
+      paramIndex += 1;
     }
-    
+
     // --- Filter Conditions (Leverage B-tree indexes) ---
     if (gameName && gameName !== 'all') {
       // Validate game name - basic protection
@@ -265,149 +242,100 @@ const quoteModel = {
       }
     }
 
-    // --- Combine WHERE clauses ---
-    if (whereClauses.length > 0) {
-      query += ` WHERE ${whereClauses.join(' AND ')}`;
-    } else {
-      // Handle case with no filters if necessary, though often you might want *some* filter
-      // or limit the results heavily if no filters are applied.
-      // For this example, we allow no filters.
-    }
+    const whereSql = whereClauses.join(' AND ');
 
-    // --- Grouping ---
-    // Group by video fields AFTER filtering. This aggregates all quotes
-    // for videos where AT LEAST ONE quote matched the WHERE criteria.
-    query += ` GROUP BY q.video_id, q.title, q.upload_date, q.channel_source`;
+    // Highlight matches only when there is a term; game-only browsing has no $1 to reference.
+    const textExpr = hasTerm
+      ? `ts_headline('simple', q.text, websearch_to_tsquery('simple', $1),'MaxWords=5, MinWords=5, HighlightAll=TRUE')`
+      : `q.text`;
 
-    // --- Sorting (Applied after grouping) ---
+    // --- Sorting ---
     // Always order deterministically: LIMIT/OFFSET without a stable ORDER BY
     // lets pages repeat or skip videos between requests.
+    let innerOrder = 'q.video_id';
+    let outerOrder = 'q.video_id';
     if (sortOrder === 'newest' || sortOrder === 'oldest') {
-      query += ` ORDER BY q.upload_date ${sortOrder === 'newest' ? 'DESC' : 'ASC'}, q.video_id`;
-    } else {
-      query += ` ORDER BY q.video_id`;
+      const dir = sortOrder === 'newest' ? 'DESC' : 'ASC';
+      innerOrder = `MAX(q.upload_date) ${dir}, q.video_id`;
+      outerOrder = `q.upload_date ${dir}, q.video_id`;
     }
 
-
-    // --- Pagination ---
-    query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    // Single combined query. The inner CTE picks the page of video_ids from
+    // the index-matched rows and computes the result totals in the same pass
+    // (window functions over the grouped rows). This matters because:
+    //  - the planner always starts from the GIN/btree index; the old
+    //    GROUP BY ... ORDER BY video_id LIMIT shape tempted it into walking
+    //    idx_video_line and filtering row-by-row, which cost ~1.7s for RARE
+    //    terms (benchmarked July 2026);
+    //  - ts_headline runs only for the <= `limit` videos on the page;
+    //  - the separate count query (a second full FTS scan) is gone.
+    const query = `
+      WITH page AS (
+        SELECT q.video_id,
+               COUNT(*) OVER () AS total_videos,
+               SUM(COUNT(*)) OVER () AS total_quotes
+        FROM quotes q
+        WHERE ${whereSql}
+        GROUP BY q.video_id
+        ORDER BY ${innerOrder}
+        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+      )
+      SELECT q.video_id, q.title, q.upload_date, q.channel_source,
+             p.total_videos, p.total_quotes,
+             json_agg(json_build_object(
+               'text', ${textExpr},
+               'line_number', q.line_number,
+               'timestamp_start', q.timestamp_start,
+               'title', q.title,
+               'upload_date', q.upload_date,
+               'channel_source', q.channel_source
+             ) ORDER BY q.line_number::int) AS quotes
+      FROM quotes q
+      JOIN page p ON p.video_id = q.video_id
+      WHERE ${whereSql}
+      GROUP BY q.video_id, q.title, q.upload_date, q.channel_source, p.total_videos, p.total_quotes
+      ORDER BY ${outerOrder}`;
     params.push(limit, offset);
 
-    // --- Count Query ---
-    // Counts distinct videos matching the filters (before pagination)
-    let countQuery;
-    let countParams;
-    
-    if (exactPhrase && searchTerm && searchTerm.trim() !== '' && cleanSearchTerm.length > 0) {
-      // Include the same rank calculation in the count query
-      countQuery = `
-        SELECT COUNT(*) AS total_videos, SUM(quote_count) AS total_quotes
-        FROM (
-          SELECT q.video_id, COUNT(*) AS quote_count
-          FROM quotes q
-          CROSS JOIN websearch_to_tsquery('simple', $1) AS query
-          WHERE q.fts_doc @@ query
-      `;
-      
-      // Skip the first parameter as we already included it in the CROSS JOIN
-      let countWhereClauses = whereClauses.slice(1);
-      if (countWhereClauses.length > 0) {
-        // Adjust parameter indices since we used $1 in the CROSS JOIN
-        countWhereClauses = countWhereClauses.map(clause => {
-          return clause.replace(/\$(\d+)/g, (match, index) => `$${parseInt(index) - 1}`);
-        });
-        countQuery += ` AND ${countWhereClauses.join(' AND ')}`;
-      }
-      countQuery += ` GROUP BY q.video_id) AS video_counts`;
-      
-      // Adjust countParams to remove the first parameter and reuse it in the CROSS JOIN
-      countParams = [cleanSearchTerm];
-      if (params.length > 2) {
-        countParams = countParams.concat(params.slice(2, paramIndex - 1));
-      }
-    } else {
-      countQuery = `
-        SELECT COUNT(*) AS total_videos, SUM(quote_count) AS total_quotes
-        FROM (
-          SELECT q.video_id, COUNT(*) AS quote_count
-          FROM quotes q
-      `;
-      if (whereClauses.length > 0) {
-        countQuery += ` WHERE ${whereClauses.join(' AND ')}`;
-      }
-      countQuery += ` GROUP BY q.video_id) AS video_counts`;
-      
-      // Use the same countParams as before, but make sure they exist
-      if (params.length >= paramIndex - 1) {
-        countParams = params.slice(0, paramIndex - 1); // Exclude LIMIT and OFFSET params
-      } else {
-        countParams = [];
-      }
-    }
-
     try {
-      // Get a client with timeout to prevent hanging connections
       console.log(`[Search] Getting database pool for tenant: ${tenantId}`);
       const pool = getPoolForTenant(tenant);
       if (!pool) {
         throw new Error(`Failed to get database pool for tenant ${tenantId}`);
       }
-      console.log(`[Search] Database pool obtained, connecting...`);
-      const clientPromise = pool.connect();
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Database connection timeout')), 5000)
-      );
-      
-      const client = await Promise.race([clientPromise, timeoutPromise])
-        .catch(err => {
-          if (err.message === 'Database connection timeout') {
-            throw new Error('Database connection timed out after 5s');
-          }
-          throw err;
-        });
-      
+      const client = await pool.connect();
+
       try {
-        // Execute main query with timeout
-        const queryPromise = client.query(query, params);
-        const queryTimeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Query execution timeout')), 10000)
-        );
-        
-        const result = await Promise.race([queryPromise, queryTimeoutPromise])
-          .catch(err => {
-            console.error(`[Search] Query execution error for tenant ${tenantId}:`, err.message);
-            if (err.message === 'Query execution timeout') {
-              throw new Error('Query timed out after 10s');
-            }
-            throw err;
-          });
-        
-        console.log(`[Search] Main query executed successfully, rows: ${result.rows?.length || 0}`);
-        
-        // Execute count query with timeout
-        const countPromise = client.query(countQuery, countParams);
-        const countTimeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Count query timeout')), 5000)
-        );
-        
-        const countResult = await Promise.race([countPromise, countTimeoutPromise])
-          .catch(err => {
-            console.error(`[Search] Count query error for tenant ${tenantId}:`, err.message);
-            if (err.message === 'Count query timeout') {
-              // Return empty count result instead of failing
-              return { rows: [{ total_videos: 0, total_quotes: 0 }] };
-            }
-            throw err;
-          });
-        
-        // Get both total videos and total quotes
-        const totalVideos = parseInt(countResult.rows[0]?.total_videos || 0, 10);
-        const totalQuotes = parseInt(countResult.rows[0]?.total_quotes || 0, 10);
-        
-        console.log(`[Search] Query completed for tenant ${tenantId} - Videos: ${totalVideos}, Quotes: ${totalQuotes}, Results returned: ${result.rows?.length || 0}`);
-  
+        const result = await client.query(query, params);
+
+        let totalVideos = 0;
+        let totalQuotes = 0;
+        if (result.rows.length > 0) {
+          totalVideos = parseInt(result.rows[0].total_videos, 10) || 0;
+          totalQuotes = parseInt(result.rows[0].total_quotes, 10) || 0;
+        } else if (offset > 0) {
+          // A page past the last result has no rows to carry the window
+          // totals — recount so the pager still gets real numbers.
+          const countResult = await client.query(
+            `SELECT COUNT(*) AS total_videos, SUM(quote_count) AS total_quotes
+             FROM (SELECT q.video_id, COUNT(*) AS quote_count
+                   FROM quotes q
+                   WHERE ${whereSql}
+                   GROUP BY q.video_id) AS video_counts`,
+            params.slice(0, params.length - 2)
+          );
+          totalVideos = parseInt(countResult.rows[0]?.total_videos || 0, 10);
+          totalQuotes = parseInt(countResult.rows[0]?.total_quotes || 0, 10);
+        }
+
+        // Keep the response shape unchanged: totals travel on every row of
+        // the combined query but don't belong in the per-video payload.
+        const data = result.rows.map(({ total_videos: _tv, total_quotes: _tq, ...video }) => video);
+
+        console.log(`[Search] Query completed for tenant ${tenantId} - Videos: ${totalVideos}, Quotes: ${totalQuotes}, Results returned: ${data.length}`);
+
         return {
-          data: result.rows,
+          data,
           total: totalVideos,
           totalQuotes: totalQuotes,
           queryTime: null
@@ -426,7 +354,8 @@ const quoteModel = {
         stack: error.stack?.split('\n').slice(0, 5).join('\n')
       });
       // Provide a meaningful error without exposing details
-      if (error.message.includes('timeout')) {
+      // 57014 = statement cancelled by statement_timeout
+      if (error.code === '57014' || error.message.includes('timeout')) {
         throw new Error('Database query timed out. Please try again or with a more specific search.');
       } else if (error.message.includes('permission denied') || error.code === '42501') {
         console.error(`[Search] PERMISSION ERROR: Database user may not have required permissions for tenant ${tenantId}`);
@@ -442,7 +371,7 @@ const quoteModel = {
         SELECT
         video_id, title, upload_date, channel_source, text, line_number, timestamp_start
         FROM quotes
-        TABLESAMPLE BERNOULLI (0.01) 
+        TABLESAMPLE BERNOULLI (0.01)
         LIMIT 10;`;
 
     let client;
@@ -450,12 +379,12 @@ const quoteModel = {
       const pool = getPoolForTenant(tenant);
       client = await pool.connect();
       const result = await client.query(query);
-      
+
       if (!result.rows || result.rows.length === 0) {
         console.warn('No random quotes found in the database');
         return [];
       }
-      
+
       // Transform the result to match the expected format
       return result.rows.map(row => ({
         video_id: row.video_id,

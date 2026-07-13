@@ -21,3 +21,4 @@ backup/
 /.pi/
 /.pi-subagents/
 /agents.md
+/.claude/

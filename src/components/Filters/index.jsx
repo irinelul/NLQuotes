@@ -2,7 +2,6 @@ import { SearchableDropdown } from "../SearchableDropdown";
 import styles from './Filters.module.css';
 
 export const Filters = ({
-    selectedYear,
     handleYearChange,
     sortOrder,
     handleSortChange,
@@ -27,7 +26,7 @@ export const Filters = ({
     
     // Create style objects for CSS custom properties
     const gameTooltipStyle = {
-        '--game-tooltip-text': `"${tooltipText}"`
+        '--tooltip-text': `"${tooltipText}"`
     };
     
     const resetButtonStyle = {
@@ -37,7 +36,7 @@ export const Filters = ({
     return (
         <div className={styles.container}>
             <div className={styles.group}>
-                <div className="year-tooltip">
+                <div className={styles.yearTooltip}>
                     <input
                         type="text"
                         value={yearInput}
@@ -50,7 +49,7 @@ export const Filters = ({
                         className={styles.yearInput}
                     />
                 </div>
-                <div className="sort-tooltip">
+                <div className={styles.sortTooltip}>
                     <select
                         value={sortOrder}
                         onChange={handleSortChange}
@@ -65,7 +64,7 @@ export const Filters = ({
             {isGameFilterEnabled && (
                 <div className={styles.gameContainer}>
                     <div 
-                        className="game-tooltip"
+                        className={styles.gameTooltip}
                         style={gameTooltipStyle}
                     >
                         <SearchableDropdown
