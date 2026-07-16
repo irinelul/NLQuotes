@@ -23,8 +23,6 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = fal
       lineNumber: null
   });
   const [activeTimestamp, setActiveTimestamp] = useState({ videoId: null, timestamp: null });
-  const [showEmbeddedVideos] = useState(true);
-  const [retryCount, setRetryCount] = useState(0);
   const [isMobileView, setIsMobileView] = useState(window.innerWidth <= 768);
 
   // Reset active timestamp when quotes change (new search) to prevent old videos from playing
@@ -43,16 +41,6 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = fal
       setActiveTimestamp({ videoId: null, timestamp: null });
     }
   }, [quotes, searchTerm]); // Reset when quotes or searchTerm changes
-
-  // Effect to handle video loading retry
-  useEffect(() => {
-      if (showEmbeddedVideos && retryCount < 1) {
-          const timer = setTimeout(() => {
-              setRetryCount(prev => prev + 1);
-          }, 500);
-          return () => clearTimeout(timer);
-      }
-  }, [showEmbeddedVideos, retryCount]);
 
   // Effect to handle responsive layout
   useEffect(() => {
@@ -184,7 +172,6 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = fal
                                   {quoteGroup.quotes[0]?.title || 'N/A'}
                               </div>
                               <YouTubePlayer
-                                  key={`${quoteGroup.video_id}-${retryCount}`}
                                   videoId={quoteGroup.video_id}
                                   timestamp={activeTimestamp.videoId === quoteGroup.video_id ? activeTimestamp.timestamp : null}
                                   onTimestampClick={handleTimestampClick}
@@ -302,7 +289,6 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = fal
 
                   <div className={styles.mobileVideoContainer}>
                       <YouTubePlayer
-                          key={`${quoteGroup.video_id}-${retryCount}`}
                           videoId={quoteGroup.video_id}
                           timestamp={activeTimestamp.videoId === quoteGroup.video_id ? activeTimestamp.timestamp : null}
                           onTimestampClick={handleTimestampClick}

@@ -46,12 +46,16 @@ export function shouldTrack(req) {
 // ---- anonymous visitor hash --------------------------------------------------
 
 // Daily rotating salt, persisted so hashes stay stable across server restarts
-// within the same day but can never be correlated across days.
-const saltCache = new Map(); // day string -> salt
+// within the same day but can never be correlated across days. Cached per
+// tenant AND day: tenants can have separate databases (separate analytics_salt
+// rows), so a day-only cache would leak one tenant's salt to another and churn
+// visitor hashes mid-day.
+const saltCache = new Map(); // `${tenantId}|${day}` -> salt
 
-async function getDailySalt(pool) {
+async function getDailySalt(pool, tenantId) {
     const day = new Date().toISOString().slice(0, 10);
-    if (saltCache.has(day)) return saltCache.get(day);
+    const cacheKey = `${tenantId}|${day}`;
+    if (saltCache.has(cacheKey)) return saltCache.get(cacheKey);
 
     const fresh = crypto.randomBytes(32).toString('hex');
     // Upsert-read: first writer wins, everyone gets the same salt for the day.
@@ -62,8 +66,11 @@ async function getDailySalt(pool) {
         [day, fresh]
     );
     const salt = result.rows[0].salt;
-    saltCache.clear(); // drop yesterday's entry
-    saltCache.set(day, salt);
+    // Drop yesterday's entries; keep other tenants' salts for today.
+    for (const key of saltCache.keys()) {
+        if (!key.endsWith(`|${day}`)) saltCache.delete(key);
+    }
+    saltCache.set(cacheKey, salt);
     return salt;
 }
 
@@ -75,8 +82,8 @@ function clientIp(req) {
         || '';
 }
 
-async function visitorHash(req, pool) {
-    const salt = await getDailySalt(pool);
+async function visitorHash(req, pool, tenantId) {
+    const salt = await getDailySalt(pool, tenantId);
     const ua = req.get('user-agent') || '';
     return crypto.createHash('sha256')
         .update(`${salt}|${clientIp(req)}|${ua}`)
@@ -166,7 +173,7 @@ export function logSearchEvent(req, event) {
     // from the request's Referer header and categorize it for source dashboards.
     const referrer = req.get('referer') || null;
     const { source: referrer_source, medium: referrer_medium } = categorizeReferrer(referrer);
-    visitorHash(req, pool)
+    visitorHash(req, pool, tenant?.id || 'default')
         .then((hash) => insertEvent(tenant, {
             source: 'server',
             visitor_hash: hash,
@@ -233,7 +240,7 @@ export function logClientEvent(req, body) {
     const tenant = req.tenant;
     const pool = getPoolForTenant(tenant);
     const { source: referrer_source, medium: referrer_medium } = categorizeReferrer(body.referrer);
-    visitorHash(req, pool)
+    visitorHash(req, pool, tenant?.id || 'default')
         .then((hash) => insertEvent(tenant, {
             source: 'client',
             event_type: body.event_type,

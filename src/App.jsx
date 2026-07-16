@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import query from './services/quotes';
 import { track } from './services/analytics';
+import { describeApiError } from './services/apiError';
 import { useNavigate, Routes, Route, useSearchParams, useLocation } from 'react-router-dom';
 import Changelog from './components/Changelog';
 import ScrollToTop from './components/ScrollToTop';
@@ -49,6 +50,11 @@ const App = () => {
     // skeleton) from a same-query refinement (page/channel/year/sort/game
     // change → keep previous results mounted and dimmed during refetch).
     const prevSearchTermRef = useRef(searchTerm);
+
+    // Monotonic id for in-flight fetches: responses that resolve out of order
+    // (fast page-3 reply overtaking a slow page-2 reply) must not overwrite
+    // the results of the request the user actually made last.
+    const fetchSeqRef = useRef(0);
 
     // Add local state for search input
     const [searchInput, setSearchInput] = useState(searchTerm);
@@ -203,6 +209,7 @@ const App = () => {
     }
 
     const handleRandomQuotes = async () => {
+        const seq = ++fetchSeqRef.current; // supersedes any in-flight search fetch (and vice versa)
         setLoading(true);
         setError(null);
         setHasSearched(true);
@@ -216,6 +223,7 @@ const App = () => {
         prevSearchTermRef.current = null;
         try {
             const response = await query.getRandomQuotes();
+            if (seq !== fetchSeqRef.current) return;
 
             if (!response || !response.quotes) {
                 throw new Error('Invalid response format from server');
@@ -225,13 +233,14 @@ const App = () => {
             setTotalPages(1);
             setTotalQuotes(response.quotes.length);
         } catch (error) {
+            if (seq !== fetchSeqRef.current) return;
             console.error('Error fetching random quotes:', error);
             setError(error.message || 'Unable to fetch random quotes. Please try again later.');
             setQuotes([]);
             setTotalPages(0);
             setTotalQuotes(0);
         } finally {
-            setLoading(false);
+            if (seq === fetchSeqRef.current) setLoading(false);
         }
     };
 
@@ -274,6 +283,7 @@ const App = () => {
     };
 
     const fetchQuotes = async (pageNum, channel, year, sort, strictMode, game) => {
+        const seq = ++fetchSeqRef.current;
         try {
             const response = await query.getAll(
                 searchTerm,
@@ -285,17 +295,19 @@ const App = () => {
                 sort,
                 game
             );
+            if (seq !== fetchSeqRef.current) return; // stale response — a newer request is in flight
             setQuotes(response.data || []);
             setTotalPages(Math.ceil((response.total || 0) / 10));
             setTotalQuotes(response.totalQuotes || 0);
         } catch (error) {
+            if (seq !== fetchSeqRef.current) return;
             console.error('Error fetching quotes:', error);
-            setError('Unable to connect to database.');
+            setError(describeApiError(error, 'search'));
             setQuotes([]);
             setTotalPages(0);
             setTotalQuotes(0);
         } finally {
-            setLoading(false);
+            if (seq === fetchSeqRef.current) setLoading(false);
         }
     };
 

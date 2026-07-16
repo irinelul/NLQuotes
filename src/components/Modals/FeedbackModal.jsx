@@ -5,10 +5,12 @@ export const FeedbackModal = ({ isOpen, onClose, onSubmit }) => {
     const [feedback, setFeedback] = useState('');
     const [email, setEmail] = useState('');
     const [status, setStatus] = useState(null); // null | 'sending' | 'success' | 'error'
+    const [errorMsg, setErrorMsg] = useState(null); // specific reason from the API, if any
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setStatus('sending');
+        setErrorMsg(null);
         try {
             await onSubmit(feedback, email);
             setStatus('success');
@@ -18,13 +20,15 @@ export const FeedbackModal = ({ isOpen, onClose, onSubmit }) => {
                 setStatus(null);
                 onClose();
             }, 2500);
-        } catch {
+        } catch (err) {
             setStatus('error');
+            setErrorMsg(err?.message || null);
         }
     };
 
     const handleClose = () => {
         setStatus(null);
+        setErrorMsg(null);
         onClose();
     };
 
@@ -59,7 +63,7 @@ export const FeedbackModal = ({ isOpen, onClose, onSubmit }) => {
                         )}
                         {status === 'error' && (
                             <span className={`${styles.statusMessage} ${styles.statusError}`}>
-                                Something went wrong — please try again.
+                                {errorMsg || 'Something went wrong — please try again.'}
                             </span>
                         )}
                         <button type="button" onClick={handleClose}>

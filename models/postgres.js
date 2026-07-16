@@ -367,18 +367,37 @@ const quoteModel = {
   },
 
   async getRandom(tenant = null) {
-    const query = `
+    // SYSTEM sampling reads only the randomly-chosen blocks, so ORDER BY
+    // random() over the (small) sample stays cheap while drawing from the
+    // whole table. The previous BERNOULLI + LIMIT with no ORDER BY stopped
+    // scanning after the first ~10 sampled rows, so "random" quotes always
+    // came from the earliest physical blocks. If a pass samples too few rows
+    // (small tables), escalate; the plain ORDER BY random() fallback is only
+    // reachable on tables tiny enough for it to be cheap.
+    const sampled = (pct) => `
         SELECT
         video_id, title, upload_date, channel_source, text, line_number, timestamp_start
         FROM quotes
-        TABLESAMPLE BERNOULLI (0.01)
+        TABLESAMPLE SYSTEM (${pct})
+        ORDER BY random()
         LIMIT 10;`;
 
     let client;
     try {
       const pool = getPoolForTenant(tenant);
       client = await pool.connect();
-      const result = await client.query(query);
+      let result = await client.query(sampled(0.02));
+      if (result.rows.length < 10) {
+        result = await client.query(sampled(1));
+      }
+      if (result.rows.length < 10) {
+        result = await client.query(`
+        SELECT
+        video_id, title, upload_date, channel_source, text, line_number, timestamp_start
+        FROM quotes
+        ORDER BY random()
+        LIMIT 10;`);
+      }
 
       if (!result.rows || result.rows.length === 0) {
         console.warn('No random quotes found in the database');

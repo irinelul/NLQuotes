@@ -5,7 +5,9 @@ import cors from 'cors';
 import quoteModel from './models/postgres.js';
 import { logSearchEvent, logClientEvent, getTopSearchTopics } from './models/analytics.js';
 import axios from 'axios';
+import crypto from 'crypto';
 import fs from 'fs';
+import querystring from 'node:querystring';
 import rateLimit from 'express-rate-limit';
 import slowDown from 'express-slow-down';
 import path from 'path';
@@ -35,6 +37,18 @@ if (!dbUrlPattern.test(process.env.DATABASE_URL)) {
 
 const app = express();
 app.set('trust proxy', 1); // We're behind Coolify's reverse proxy
+
+// Express 5 re-parses req.query on every property access, so mutating the
+// returned object downstream is a no-op. Flatten repeated params here in the
+// parser itself (?search=a&search=b -> 'a') — the only place that sticks —
+// so handlers never see arrays where they expect strings.
+app.set('query parser', (str) => {
+  const parsed = querystring.parse(str);
+  for (const key of Object.keys(parsed)) {
+    if (Array.isArray(parsed[key])) parsed[key] = parsed[key][0];
+  }
+  return parsed;
+});
 // Get port from env var, or try to detect from tenant config
 let PORT = process.env.PORT;
 if (!PORT) {
@@ -111,9 +125,9 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
   // Set connection and security headers in one place
   res.set({
-    // Connection optimization
+    // Connection optimization (matches server.keepAliveTimeout below)
     'Connection': 'keep-alive',
-    'Keep-Alive': 'timeout=60', // Reduced from 120s to 60s
+    'Keep-Alive': 'timeout=120',
     
     // Security headers
     'X-Content-Type-Options': 'nosniff',
@@ -147,32 +161,33 @@ app.use((req, res, next) => {
   next();
 });
 
-// ======= RATE LIMITING WITH OPTIMIZED SETTINGS =======
-// Apply rate limiting with more reasonable limits
+// ======= RATE LIMITING =======
+// Mounted at '/api', so req.path inside the limiter is relative to the mount
+// point ('/' here IS the search endpoint). No skip conditions: the old ones
+// were written for global mounting and silently exempted the search endpoint
+// (req.path === '/') — the heaviest endpoint ran with no limit at all.
 const apiLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 minutes (reduced from 15)
-  max: 200, // Increased from 100 to 200 requests per window
+  windowMs: 60 * 1000, // 1 minute
+  max: 300, // per IP per window
   standardHeaders: true,
   legacyHeaders: false,
-  message: 'Too many requests, please try again later',
-  skip: (req) => req.path === '/' || req.path.startsWith('/assets/')
-});
-
-// Apply speed limiting only to the most sensitive endpoints
-const speedLimiter = slowDown({
-  windowMs: 5 * 60 * 1000, // 5 minutes
-  delayAfter: 50, // Increased from 30
-  delayMs: (hits) => Math.min(500, hits * 50), // Cap delay at 500ms
-  skip: (req) => {
-    return req.path === '/' || 
-           req.path.startsWith('/assets/') || 
-           req.method === 'GET' && !req.path.includes('/api');
+  // Sent as the JSON body of 429 responses; the frontend shows its own
+  // rate-limit message, this is for anyone hitting the API directly.
+  message: {
+    error: 'Too many requests',
+    message: "You've hit the per-minute request limit. Wait a few seconds and try again."
   }
 });
 
-// Apply rate limiting and speed limiting more selectively
+// Slow down bursts to the flag endpoint (feeds a Discord webhook).
+const speedLimiter = slowDown({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  delayAfter: 50,
+  delayMs: (hits) => Math.min(500, hits * 50) // Cap delay at 500ms
+});
+
 app.use('/api', apiLimiter);
-app.use('/api/flag', speedLimiter); // Only apply speed limiting to sensitive endpoints
+app.use('/api/flag', speedLimiter);
 
 // ======= OPTIMIZED CORS =======
 const corsOptions = {
@@ -297,23 +312,20 @@ app.use((req, res, next) => {
   const userAgent = req.get('User-Agent') || '';
   const requestPath = req.path || '';
   
-  // Simplified pattern matching for better performance
+  // Simplified pattern matching for better performance. The admin check is
+  // anchored to the path START so legit content paths (e.g. a topic page for
+  // "administrator") aren't 403'd by a substring match.
   if (
     /sqlmap|nikto|nmap|acunetix|burpsuite|ZAP/i.test(userAgent) ||
-    /wp-|xmlrpc|admin|\.php|\.asp/i.test(requestPath)
+    /wp-|xmlrpc|\.php|\.asp/i.test(requestPath) ||
+    /^\/admin/i.test(requestPath)
   ) {
     return res.status(403).json({ error: 'Forbidden' });
   }
-  
-  // Prevent HTTP parameter pollution more efficiently
-  if (req.query) {
-    for (const key in req.query) {
-      if (Array.isArray(req.query[key])) {
-        req.query[key] = req.query[key][0];
-      }
-    }
-  }
-  
+
+  // (HTTP parameter pollution is handled by the custom query parser above —
+  // mutating req.query here does nothing on Express 5.)
+
   next();
 });
 
@@ -449,9 +461,9 @@ app.get('/api', async (req, res) => {
         // Validate tenant is available
         if (!req.tenant) {
             console.error(`[Search] ERROR: No tenant detected for hostname: ${hostname}`);
-            return res.status(500).json({ 
+            return res.status(500).json({
                 error: 'Search failed',
-                details: 'Tenant configuration not found'
+                message: 'The server could not resolve the site configuration for this request. Please try again.'
             });
         }
         
@@ -513,9 +525,14 @@ app.get('/api', async (req, res) => {
             gameName,
             searchPath
         });
-        res.status(500).json({ 
-            error: 'Search failed',
-            details: 'An error occurred while processing your request' // Don't expose actual error details
+        // A cancelled statement (statement_timeout) is worth distinguishing:
+        // the user can fix it by narrowing the search, so tell them that.
+        const timedOut = /timed out/i.test(error.message || '');
+        res.status(timedOut ? 504 : 500).json({
+            error: timedOut ? 'Search timed out' : 'Search failed',
+            message: timedOut
+                ? 'The search took too long and was cancelled — try a more specific phrase or add a filter.'
+                : 'The server hit an unexpected error while searching. Please try again in a moment.'
         });
     }
 });
@@ -564,7 +581,10 @@ app.post('/api/flag', async (req, res) => {
         };
         
         if (hasSuspiciousContent(reason) || hasSuspiciousContent(quote)) {
-            return res.status(400).json({ error: 'Potential spam detected' });
+            return res.status(400).json({
+                error: 'Potential spam detected',
+                message: 'Your report was rejected by the spam filter — remove any links and try again.'
+            });
         }
         
         // Create Discord webhook message
@@ -641,17 +661,20 @@ app.post('/api/flag', async (req, res) => {
         const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
         if (!webhookUrl) {
             console.error('DISCORD_WEBHOOK_URL environment variable is not set');
-            return res.status(500).json({ 
-                error: 'Discord webhook URL not configured. Please set DISCORD_WEBHOOK_URL environment variable.' 
+            return res.status(500).json({
+                error: 'Reporting not configured',
+                message: 'Reporting is temporarily unavailable. Please try again later.'
             });
         }
 
         try {
             await axios.post(webhookUrl, webhookMessage);
         } catch (discordError) {
+            // Log the detail server-side; don't leak webhook internals to clients.
             console.error('Error sending to Discord webhook:', discordError.message);
-            return res.status(500).json({ 
-                error: `Failed to send to Discord: ${discordError.message}` 
+            return res.status(500).json({
+                error: 'Failed to deliver report',
+                message: 'Your report could not be delivered. Please try again in a moment.'
             });
         }
         
@@ -664,8 +687,9 @@ app.post('/api/flag', async (req, res) => {
         res.json({ success: true });
     } catch (error) {
         console.error('Error flagging quote:', error);
-        res.status(500).json({ 
-            error: error.message || 'Failed to flag quote' 
+        res.status(500).json({
+            error: 'Failed to flag quote',
+            message: 'The server hit an unexpected error while sending your report. Please try again.'
         });
     }
 });
@@ -677,7 +701,10 @@ app.get('/api/random', async (req, res) => {
         res.json({ quotes: result });
     } catch (error) {
         console.error('Error fetching random quotes:', error);
-        res.status(500).json({ error: 'Failed to fetch random quotes' });
+        res.status(500).json({
+            error: 'Failed to fetch random quotes',
+            message: 'The server could not pick random quotes right now. Please try again.'
+        });
     }
 });
 
@@ -695,14 +722,21 @@ app.get('/api/games', async (req, res) => {
         }
 
         // Only let clients cache a populated list; an empty one must be retried.
+        // ETag hashes the content — a changed list of equal length must not 304.
         res.set(cachedGameList.length > 0
-            ? { 'Cache-Control': 'public, max-age=3600', 'ETag': `"${cachedGameList.length}"` }
+            ? {
+                'Cache-Control': 'public, max-age=3600',
+                'ETag': `"${crypto.createHash('sha1').update(JSON.stringify(cachedGameList)).digest('hex').slice(0, 16)}"`
+              }
             : { 'Cache-Control': 'no-store' });
 
         res.json({ games: cachedGameList });
     } catch (error) {
         console.error('Error serving game titles:', error);
-        res.status(500).json({ error: 'Failed to fetch game titles' });
+        res.status(500).json({
+            error: 'Failed to fetch game titles',
+            message: 'The server could not load the game list. The game filter may be empty — reload to retry.'
+        });
     }
 });
 
@@ -727,7 +761,10 @@ app.get('/api/topic/:term', async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     
     if (!term || term.trim().length < 2) {
-      return res.status(400).json({ error: 'Search term must be at least 2 characters' });
+      return res.status(400).json({
+        error: 'Invalid topic term',
+        message: 'Topic terms must be at least 2 characters long.'
+      });
     }
     
     const result = await quoteModel.search({
@@ -755,7 +792,13 @@ app.get('/api/topic/:term', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching topic quotes:', error);
-    res.status(500).json({ error: 'Failed to fetch topic quotes' });
+    const timedOut = /timed out/i.test(error.message || '');
+    res.status(timedOut ? 504 : 500).json({
+      error: timedOut ? 'Topic lookup timed out' : 'Failed to fetch topic quotes',
+      message: timedOut
+        ? 'Loading this topic took too long and was cancelled. Please try again.'
+        : 'The server hit an unexpected error while loading this topic. Please try again.'
+    });
   }
 });
 
@@ -1052,7 +1095,7 @@ app.use((err, req, res, _next) => {
     res.status(500).json({
         error: 'Internal server error',
         message: process.env.NODE_ENV === 'production'
-            ? 'Something went wrong'
+            ? 'The server hit an unexpected error. Please try again in a moment.'
             : err.message
     });
 });
@@ -1085,13 +1128,17 @@ server.keepAliveTimeout = 120000; // 120 seconds - longer than browsers typicall
 server.headersTimeout = 125000; // 125 seconds - slightly longer than keepAliveTimeout
 server.timeout = 300000; // 5 minutes for long-running requests
 
-// Handle graceful shutdown
+// Handle graceful shutdown. server.close() waits for open keep-alive sockets
+// (up to keepAliveTimeout/server.timeout), so every handler arms an unref'd
+// force-exit timer — otherwise a crashed process can hang half-alive instead
+// of exiting and being restarted by Coolify.
 process.on('SIGTERM', () => {
   console.log('SIGTERM signal received: closing HTTP server');
   server.close(() => {
     console.log('HTTP server closed');
     process.exit(0);
   });
+  setTimeout(() => process.exit(0), 10000).unref();
 });
 
 // Handle uncaught exceptions
@@ -1100,6 +1147,7 @@ process.on('uncaughtException', (error) => {
   server.close(() => {
     process.exit(1);
   });
+  setTimeout(() => process.exit(1), 5000).unref();
 });
 
 // Handle unhandled promise rejections
@@ -1108,4 +1156,5 @@ process.on('unhandledRejection', (reason, promise) => {
   server.close(() => {
     process.exit(1);
   });
+  setTimeout(() => process.exit(1), 5000).unref();
 });

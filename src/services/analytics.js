@@ -151,9 +151,17 @@ function registerExitListeners() {
             sendExit();
         });
         // visibilitychange→hidden covers backgrounding + mobile tab switch,
-        // which is often the only reliable unload signal on mobile.
+        // which is often the only reliable unload signal on mobile. Coming
+        // BACK re-arms the exit beacon: without this, a session that survives
+        // a backgrounding would never emit another session_end, freezing its
+        // recorded duration at the first hide. Dashboards take the max
+        // session_duration_ms per session_id, so re-sends only improve it.
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'hidden') sendExit();
+            if (document.visibilityState === 'hidden') {
+                sendExit();
+            } else if (document.visibilityState === 'visible') {
+                exitSent = false;
+            }
         });
     } catch {
         // analytics must never break the UI

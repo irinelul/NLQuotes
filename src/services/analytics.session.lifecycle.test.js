@@ -207,6 +207,46 @@ test('FIX #2: exitSent resets across rotation so a second session can emit its o
     expect(ends).toHaveLength(2);
 });
 
+test('backgrounding then returning re-arms the exit beacon (max-duration semantics)', async () => {
+    // Replace the noop document stub with one that records visibilitychange
+    // handlers so we can drive hidden/visible transitions.
+    const docListeners = {};
+    defineGlobal('document', {
+        referrer: null,
+        visibilityState: 'visible',
+        addEventListener(type, fn) {
+            (docListeners[type] = docListeners[type] || []).push(fn);
+        },
+    });
+    const dispatchVisibility = (state) => {
+        document.visibilityState = state;
+        (docListeners['visibilitychange'] || []).forEach((fn) => fn());
+    };
+
+    const { track } = await import('./analytics');
+
+    track('page_view'); // session_start + page_view
+
+    // Backgrounding emits the first session_end.
+    dispatchVisibility('hidden');
+    let ends = captured.filter((e) => e.event_type === 'session_end');
+    expect(ends).toHaveLength(1);
+
+    // Coming back re-arms the beacon: continued activity in the SAME session
+    // followed by another hide emits a second session_end with a longer
+    // duration (dashboards take the max per session_id). Pre-fix, exitSent
+    // stayed true and the session's duration froze at the first hide.
+    dispatchVisibility('visible');
+    vi.advanceTimersByTime(60 * 1000);
+    track('page_view');
+    dispatchVisibility('hidden');
+
+    ends = captured.filter((e) => e.event_type === 'session_end');
+    expect(ends).toHaveLength(2);
+    expect(ends[1].session_id).toBe(ends[0].session_id);
+    expect(ends[1].session_duration_ms).toBeGreaterThan(ends[0].session_duration_ms);
+});
+
 test('opt-out suppresses all tracking', async () => {
     const map = new Map([['analytics_opt_out', 'true']]);
     defineGlobal('localStorage', {

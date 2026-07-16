@@ -3,18 +3,12 @@
  * Manages a single API loading instance to avoid race conditions
  */
 
-let isApiReady = false;
-let loadingPromise = null;
-const waitingQueue = [];
+const YT_API_SRC = 'https://www.youtube.com/iframe_api';
 
-function signalReady() {
-  isApiReady = true;
-  waitingQueue.forEach(resolve => resolve());
-  waitingQueue.length = 0; // Clear queue
-}
+let loadingPromise = null;
 
 export function ensureApiReady() {
-  if (isApiReady) {
+  if (window.YT && window.YT.Player) {
     return Promise.resolve();
   }
 
@@ -22,95 +16,40 @@ export function ensureApiReady() {
     return loadingPromise;
   }
 
-  loadingPromise = new Promise((resolve) => {
-    waitingQueue.push(resolve); // Add to queue
+  loadingPromise = new Promise((resolve, reject) => {
+    // Failure must REJECT (the old code called the queued resolve functions,
+    // so callers proceeded into `new YT.Player` with no API) and must clear
+    // loadingPromise so a retry re-injects the script below.
+    const fail = (message) => {
+      clearTimeout(timeout);
+      loadingPromise = null;
+      console.error(`[YouTubeAPI] ${message} — check CSP headers / Network tab`);
+      reject(new Error(message));
+    };
 
-    if (!window.onYouTubeIframeAPIReady) {
-       // Define the global callback *only once*
-       window.onYouTubeIframeAPIReady = () => {
-         // Give a small delay for the API to be fully initialized
-         setTimeout(() => {
-           signalReady();
-         }, 100);
-       };
+    // Detect the script never loading (CSP blocking, network failure)
+    const timeout = setTimeout(() => {
+      fail('YouTube API failed to load within 10s - likely CSP blocking');
+    }, 10000);
 
-       // Add timeout to detect if script never loads (CSP blocking)
-       const timeout = setTimeout(() => {
-         if (!window.YT || !window.YT.Player) {
-           console.error('[YouTubeAPI] Timeout waiting for YouTube API to load');
-           console.error('[YouTubeAPI] This usually means CSP is blocking the script');
-           console.error('[YouTubeAPI] Check browser console for CSP violation errors');
-           console.error('[YouTubeAPI] Current CSP:', document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.content || 'Not found in meta tag');
-           
-           // Check actual CSP header via fetch
-           fetch(window.location.href, { method: 'HEAD' })
-             .then(res => {
-               const csp = res.headers.get('Content-Security-Policy');
-               console.error('[YouTubeAPI] CSP Header:', csp);
-               if (csp && !csp.includes('www.youtube.com')) {
-                 console.error('[YouTubeAPI] CSP is missing www.youtube.com in script-src!');
-               }
-             })
-             .catch(() => {});
-           
-           loadingPromise = null;
-           waitingQueue.forEach(rej => rej(new Error('YouTube API failed to load - likely CSP blocking')));
-           waitingQueue.length = 0;
-         }
-       }, 10000); // 10 second timeout
+    window.onYouTubeIframeAPIReady = () => {
+      clearTimeout(timeout);
+      // Give the API a small delay to be fully initialized
+      setTimeout(resolve, 100);
+    };
 
-       // Load the script *only once*
-       const tag = document.createElement('script');
-       tag.src = 'https://www.youtube.com/iframe_api';
-       tag.async = true;
-       tag.defer = true;
-       tag.onerror = () => {
-         clearTimeout(timeout);
-         console.error('[YouTubeAPI] Failed to load YouTube IFrame API script');
-         console.error('[YouTubeAPI] Script src:', tag.src);
-         console.error('[YouTubeAPI] CSP might be blocking - check Content-Security-Policy header');
-         console.error('[YouTubeAPI] Check Network tab to see if script request was blocked');
-         // Reject the promise if script fails to load
-         loadingPromise = null;
-         waitingQueue.forEach(rej => rej(new Error('Failed to load YouTube API - check CSP headers')));
-         waitingQueue.length = 0;
-       };
-       tag.onload = () => {
-         clearTimeout(timeout);
-       };
-       const firstScript = document.getElementsByTagName('script')[0];
-       if (firstScript && firstScript.parentNode) {
-         firstScript.parentNode.insertBefore(tag, firstScript);
-       } else {
-         document.body.appendChild(tag);
-       }
-    } else {
-       // If callback exists but API not ready, maybe it's loading?
-       // Or maybe it loaded before this code ran? Check YT object.
-       if (window.YT && window.YT.Player) {
-         // If API is already there, signal immediately.
-         signalReady();
-       }
-       // Otherwise, the existing onYouTubeIframeAPIReady will eventually call signalReady.
-    }
+    // (Re-)inject the script. A previous failed attempt leaves a dead tag
+    // behind — remove it so a retry actually re-requests the script.
+    document.querySelector(`script[src="${YT_API_SRC}"]`)?.remove();
+    const tag = document.createElement('script');
+    tag.src = YT_API_SRC;
+    tag.async = true;
+    tag.defer = true;
+    tag.onerror = () => fail('Failed to load YouTube IFrame API script');
+    (document.head || document.body).appendChild(tag);
   });
 
   return loadingPromise;
-}
-
-// Helper to create a container element if it doesn't exist
-export function ensurePlayerContainer(containerId, width = '480px', height = '270px') {
-  let container = document.getElementById(containerId);
-  
-  if (!container) {
-    container = document.createElement('div');
-    container.id = containerId;
-    container.style.width = width;
-    container.style.height = height;
-    document.body.appendChild(container);
-  }
-  
-  return container;
 }
 
 // Global registry for players to manage multiple instances
@@ -215,13 +154,4 @@ export function pauseOtherPlayers(currentPlayer) {
   } finally {
     isStoppingPlayers = false;
   }
-}
-
-// Export registry for debugging
-export function getRegistrySize() {
-  return playerRegistry.length;
-}
-
-export function getRegistry() {
-  return [...playerRegistry];
 }

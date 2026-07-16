@@ -31,8 +31,10 @@ export function renderTopicHtml({ term, totalQuotes, videoGroups, siteBaseUrl })
           .map((q) => {
             const text = escapeHtml(stripSimpleTags(q.text || ''));
             const ts = escapeHtml(String(q.timestamp_start ?? ''));
-            const tParam = q.timestamp_start != null
-              ? `&t=${encodeURIComponent(String(q.timestamp_start))}`
+            // YouTube's t param wants whole seconds; floats can be ignored.
+            const tSecs = Number(q.timestamp_start);
+            const tParam = Number.isFinite(tSecs)
+              ? `&t=${Math.max(0, Math.floor(tSecs))}`
               : '';
             const ytDeepLink = ytUrl ? `${ytUrl}${tParam}` : null;
             const spaDeepLink = `${siteBaseUrl}/?q=${encodeURIComponent(term)}`;

@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import DOMPurify from 'dompurify';
 import { YouTubePlayer } from './YoutubePlayer';
-import { formatDate } from '../services/dateHelpers';
+import { backdateTimestamp, formatDate, formatTimestamp } from '../services/dateHelpers';
+import { describeApiError } from '../services/apiError';
 import { pauseOtherPlayers } from '../services/youtubeApiLoader';
 import styles from './TopicPage.module.css';
 
@@ -28,7 +30,12 @@ export const TopicPage = () => {
         setError(null);
         const response = await fetch(`/api/topic/${encodeURIComponent(term)}?page=${page}&limit=${limit}`);
         if (!response.ok) {
-          throw new Error('Failed to fetch topic quotes');
+          // Carry the HTTP status (and any JSON body) so describeApiError can
+          // say what actually happened (rate limit vs timeout vs server error).
+          const err = new Error('Failed to fetch topic quotes');
+          err.status = response.status;
+          err.response = { status: response.status, data: await response.json().catch(() => null) };
+          throw err;
         }
         const data = await response.json();
         setQuotes(data.data || []);
@@ -36,7 +43,7 @@ export const TopicPage = () => {
         setTotalPages(data.totalPages || 1);
       } catch (err) {
         console.error('Error fetching topic quotes:', err);
-        setError('Failed to load quotes for this topic');
+        setError(describeApiError(err, 'load quotes for this topic'));
       } finally {
         setLoading(false);
       }
@@ -48,9 +55,16 @@ export const TopicPage = () => {
       // Same-topic page change: keep the previous page mounted (dimmed on
       // render) instead of swapping to the skeleton (avoids CLS on paginate).
       if (term !== prevTermRef.current) {
+        prevTermRef.current = term;
         setQuotes([]);
+        // A new topic must restart at page 1 — otherwise landing on topic B
+        // after paginating topic A fetches B's page N (often empty). The
+        // setPage re-runs this effect, which then does the fetch.
+        if (page !== 1) {
+          setPage(1);
+          return;
+        }
       }
-      prevTermRef.current = term;
       fetchTopicQuotes();
     }
   }, [term, page, limit]);
@@ -204,17 +218,17 @@ export const TopicPage = () => {
                     <div key={`${videoGroup.video_id}-${quote.line_number}`} className={styles.quoteItem}>
                       {/* Timestamp Button */}
                       <button
-                        onClick={() => handleTimestampClick(videoGroup.video_id, quote.timestamp_start)}
+                        onClick={() => handleTimestampClick(videoGroup.video_id, backdateTimestamp(quote.timestamp_start))}
                         className={styles.timestampButton}
                       >
-                        {quote.timestamp_start}
+                        {formatTimestamp(backdateTimestamp(quote.timestamp_start))}
                       </button>
                       
-                      {/* Quote Text */}
+                      {/* Quote Text — the API highlights matches with <b>
+                          (ts_headline); sanitize and render it like the main
+                          search page instead of showing literal tags. */}
                       <div className={styles.quoteText}>
-                        <p>
-                          {quote.text}
-                        </p>
+                        <p dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(quote.text, { ALLOWED_TAGS: ['b'] }) }} />
                       </div>
                     </div>
                   ))}
