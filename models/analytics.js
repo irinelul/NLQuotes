@@ -218,6 +218,33 @@ export async function getTopSearchTopics(tenant, { days = 30, limit = 15, minQuo
     }
 }
 
+// Every distinct search term that would have minted a /topic/ page, for the
+// removal sitemap. Deliberately unfiltered by recency: we want the whole back
+// catalogue of URLs that leaked into Google's index, not the popular ones.
+//
+// Partial by construction — analytics_events only starts at 2026-07-07, and the
+// older topic pages predate it. The Search Console prefix removal is what covers
+// the rest.
+export async function getRemovedTopicTerms(tenant, { limit = 45000 } = {}) {
+    try {
+        const pool = getPoolForTenant(tenant);
+        const result = await pool.query(
+            `SELECT DISTINCT lower(btrim(search_term)) AS term
+             FROM analytics_events
+             WHERE event_type = 'search'
+               AND search_term IS NOT NULL
+               AND btrim(search_term) <> ''
+               AND tenant_id = $1
+             LIMIT $2`,
+            [tenant?.id || 'default', limit]
+        );
+        return result.rows.map((r) => r.term).filter(Boolean);
+    } catch (err) {
+        console.error('[Analytics] failed to load removed topic terms:', err.message);
+        return [];
+    }
+}
+
 // Client events arriving via POST /api/ev.
 export function logClientEvent(req, body) {
     if (!shouldTrack(req)) return { accepted: false, reason: 'opted-out' };

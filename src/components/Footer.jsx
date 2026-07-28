@@ -9,7 +9,7 @@ export const Footer = ({ onFeedbackClick }) => {
     
     return (
         <div className={styles.footerMessage}>
-            {footerText} • <a href="https://github.com/irinelul/NLQuotes" target="_blank" rel="noopener noreferrer" onClick={() => track('external_link', { props: { target: 'github' } })} className={styles.footerLink}>GitHub</a> • <Link to="/privacy" className={styles.footerLink}>Privacy</Link> • <Link to="/stats" className={styles.footerLink}>Stats</Link> • <Link to="/changelog" className={styles.footerLink}>Changelog</Link> • <button type="button" onClick={onFeedbackClick} className={styles.footerButton}>Feedback</button>
+            {footerText} • <a href="https://github.com/irinelul/NLQuotes" target="_blank" rel="noopener noreferrer" onClick={() => track('external_link', { props: { target: 'github' } })} className={styles.footerLink}>GitHub</a> • <a href="/videos" className={styles.footerLink}>Browse videos</a> • <Link to="/privacy" className={styles.footerLink}>Privacy</Link> • <Link to="/stats" className={styles.footerLink}>Stats</Link> • <Link to="/changelog" className={styles.footerLink}>Changelog</Link> • <button type="button" onClick={onFeedbackClick} className={styles.footerButton}>Feedback</button>
         </div>
     )
 }

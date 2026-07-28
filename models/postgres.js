@@ -425,6 +425,95 @@ const quoteModel = {
     } finally {
       if (client) client.release();
     }
+  },
+
+  // Newest upload in the corpus. Used as an honest <lastmod> for the pages whose
+  // content is "the current set of videos" (homepage, /videos hub).
+  async getLatestUploadDate(tenant = null) {
+    try {
+      const pool = getPoolForTenant(tenant);
+      const result = await pool.query('SELECT max(upload_date) AS latest FROM quotes');
+      return result.rows[0]?.latest || null;
+    } catch (error) {
+      console.error('Error fetching latest upload date:', error);
+      return null;
+    }
+  },
+
+  // One video and every quote in it, for the server-rendered /video/:id page.
+  // Aggregates title/game/channel rather than grouping by them so a row with a
+  // stray differing value can't split one video into two result rows.
+  async getVideo(videoId, tenant = null) {
+    if (!videoId || typeof videoId !== 'string') return null;
+
+    let client;
+    try {
+      const pool = getPoolForTenant(tenant);
+      client = await pool.connect();
+      const result = await client.query(
+        `SELECT q.video_id,
+                max(q.title)          AS title,
+                max(q.channel_source) AS channel_source,
+                max(q.upload_date)    AS upload_date,
+                max(q.game_name)      AS game_name,
+                count(*)              AS total_quotes,
+                json_agg(json_build_object(
+                  'text', q.text,
+                  'line_number', q.line_number,
+                  'timestamp_start', q.timestamp_start,
+                  'timestamp_start_seconds', q.timestamp_start_seconds
+                ) ORDER BY q.line_number::int) AS quotes
+         FROM quotes q
+         WHERE q.video_id = $1
+         GROUP BY q.video_id`,
+        [videoId]
+      );
+
+      if (!result.rows.length) return null;
+      const row = result.rows[0];
+      return { ...row, total_quotes: parseInt(row.total_quotes, 10) };
+    } catch (error) {
+      console.error('Error fetching video:', error);
+      throw new Error(`Failed to fetch video: ${error.message}`);
+    } finally {
+      if (client) client.release();
+    }
+  },
+
+  // Video ids eligible for their own page, densest transcripts first.
+  // minQuotes exists to keep thin videos out of the index; at 20 it still
+  // admits 23,308 of 23,595 videos.
+  async listVideosForIndex({ minQuotes = 20, limit = 0 } = {}, tenant = null) {
+    let client;
+    try {
+      const pool = getPoolForTenant(tenant);
+      client = await pool.connect();
+      const result = await client.query(
+        `SELECT q.video_id,
+                max(q.title)       AS title,
+                max(q.game_name)   AS game_name,
+                max(q.upload_date) AS upload_date,
+                count(*)           AS quote_count
+         FROM quotes q
+         GROUP BY q.video_id
+         HAVING count(*) >= $1
+         ORDER BY count(*) DESC, q.video_id
+         ${limit > 0 ? 'LIMIT ' + parseInt(limit, 10) : ''}`,
+        [minQuotes]
+      );
+      return result.rows.map((r) => ({
+        videoId: r.video_id,
+        title: r.title,
+        gameName: r.game_name,
+        uploadDate: r.upload_date,
+        quoteCount: parseInt(r.quote_count, 10),
+      }));
+    } catch (error) {
+      console.error('Error listing videos for index:', error);
+      return [];
+    } finally {
+      if (client) client.release();
+    }
   }
 };
 

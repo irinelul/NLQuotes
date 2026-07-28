@@ -3,7 +3,7 @@ import express from 'express';
 import morgan from 'morgan';
 import cors from 'cors';
 import quoteModel from './models/postgres.js';
-import { logSearchEvent, logClientEvent, getTopSearchTopics } from './models/analytics.js';
+import { logSearchEvent, logClientEvent, getRemovedTopicTerms } from './models/analytics.js';
 import axios from 'axios';
 import crypto from 'crypto';
 import fs from 'fs';
@@ -14,7 +14,13 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { detectTenant, getTenantById, getAllTenants } from './tenants/tenant-manager.js';
 import { renderTopicHtml } from './utils/renderTopicHtml.js';
+import { renderRemovedTopicHtml } from './utils/renderGoneHtml.js';
+import { renderVideoHtml } from './utils/renderVideoHtml.js';
+import { renderVideosHubHtml } from './utils/renderVideosHubHtml.js';
 import { isBlockedTopic } from './utils/topicBlocklist.js';
+import { isAllowlistedTopic, allowlistedTopics } from './utils/topicAllowlist.js';
+import { normalizeTopicTerm, topicPath } from './utils/topicUrl.js';
+import { buildUrlset, buildSitemapIndex, chunk } from './utils/sitemap.js';
 
 // Load environment variables
 dotenv.config();
@@ -209,93 +215,160 @@ app.use(morgan(':method-path :response-info :response-time ms', {
 }));
 
 // ======= DYNAMIC SITEMAP =======
-// Topic entries come from analytics: the top recently-searched terms, dated by
-// when they were last searched and prioritized by popularity — so the sitemap
-// stays small and fresh instead of accumulating every page ever generated.
-const SITEMAP_TOPIC_LIMIT = 15;
-const SITEMAP_TOPIC_DAYS = 30; // lifespan: terms not searched within this window drop out
-const sitemapCache = new Map(); // tenantId -> { at, topics }
-const SITEMAP_CACHE_MS = 30 * 60 * 1000;
+// /sitemap.xml is a sitemap index; the actual URLs live in chunked children.
+// See utils/sitemap.js for why there is no <priority> and why <lastmod> is
+// omitted rather than invented.
+const SITEMAP_CACHE_MS = 6 * 60 * 60 * 1000;
 
-app.get('/sitemap.xml', async (req, res) => {
-  const today = new Date().toISOString().slice(0, 10);
-  const hostname = req.tenant?.hostnames?.[0] || 'nlquotes.com';
-  const base = `https://${hostname}`;
-  const escXml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+// Videos are rolled out deliberately rather than all at once. Only the videos in
+// this set get index,follow, a sitemap entry, and a link from the /videos hub;
+// everything else still renders for humans but is noindex. Raising the limit is
+// how we scale up once Search Console shows the first batch earning impressions
+// — not just getting indexed, since ~7,000 indexed topic pages earned ~26 clicks
+// across 28 days.
+const VIDEO_MIN_QUOTES = 20;   // 23,308 of 23,595 videos clear this
+const VIDEO_INDEX_LIMIT = parseInt(process.env.VIDEO_INDEX_LIMIT || '250', 10);
+const VIDEOS_PER_HUB_PAGE = 50;
 
-  let topicPages = [];
-  try {
-    const tenantId = req.tenant?.id || 'default';
-    const cached = sitemapCache.get(tenantId);
-    if (cached && Date.now() - cached.at < SITEMAP_CACHE_MS) {
-      topicPages = cached.topics;
-    } else {
-      const topTerms = (await getTopSearchTopics(req.tenant, {
-        days: SITEMAP_TOPIC_DAYS,
-        limit: SITEMAP_TOPIC_LIMIT * 2, // headroom for terms the filters reject
-        minQuotes: TOPIC_MIN_QUOTES,
-      })).filter((t) => isIndexableTopic(t.term) && !isBlockedTopic(t.term))
-        .slice(0, SITEMAP_TOPIC_LIMIT);
+const videoIndexCache = new Map(); // tenantId -> { at, value }
 
-      const maxSearches = Math.max(...topTerms.map((t) => t.searches), 1);
-      topicPages = topTerms.map((t) => ({
-        url: `/topic/${encodeURIComponent(t.term)}`,
-        lastmod: new Date(t.lastSearched).toISOString().slice(0, 10),
-        // Popularity-scaled: the most-searched term gets 0.8, the tail 0.5
-        priority: (0.5 + 0.3 * (t.searches / maxSearches)).toFixed(2),
-      }));
+async function getIndexableVideos(tenant) {
+  const tenantId = tenant?.id || 'default';
+  const cached = videoIndexCache.get(tenantId);
+  if (cached && Date.now() - cached.at < SITEMAP_CACHE_MS) return cached.value;
 
-      // Until analytics has data, fall back to the newest generated pages on disk
-      if (topicPages.length === 0) {
-        const topicRoot = path.resolve(__dirname, 'dist', 'topic');
-        if (fs.existsSync(topicRoot)) {
-          topicPages = fs.readdirSync(topicRoot)
-            .map((encoded) => {
-              let decoded;
-              try { decoded = decodeURIComponent(encoded); } catch { return null; }
-              if (!isIndexableTopic(decoded) || isBlockedTopic(decoded)) return null;
-              const indexPath = path.join(topicRoot, encoded, 'index.html');
-              if (!fs.existsSync(indexPath)) return null;
-              return { url: `/topic/${encoded}`, mtime: fs.statSync(indexPath).mtime };
-            })
-            .filter(Boolean)
-            .sort((a, b) => b.mtime - a.mtime)
-            .slice(0, SITEMAP_TOPIC_LIMIT)
-            .map((p) => ({
-              url: p.url,
-              lastmod: p.mtime.toISOString().slice(0, 10),
-              priority: '0.5',
-            }));
-        }
-      }
+  const list = await quoteModel.listVideosForIndex(
+    { minQuotes: VIDEO_MIN_QUOTES, limit: VIDEO_INDEX_LIMIT },
+    tenant
+  );
+  const value = { list, ids: new Set(list.map((v) => v.videoId)) };
+  videoIndexCache.set(tenantId, { at: Date.now(), value });
+  return value;
+}
 
-      sitemapCache.set(tenantId, { at: Date.now(), topics: topicPages });
-    }
-  } catch (e) {
-    console.error('Error building sitemap topics:', e.message);
-    topicPages = [];
-  }
+// Newest upload in the corpus — an honest lastmod for the homepage and hub,
+// since what changes about those pages is the underlying set of videos.
+const corpusDateCache = new Map();
+async function getCorpusLastModified(tenant) {
+  const tenantId = tenant?.id || 'default';
+  const cached = corpusDateCache.get(tenantId);
+  if (cached && Date.now() - cached.at < SITEMAP_CACHE_MS) return cached.value;
+  const value = await quoteModel.getLatestUploadDate(tenant);
+  corpusDateCache.set(tenantId, { at: Date.now(), value });
+  return value;
+}
 
-  const urls = [
-    { loc: `${base}/`, lastmod: today, priority: '1.0' },
-    ...topicPages.map((p) => ({
-      loc: `${base}${p.url}`,
-      lastmod: p.lastmod,
-      priority: p.priority,
-    })),
-  ];
+function sitemapBase(req) {
+  return `https://${req.tenant?.hostnames?.[0] || 'nlquotes.com'}`;
+}
 
-  const xml =
-    '<?xml version="1.0" encoding="UTF-8"?>\n' +
-    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
-    urls.map((u) =>
-      `  <url>\n    <loc>${escXml(u.loc)}</loc>\n    <lastmod>${u.lastmod}</lastmod>\n    <priority>${u.priority}</priority>\n  </url>`
-    ).join('\n') +
-    '\n</urlset>\n';
-
+function sendXml(res, xml) {
   res.setHeader('Content-Type', 'application/xml; charset=utf-8');
   res.setHeader('Cache-Control', 'public, max-age=3600');
   res.send(xml);
+}
+
+// Sitemap index. Only lists children that actually have URLs, so an empty topic
+// allowlist doesn't advertise an empty sitemap.
+//
+// /sitemap-removed.xml is deliberately NOT listed here: it exists to speed up
+// de-indexing of the pruned topic pages, and listing 410s alongside live URLs
+// would fill the Search Console sitemap report with errors. Submit it by hand,
+// then delete it once the old pages have dropped out.
+app.get('/sitemap.xml', async (req, res) => {
+  const base = sitemapBase(req);
+  const children = [];
+
+  try {
+    const corpusDate = await getCorpusLastModified(req.tenant);
+    children.push({ loc: `${base}/sitemap-core.xml`, lastmod: corpusDate });
+
+    if (allowlistedTopics().length > 0) {
+      children.push({ loc: `${base}/sitemap-topics.xml` });
+    }
+
+    const { list } = await getIndexableVideos(req.tenant);
+    const videoChunks = chunk(list);
+    videoChunks.forEach((_, i) => {
+      children.push({ loc: `${base}/sitemap-videos-${i + 1}.xml`, lastmod: corpusDate });
+    });
+  } catch (e) {
+    console.error('Error building sitemap index:', e.message);
+  }
+
+  sendXml(res, buildSitemapIndex(children));
+});
+
+app.get('/sitemap-core.xml', async (req, res) => {
+  const base = sitemapBase(req);
+  let corpusDate = null;
+  try {
+    corpusDate = await getCorpusLastModified(req.tenant);
+  } catch (e) {
+    console.error('Error reading corpus date:', e.message);
+  }
+
+  // /privacy and /changelog carry no lastmod — we genuinely don't track when
+  // they last changed, and a made-up date is worse than none.
+  sendXml(res, buildUrlset([
+    { loc: `${base}/`, lastmod: corpusDate },
+    { loc: `${base}/videos`, lastmod: corpusDate },
+    { loc: `${base}/changelog` },
+    { loc: `${base}/privacy` },
+  ]));
+});
+
+app.get('/sitemap-topics.xml', async (req, res) => {
+  const base = sitemapBase(req);
+  // No lastmod: a topic page's content changes when matching quotes are added,
+  // which we would have to run a query per term to know.
+  sendXml(res, buildUrlset(
+    allowlistedTopics().map((term) => ({ loc: `${base}${topicPath(term)}` }))
+  ));
+});
+
+// RegExp route rather than '/sitemap-videos-:n.xml' so the chunk number can't be
+// confused with the file extension.
+app.get(/^\/sitemap-videos-(\d+)\.xml$/, async (req, res) => {
+  const base = sitemapBase(req);
+  const index = parseInt(req.params[0], 10) - 1;
+
+  try {
+    const { list } = await getIndexableVideos(req.tenant);
+    const chunks = chunk(list);
+    if (index < 0 || index >= chunks.length) {
+      return res.status(404).type('xml').send('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>\n');
+    }
+    // lastmod is the video's upload date: the transcript is fixed once ingested,
+    // so this is the real "last changed" for the page.
+    sendXml(res, buildUrlset(chunks[index].map((v) => ({
+      loc: `${base}/video/${encodeURIComponent(v.videoId)}`,
+      lastmod: v.uploadDate,
+    }))));
+  } catch (e) {
+    console.error('Error building video sitemap:', e.message);
+    sendXml(res, buildUrlset([]));
+  }
+});
+
+// Best-effort list of the retired /topic/ URLs, to get them recrawled (and so
+// dropped) faster than Google would revisit them on its own. Sourced from search
+// analytics, which only goes back to 2026-07-07 — the older pages predate it, so
+// this is a partial list. The Search Console prefix removal is the complete and
+// immediate lever; this just accelerates the permanent 410-driven drop.
+app.get('/sitemap-removed.xml', async (req, res) => {
+  const base = sitemapBase(req);
+  try {
+    const terms = await getRemovedTopicTerms(req.tenant, { limit: 45000 });
+    sendXml(res, buildUrlset(
+      terms
+        .filter((t) => !isAllowlistedTopic(t))
+        .map((t) => ({ loc: `${base}${topicPath(t)}` }))
+    ));
+  } catch (e) {
+    console.error('Error building removal sitemap:', e.message);
+    sendXml(res, buildUrlset([]));
+  }
 });
 
 // ======= STREAMLINED STATIC FILE SERVING =======
@@ -811,8 +884,40 @@ app.use('/topic', (req, res, next) => {
 });
 
 // Serve pre-generated static topic pages if present; generate on demand otherwise.
+//
+// Two gates run before any of that, in order:
+//   1. Non-canonical spellings 301 onto the normalized term, so case and
+//      whitespace variants stop minting duplicate pages.
+//   2. Anything not on the curated allowlist returns 410 Gone. This is the
+//      prune: ~7,000 uncurated pages accumulated here because on-demand
+//      generation let any visitor create a permanent indexable URL.
 app.get('/topic/:term', async (req, res, next) => {
-  const encoded = encodeURIComponent(req.params.term);
+  const rawTerm = req.params.term;
+  const term = normalizeTopicTerm(rawTerm);
+  const hostname = req.tenant?.hostnames?.[0] || 'nlquotes.com';
+  const siteBaseUrl = `https://${hostname}`;
+
+  // One term, one URL.
+  if (rawTerm !== term) {
+    return res.redirect(301, topicPath(term));
+  }
+
+  // 410 rather than 404: it is the strongest "this is permanently gone" signal
+  // and Google drops 410s from the index faster. The response body is still a
+  // useful page for the humans arriving from stale search results.
+  //
+  // Note for whoever revisits this: do NOT add these paths to robots.txt until
+  // Search Console shows them dropped. Blocking crawl stops Google ever seeing
+  // the 410, which freezes them in the index permanently.
+  if (!isAllowlistedTopic(term) || isBlockedTopic(term) || !isIndexableTopic(term)) {
+    return res
+      .status(410)
+      .set('Cache-Control', 'public, max-age=86400')
+      .type('html')
+      .send(renderRemovedTopicHtml({ term, siteBaseUrl }));
+  }
+
+  const encoded = encodeURIComponent(term);
   const staticPath = path.resolve(__dirname, 'dist', 'topic', encoded, 'index.html');
 
   // Serve existing file immediately
@@ -822,13 +927,6 @@ app.get('/topic/:term', async (req, res, next) => {
     }
   } catch (e) {
     console.error('Error checking static topic page:', e);
-  }
-
-  // Generate on demand
-  const term = req.params.term;
-
-  if (isBlockedTopic(term) || !isIndexableTopic(term)) {
-    return next(); // fall through to SPA, no static page generated
   }
 
   try {
@@ -862,12 +960,15 @@ app.get('/topic/:term', async (req, res, next) => {
       });
 
       if (!topicData?.totalQuotes || topicData.totalQuotes < TOPIC_MIN_QUOTES) {
-        // Too few quotes for a worthwhile page — fall through to SPA
-        return next();
+        // Allowlisted but too thin to be worth indexing — treat it the same as
+        // any other removed topic rather than serving a thin 200.
+        return res
+          .status(410)
+          .set('Cache-Control', 'public, max-age=86400')
+          .type('html')
+          .send(renderRemovedTopicHtml({ term, siteBaseUrl }));
       }
 
-      const hostname = req.tenant?.hostnames?.[0] || 'nlquotes.com';
-      const siteBaseUrl = `https://${hostname}`;
       const html = renderTopicHtml({
         term,
         totalQuotes: topicData.totalQuotes,
@@ -892,6 +993,88 @@ app.get('/topic/:term', async (req, res, next) => {
   }
 });
 
+// ======= VIDEO ENTITY PAGES =======
+// One page per real video: its metadata plus the full transcript, every line
+// deep-linking to that moment on YouTube. These are entity pages rather than
+// query pages — each video's transcript is disjoint from every other's, so
+// unlike the old topic pages they can't cannibalise each other.
+//
+// Any video with enough lines renders for humans; only videos inside the current
+// rollout batch are indexable.
+
+async function renderVideosHub(req, res, next, page) {
+  try {
+    const { list } = await getIndexableVideos(req.tenant);
+    const totalPages = Math.max(1, Math.ceil(list.length / VIDEOS_PER_HUB_PAGE));
+    if (page > totalPages) return next();
+
+    const start = (page - 1) * VIDEOS_PER_HUB_PAGE;
+    const html = renderVideosHubHtml({
+      videos: list.slice(start, start + VIDEOS_PER_HUB_PAGE),
+      page,
+      totalPages,
+      totalVideos: list.length,
+      siteBaseUrl: sitemapBase(req),
+    });
+
+    res.set('Cache-Control', 'public, max-age=3600').type('html').send(html);
+  } catch (e) {
+    console.error('Error rendering videos hub:', e);
+    next();
+  }
+}
+
+app.get('/videos', (req, res, next) => renderVideosHub(req, res, next, 1));
+
+app.get('/videos/page/:n', (req, res, next) => {
+  const n = parseInt(req.params.n, 10);
+  if (!Number.isInteger(n) || n < 1) return next();
+  // Page 1 already lives at /videos; don't let a second URL serve it.
+  if (n === 1) return res.redirect(301, '/videos');
+  return renderVideosHub(req, res, next, n);
+});
+
+app.get('/video/:videoId', async (req, res, next) => {
+  const { videoId } = req.params;
+
+  // YouTube ids are 11 chars of [A-Za-z0-9_-]. Reject anything else before it
+  // reaches the database.
+  if (!/^[A-Za-z0-9_-]{11}$/.test(videoId)) return next();
+
+  try {
+    const video = await quoteModel.getVideo(videoId, req.tenant);
+
+    if (!video) {
+      const hostname = req.tenant?.hostnames?.[0] || 'nlquotes.com';
+      return res
+        .status(404)
+        .type('html')
+        .send(renderRemovedTopicHtml({ term: '', siteBaseUrl: `https://${hostname}` }));
+    }
+
+    // Batch membership already implies the video cleared VIDEO_MIN_QUOTES.
+    // Everything outside the batch still renders — it just isn't indexable yet.
+    const { ids } = await getIndexableVideos(req.tenant);
+
+    const html = renderVideoHtml({
+      videoId: video.video_id,
+      title: video.title,
+      channel: video.channel_source,
+      uploadDate: video.upload_date,
+      gameName: video.game_name,
+      totalQuotes: video.total_quotes,
+      quotes: video.quotes || [],
+      siteBaseUrl: sitemapBase(req),
+      indexable: ids.has(video.video_id),
+    });
+
+    res.set('Cache-Control', 'public, max-age=3600').type('html').send(html);
+  } catch (e) {
+    console.error('Error rendering video page:', e);
+    next();
+  }
+});
+
 // 404 handler for API routes (must come before SPA fallback)
 app.use((req, res, next) => {
   if (req.path.startsWith('/api/')) {
@@ -900,6 +1083,46 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// Routes that were removed but are still sitting in Google's index. Without this
+// they fall through to the SPA fallback and answer 200 with an empty shell —
+// a soft 404, which Google keeps around far longer than an explicit 410.
+const RETIRED_PATHS = new Set(['/nldle']);
+
+app.use((req, res, next) => {
+  const normalizedPath = req.path.replace(/\/+$/, '') || '/';
+  if (!RETIRED_PATHS.has(normalizedPath)) return next();
+
+  const hostname = req.tenant?.hostnames?.[0] || 'nlquotes.com';
+  return res
+    .status(410)
+    .set('Cache-Control', 'public, max-age=86400')
+    .type('html')
+    .send(renderRemovedTopicHtml({ term: '', siteBaseUrl: `https://${hostname}` }));
+});
+
+// The built index.html ships placeholder https://example.com URLs — canonical,
+// og:url/og:image, twitter:url/twitter:image, and the JSON-LD url/target. Nothing
+// ever rewrote them, so every SPA-served URL declared a canonical pointing at a
+// domain we don't own. Search Console logged ~1k pages under "Alternate page with
+// proper canonical tag" and "Duplicate, Google chose different canonical than
+// user" as a result. Rewrite them from the real host on every response.
+function applySeoUrls(html, { base, pathname }) {
+  // Canonical deliberately drops the query string: /?q=foo renders the same
+  // document as /, and keeping the query would mint a distinct canonical for
+  // every search term anyone has ever typed.
+  const cleanPath = pathname === '/' ? '/' : pathname.replace(/\/+$/, '');
+  const canonical = `${base}${cleanPath}`;
+
+  return html
+    .replace(/(<link rel="canonical" href=")[^"]*(")/i, `$1${canonical}$2`)
+    .replace(/(<meta property="og:url" content=")[^"]*(")/i, `$1${canonical}$2`)
+    .replace(/(<meta name="twitter:url" content=")[^"]*(")/i, `$1${canonical}$2`)
+    // Sweeps up what's left: og:image, twitter:image, and the JSON-LD WebSite
+    // url + SearchAction target. Runs last so it can't clobber the three
+    // canonical URLs set above (they no longer contain the placeholder).
+    .replaceAll('https://example.com', base);
+}
 
 // SPA fallback for React Router with CSP header
 // This must be LAST so it doesn't catch API routes
@@ -934,7 +1157,12 @@ app.use((req, res) => {
     
     if (fs.existsSync(indexPath)) {
       let html = fs.readFileSync(indexPath, 'utf8');
-      
+
+      // Rewrite the placeholder SEO URLs first, before any other injection.
+      // tenantDomain comes from tenant config, never the raw Host header, so a
+      // spoofed Host can't inject a canonical pointing somewhere else.
+      html = applySeoUrls(html, { base: tenantDomain, pathname: req.path });
+
       // Create sanitized tenant config (no database URLs)
       const tenantConfig = {
         id: tenant.id,

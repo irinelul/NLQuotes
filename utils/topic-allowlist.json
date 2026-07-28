@@ -1,0 +1,4 @@
+{
+  "_comment": "Terms allowed to have an indexable /topic/ page. Everything not listed here returns 410 Gone. Deliberately empty: we are de-indexing ~7,000 uncurated pages that Search Console showed producing ~26 clicks across 28 days. Re-add terms only once they have proven search demand. Values must already be in normalized form (lowercase, trimmed, single-spaced) — see utils/topicUrl.js.",
+  "terms": []
+}
