@@ -21,8 +21,11 @@ const pagePath = (n) => (n <= 1 ? '/videos' : `/videos/page/${n}`);
  */
 export function renderVideosHubHtml({ videos, page, totalPages, totalVideos, siteBaseUrl }) {
   const canonical = `${siteBaseUrl}${pagePath(page)}`;
+  // "Latest", not "All": this lists the current rollout batch (videos newer than
+  // VIDEO_INDEX_SINCE), not the full 23k archive. Calling it "All videos" would
+  // be wrong for users and for Google.
   const description =
-    `Browse ${Number(totalVideos || 0).toLocaleString()} Northernlion videos with full searchable transcripts` +
+    `The ${Number(totalVideos || 0).toLocaleString()} most recent Northernlion videos with full searchable transcripts` +
     (totalPages > 1 ? ` (page ${page} of ${totalPages})` : '') + '.';
 
   const rowsHtml = videos.map((v) => {
@@ -69,7 +72,7 @@ export function renderVideosHubHtml({ videos, page, totalPages, totalVideos, sit
   <link rel="canonical" href="${canonical}" />
   ${page > 1 ? `<link rel="prev" href="${siteBaseUrl}${pagePath(page - 1)}" />` : ''}
   ${page < totalPages ? `<link rel="next" href="${siteBaseUrl}${pagePath(page + 1)}" />` : ''}
-  <title>All videos${totalPages > 1 ? ` (page ${page} of ${totalPages})` : ''} — NLQuotes</title>
+  <title>Latest videos${totalPages > 1 ? ` (page ${page} of ${totalPages})` : ''} — NLQuotes</title>
   <meta name="description" content="${escapeHtml(description)}" />
   <style>
     *, *::before, *::after { box-sizing: border-box; }
@@ -129,8 +132,8 @@ export function renderVideosHubHtml({ videos, page, totalPages, totalVideos, sit
   </header>
 
   <main class="page">
-    <h1>All videos</h1>
-    <p class="sub">${Number(totalVideos || 0).toLocaleString()} videos with full searchable transcripts. Every timestamp links straight to that moment on YouTube.</p>
+    <h1>Latest videos</h1>
+    <p class="sub">The ${Number(totalVideos || 0).toLocaleString()} most recent Northernlion videos with full searchable transcripts. Every timestamp links straight to that moment on YouTube.</p>
 
     <ul class="video-list">
       ${rowsHtml || '<li class="video-row"><span class="video-meta">No videos available.</span></li>'}

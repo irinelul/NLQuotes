@@ -201,7 +201,7 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
         <div class="video-meta">${metaBits}</div>
         <div class="hero-actions">
           <a class="btn btn-primary" href="${ytUrl}" target="_blank" rel="noopener noreferrer">Watch on YouTube &#8599;</a>
-          <a class="btn" href="${siteBaseUrl}/videos">Browse all videos</a>
+          <a class="btn" href="${siteBaseUrl}/videos">Latest videos</a>
         </div>
       </div>
     </div>
@@ -216,7 +216,7 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
 
     <footer class="site-footer">
       <a href="${siteBaseUrl}/">&larr; Back to NLQuotes</a>
-      <a href="${siteBaseUrl}/videos">All videos</a>
+      <a href="${siteBaseUrl}/videos">Latest videos</a>
     </footer>
 
   </main>
