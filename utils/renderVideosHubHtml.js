@@ -1,3 +1,5 @@
+import { toDateOnly as isoDate } from './dateOnly.js';
+
 function escapeHtml(str) {
   return String(str)
     .replaceAll('&', '&amp;')
@@ -7,11 +9,6 @@ function escapeHtml(str) {
     .replaceAll("'", '&#39;');
 }
 
-function isoDate(value) {
-  if (!value) return null;
-  const d = value instanceof Date ? value : new Date(value);
-  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
-}
 
 const pagePath = (n) => (n <= 1 ? '/videos' : `/videos/page/${n}`);
 

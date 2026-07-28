@@ -1,3 +1,5 @@
+import { toDateOnly as isoDate } from './dateOnly.js';
+
 function escapeHtml(str) {
   return String(str)
     .replaceAll('&', '&amp;')
@@ -22,11 +24,6 @@ function formatTimestamp(seconds) {
   return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
 
-function isoDate(value) {
-  if (!value) return null;
-  const d = value instanceof Date ? value : new Date(value);
-  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
-}
 
 /**
  * A per-video entity page: one real video, its metadata, and its full quote list.

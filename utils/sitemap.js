@@ -12,6 +12,8 @@
 //    wrong values train it to ignore the signal across the whole site. Here
 //    lastmod is emitted only when we actually know it, and omitted otherwise.
 
+import { toDateOnly } from './dateOnly.js';
+
 const escXml = (s) =>
   String(s)
     .replace(/&/g, '&amp;')
@@ -20,11 +22,7 @@ const escXml = (s) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
 
-const asDate = (value) => {
-  if (!value) return null;
-  const d = value instanceof Date ? value : new Date(value);
-  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
-};
+const asDate = toDateOnly;
 
 // urls: [{ loc, lastmod? }]
 export function buildUrlset(urls) {

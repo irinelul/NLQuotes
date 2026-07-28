@@ -220,14 +220,22 @@ app.use(morgan(':method-path :response-info :response-time ms', {
 // omitted rather than invented.
 const SITEMAP_CACHE_MS = 6 * 60 * 60 * 1000;
 
-// Videos are rolled out deliberately rather than all at once. Only the videos in
+// Videos are rolled out deliberately rather than all at once. Only videos in
 // this set get index,follow, a sitemap entry, and a link from the /videos hub;
-// everything else still renders for humans but is noindex. Raising the limit is
-// how we scale up once Search Console shows the first batch earning impressions
-// — not just getting indexed, since ~7,000 indexed topic pages earned ~26 clicks
-// across 28 days.
+// everything else still renders for humans but is noindex.
+//
+// The batch is defined by an upload-date cutoff, not a count. Two reasons:
+// newest videos are where the search demand actually is (people look for a line
+// from something they just watched), and a date window only ever grows — new
+// uploads join automatically and nothing ever falls out and flips back to
+// noindex. Scaling up means moving VIDEO_INDEX_SINCE earlier.
+//
+// 2026-05-01 currently yields ~317 videos. Expand only once Search Console
+// shows this batch earning impressions, not merely getting indexed — ~7,000
+// indexed topic pages earned ~26 clicks across 28 days.
 const VIDEO_MIN_QUOTES = 20;   // 23,308 of 23,595 videos clear this
-const VIDEO_INDEX_LIMIT = parseInt(process.env.VIDEO_INDEX_LIMIT || '250', 10);
+const VIDEO_INDEX_SINCE = process.env.VIDEO_INDEX_SINCE || '2026-05-01';
+const VIDEO_INDEX_MAX = parseInt(process.env.VIDEO_INDEX_MAX || '5000', 10); // safety valve
 const VIDEOS_PER_HUB_PAGE = 50;
 
 const videoIndexCache = new Map(); // tenantId -> { at, value }
@@ -238,7 +246,7 @@ async function getIndexableVideos(tenant) {
   if (cached && Date.now() - cached.at < SITEMAP_CACHE_MS) return cached.value;
 
   const list = await quoteModel.listVideosForIndex(
-    { minQuotes: VIDEO_MIN_QUOTES, limit: VIDEO_INDEX_LIMIT },
+    { minQuotes: VIDEO_MIN_QUOTES, since: VIDEO_INDEX_SINCE, limit: VIDEO_INDEX_MAX },
     tenant
   );
   const value = { list, ids: new Set(list.map((v) => v.videoId)) };

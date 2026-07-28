@@ -480,10 +480,18 @@ const quoteModel = {
     }
   },
 
-  // Video ids eligible for their own page, densest transcripts first.
-  // minQuotes exists to keep thin videos out of the index; at 20 it still
-  // admits 23,308 of 23,595 videos.
-  async listVideosForIndex({ minQuotes = 20, limit = 0 } = {}, tenant = null) {
+  // Video ids eligible for their own page, newest first.
+  //
+  // Ordered by upload date rather than transcript length because search demand
+  // for a video decays sharply with age — people look for a phrase from
+  // something they just watched, not from a 2019 upload. `since` gates the set
+  // by date rather than by count so it only ever grows: a rolling "newest N"
+  // would push older videos out of the batch and flip them from index to
+  // noindex, and churning pages in and out of the index does real damage.
+  //
+  // minQuotes keeps thin videos out; at 20 it still admits 23,308 of 23,595.
+  // limit is only a safety valve against a misconfigured `since`.
+  async listVideosForIndex({ minQuotes = 20, since = null, limit = 0 } = {}, tenant = null) {
     let client;
     try {
       const pool = getPoolForTenant(tenant);
@@ -497,9 +505,10 @@ const quoteModel = {
          FROM quotes q
          GROUP BY q.video_id
          HAVING count(*) >= $1
-         ORDER BY count(*) DESC, q.video_id
+            AND ($2::date IS NULL OR max(q.upload_date) >= $2::date)
+         ORDER BY max(q.upload_date) DESC, q.video_id
          ${limit > 0 ? 'LIMIT ' + parseInt(limit, 10) : ''}`,
-        [minQuotes]
+        [minQuotes, since]
       );
       return result.rows.map((r) => ({
         videoId: r.video_id,
