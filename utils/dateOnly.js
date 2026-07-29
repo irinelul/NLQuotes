@@ -24,3 +24,16 @@ export function toDateOnly(value) {
   const pad = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
+
+/**
+ * The same date as a full ISO 8601 timestamp with an explicit offset.
+ *
+ * Schema.org datetime properties (VideoObject.uploadDate) want date *and* time
+ * with a timezone — Search Console flags a bare "2026-07-27" as both an invalid
+ * datetime and a missing timezone. We only know the calendar date, so pin it to
+ * midnight UTC; that is the conventional stand-in and keeps the day intact.
+ */
+export function toIsoDateTime(value) {
+  const date = toDateOnly(value);
+  return date ? `${date}T00:00:00+00:00` : null;
+}

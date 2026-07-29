@@ -1,4 +1,4 @@
-import { toDateOnly as isoDate } from './dateOnly.js';
+import { toDateOnly as isoDate, toIsoDateTime } from './dateOnly.js';
 
 function escapeHtml(str) {
   return String(str)
@@ -40,6 +40,8 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
   const displayTitle = title || 'Untitled video';
   const safeTitle = escapeHtml(displayTitle);
   const published = isoDate(uploadDate);
+  // Structured data needs the timestamp form; the visible meta line stays date-only.
+  const publishedDateTime = toIsoDateTime(uploadDate);
 
   const description =
     `Full searchable transcript of "${displayTitle}"` +
@@ -73,7 +75,7 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
     thumbnailUrl: thumbnail,
     embedUrl: `https://www.youtube.com/embed/${safeId}`,
     url: canonical,
-    ...(published ? { uploadDate: published } : {}),
+    ...(publishedDateTime ? { uploadDate: publishedDateTime } : {}),
     ...(channel ? { creator: { '@type': 'Person', name: channel } } : {}),
   };
 
@@ -123,7 +125,10 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
       border-bottom: 1px solid var(--border); padding: 12px 24px;
       display: flex; align-items: center; gap: 16px;
     }
-    .site-logo { height: 32px; width: auto; }
+    /* Sized in both axes so the header never reflows: an auto width is 0
+       until the SVG arrives, which shoves the site name sideways on load.
+       object-fit keeps the square PNG fallback undistorted in the same box. */
+    .site-logo { width: 28px; height: 32px; object-fit: contain; }
     .site-name { font-size: 18px; font-weight: 700; color: var(--text); }
     .site-name:hover { text-decoration: none; color: var(--accent); }
 
@@ -184,7 +189,7 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
 
   <header class="site-header">
     <a href="${siteBaseUrl}/">
-      <img src="${siteBaseUrl}/nlquotes/nlquotes.svg" alt="NLQuotes" class="site-logo"
+      <img src="${siteBaseUrl}/nlquotes/nlquotes.svg" alt="NLQuotes" class="site-logo" width="28" height="32"
            onerror="this.src='${siteBaseUrl}/nlquotes/NLogo.png'" />
     </a>
     <a href="${siteBaseUrl}/" class="site-name">NLQuotes</a>

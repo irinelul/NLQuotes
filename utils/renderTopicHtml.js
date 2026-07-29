@@ -120,7 +120,10 @@ export function renderTopicHtml({ term, totalQuotes, videoGroups, siteBaseUrl })
       align-items: center;
       gap: 16px;
     }
-    .site-logo { height: 32px; width: auto; }
+    /* Sized in both axes so the header never reflows: an auto width is 0
+       until the SVG arrives, which shoves the site name sideways on load.
+       object-fit keeps the square PNG fallback undistorted in the same box. */
+    .site-logo { width: 28px; height: 32px; object-fit: contain; }
     .site-name { font-size: 18px; font-weight: 700; color: var(--text); text-decoration: none; }
     .site-name:hover { text-decoration: none; color: var(--accent); }
 
@@ -263,7 +266,7 @@ export function renderTopicHtml({ term, totalQuotes, videoGroups, siteBaseUrl })
 
   <header class="site-header">
     <a href="${siteBaseUrl}/">
-      <img src="${siteBaseUrl}/nlquotes/nlquotes.svg" alt="NLQuotes" class="site-logo"
+      <img src="${siteBaseUrl}/nlquotes/nlquotes.svg" alt="NLQuotes" class="site-logo" width="28" height="32"
            onerror="this.src='${siteBaseUrl}/nlquotes/NLogo.png'" />
     </a>
     <a href="${siteBaseUrl}/" class="site-name">NLQuotes</a>
