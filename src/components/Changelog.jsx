@@ -4,6 +4,14 @@ import styles from './Changelog.module.css';
 // Newest first
 const changelogEntries = [
     {
+        date: 'July 29, 2026',
+        items: [
+            'Removed Umami analytics entirely — no third-party tracking script is loaded on any page, and our own in-house analytics is now the only one running',
+            'Fixed the Latest videos page and video sitemap, which had emptied out after a database query timed out',
+            'Faster first load: the game list query no longer scans the whole database, non-search pages are loaded on demand, and returning via the back button now restores the page instantly'
+        ]
+    },
+    {
         date: 'July 2026',
         items: [
             'Launched an in-house, privacy-first analytics pipeline: no cookies, no IP storage, anonymous daily-rotating visitor hashes, opt-out on the Privacy page, Do Not Track and Global Privacy Control honored automatically',

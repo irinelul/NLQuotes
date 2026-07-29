@@ -135,31 +135,12 @@ const App = () => {
         navigate(buildSearchUrl({ sort: value, page: 1 }));
     };
 
-    const trackUmamiSearch = (term) => {
-        if (!window.umami?.track) {
-            return;
-        }
-
-        const trimmedTerm = term.trim();
-        if (!trimmedTerm) {
-            return;
-        }
-
-        // Stable event name + term as a property, so Umami can aggregate
-        // instead of creating one event type per unique search term.
-        window.umami.track('quote_search', {
-            search_term: trimmedTerm.toLowerCase(),
-            channel: channel || 'all',
-            year: year || '',
-            sort_order: sort || 'default',
-            game: game || 'all'
-        });
-    };
-
+    // Searches are not tracked from here: /api logs every query server-side
+    // (term, filters, page and result counts) once it knows the outcome, which
+    // a client-side event fired before navigating never does.
     const handleSearch = (e) => {
         e.preventDefault();
         if (searchInput.trim().length > 2) {
-            trackUmamiSearch(searchInput);
             navigate(buildSearchUrl({ q: searchInput, page: 1 }));
         } else {
             setError('Please enter at least 3 characters to search');
@@ -170,7 +151,6 @@ const App = () => {
     const handleKeyPress = (event) => {
         if (event.key === 'Enter' && !loading) {
             if (searchInput.trim().length > 2) {
-                trackUmamiSearch(searchInput);
                 navigate(buildSearchUrl({ q: searchInput, page: 1 }));
             } else {
                 setError('Please enter at least 3 characters to search');

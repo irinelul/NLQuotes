@@ -1183,11 +1183,11 @@ app.use((req, res) => {
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.nlquotes.com https://umami.nlquotes.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googlevideo.com https://googlevideo.com https://www.googleapis.com https://apis.google.com; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.nlquotes.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googlevideo.com https://googlevideo.com https://www.googleapis.com https://apis.google.com; " +
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
     "img-src 'self' " + tenantDomain + " https://api.nlquotes.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://i.ytimg.com https://img.youtube.com https://www.googlevideo.com https://googlevideo.com data: blob:; " +
-    "frame-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://umami.nlquotes.com https://metabase.nlquotes.com; " +
-    "connect-src 'self' https://api.nlquotes.com https://umami.nlquotes.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googlevideo.com https://googlevideo.com; " +
+    "frame-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://metabase.nlquotes.com; " +
+    "connect-src 'self' https://api.nlquotes.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googlevideo.com https://googlevideo.com; " +
     "media-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com https://www.googlevideo.com https://googlevideo.com; " +
     "object-src 'none'"
   );
@@ -1195,7 +1195,7 @@ app.use((req, res) => {
   // Inject tenant config into HTML before serving
   try {
     const tenant = req.tenant || detectTenant(req.get('host') || 'localhost');
-    console.log(`[HTML Injection] Tenant detected: ${tenant?.id}, has umami: ${!!tenant?.umami}`);
+    console.log(`[HTML Injection] Tenant detected: ${tenant?.id}`);
     const indexPath = path.resolve(__dirname, 'dist', 'index.html');
     
     if (fs.existsSync(indexPath)) {
@@ -1220,59 +1220,6 @@ app.use((req, res) => {
         metabase: tenant.metabase,
         gameFilter: tenant.gameFilter
       };
-      
-      // Inject Umami tracking script in <head> if configured for this tenant
-      if (tenant.umami?.scriptUrl && tenant.umami?.websiteId) {
-        // Validate and sanitize script URL and website ID to prevent XSS
-        const scriptUrl = String(tenant.umami.scriptUrl).trim();
-        const websiteId = String(tenant.umami.websiteId).trim();
-        
-        // Basic validation: ensure URL is https and website ID is a valid UUID format
-        const isValidUrl = scriptUrl.startsWith('https://') && 
-                          !scriptUrl.includes('<') && 
-                          !scriptUrl.includes('>') && 
-                          !scriptUrl.includes('"') && 
-                          !scriptUrl.includes("'");
-        const isValidWebsiteId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(websiteId);
-        
-        if (isValidUrl && isValidWebsiteId) {
-          // Escape any special characters in URL and ID (extra safety)
-          const safeScriptUrl = scriptUrl.replace(/"/g, '&quot;');
-          const safeWebsiteId = websiteId.replace(/"/g, '&quot;');
-          const umamiScript = `<script defer src="${safeScriptUrl}" data-website-id="${safeWebsiteId}"></script>`;
-          // The Vite build already writes this tag into dist/index.html, so
-          // injecting unconditionally added a second identical <script> — both
-          // ran, and every page load sent two pageview beacons (Umami has been
-          // double-counting). Injecting only when it is absent keeps this
-          // working for HTML that the build did not stamp, without duplicating.
-          if (html.includes(`data-website-id="${safeWebsiteId}"`)) {
-            console.log(`[Umami] Script already present for tenant ${tenant.id}, skipping injection`);
-          } else {
-          // Insert after charset meta tag in head (handle both dev and production formats)
-          // Try multiple patterns to match different HTML formats
-            if (html.includes('<meta charset="UTF-8" />')) {
-              html = html.replace(
-                /(<meta charset="UTF-8" \/>)/,
-                `$1\n    ${umamiScript}`
-              );
-            } else if (html.includes('<meta charset="UTF-8">')) {
-              html = html.replace(
-                /(<meta charset="UTF-8">)/,
-                `$1\n    ${umamiScript}`
-              );
-            } else {
-              // Fallback: insert after first <head> tag
-              html = html.replace(
-                /(<head[^>]*>)/i,
-                `$1\n    ${umamiScript}`
-              );
-            }
-            console.log(`[Umami] Injected script for tenant ${tenant.id}`);
-          }
-        } else {
-          console.warn(`[Umami] Invalid scriptUrl or websiteId for tenant ${tenant.id}, skipping injection`);
-        }
-      }
       
       // Inject tenant config as a script tag before the main script
       const tenantScript = `<script>window.__TENANT_CONFIG__ = ${JSON.stringify(tenantConfig)};</script>`;

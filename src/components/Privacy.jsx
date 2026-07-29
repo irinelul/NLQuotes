@@ -102,14 +102,14 @@ const Privacy = () => {
 
       <h3 className={styles.heading}>Third-Party Services & Data Sharing</h3>
       <ul className={styles.list}>
-        <li className={styles.listItem}><strong>Analytics:</strong> We operate our own in-house analytics system. Additionally, we use Umami, a privacy-focused, self-hosted analytics platform, to help us understand how users interact with the site. Umami is configured to respect your privacy preferences and does not use cookies for tracking. You can opt out of all analytics using the button above.</li>
+        <li className={styles.listItem}><strong>Analytics:</strong> We operate our own in-house analytics system, and it is the only one running on this site. No analytics data is sent to any external service. You can opt out using the button above.</li>
         <li className={styles.listItem}><strong>Data Sharing:</strong> We do not share any data with third parties, except if strictly required by law (which is extremely unlikely given the anonymous nature of the data).</li>
         <li className={styles.listItem}><strong>Data Selling:</strong> We do not, and will never, sell any data.</li>
       </ul>
 
       <h3 className={styles.heading}>Cookies and Tracking</h3>
       <p className={styles.paragraph}>
-        We do not use cookies or any other persistent tracking technologies to monitor your browsing history on our site or across the web. Umami does not use cookies for tracking and respects your browser&apos;s &quot;Do Not Track&quot; setting.
+        We do not use cookies or any other persistent tracking technologies to monitor your browsing history on our site or across the web, and we honor your browser&apos;s &quot;Do Not Track&quot; and Global Privacy Control signals.
       </p>
 
       <h3 className={styles.heading}>Changes to This Policy</h3>
@@ -122,6 +122,7 @@ const Privacy = () => {
         <li className={styles.listItem}><strong>January 2025:</strong> Transitioned to Umami analytics, a privacy-focused, self-hosted analytics platform. Umami provides time-on-page tracking, user engagement metrics, and session duration data while maintaining our commitment to privacy: no cookies, respects Do Not Track, and fully respects user opt-out preferences.</li>
         <li className={styles.listItem}><strong>April 26, 2025:</strong> Updated our Privacy Policy to better reflect the anonymous analytics data collected (hashed identifiers, device/browser information, search terms, page views). Transitioned from using Simple Analytics to our own in-house analytics system. No new data collection was introduced — this is a clarification of existing practices.</li>
         <li className={styles.listItem}><strong>July 2026:</strong> Re-introduced our in-house analytics system alongside Umami. It records the usage events described above (searches, filters, quote interactions) using daily-rotating anonymous hashes — still no cookies, no IP storage, and no cross-day tracking. The opt-out button now covers both systems, and Do Not Track / Global Privacy Control signals are honored automatically.</li>
+        <li className={styles.listItem}><strong>July 29, 2026:</strong> Removed Umami entirely. The tracking script is no longer loaded and no data is sent to it; our in-house system is now the only analytics on the site. This removes a third-party script from every page and reduces the data collected, rather than expanding it.</li>
       </ul>
 
       <h3 className={styles.heading}>Contact</h3>

@@ -8,12 +8,6 @@ export function useAnalyticsOptOut() {
 
   useEffect(() => {
     localStorage.setItem('analytics_opt_out', isOptedOut.toString());
-    // Umami's own kill switch, so opting out disables both systems
-    if (isOptedOut) {
-      localStorage.setItem('umami.disabled', '1');
-    } else {
-      localStorage.removeItem('umami.disabled');
-    }
   }, [isOptedOut]);
 
   const toggleOptOut = () => {
