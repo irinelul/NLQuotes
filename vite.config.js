@@ -215,10 +215,6 @@ function tenantHtmlPlugin() {
 
 export default defineConfig({
   plugins: [react(), tenantHtmlPlugin()],
-  // Strip debug logging from production bundles; console.error/warn survive.
-  esbuild: {
-    pure: ['console.log', 'console.info', 'console.debug'],
-  },
   define: {
     // Inject TENANT_ID as a build-time constant accessible via import.meta.env
     'import.meta.env.VITE_TENANT_ID': JSON.stringify(TENANT_ID),
@@ -239,6 +235,15 @@ export default defineConfig({
     manifest: true,
     emptyOutDir: true, // Ensure dist folder is cleaned before each build
     rollupOptions: {
+      // Strip debug logging from production bundles; console.error/warn
+      // survive. This was `esbuild: { pure: [...] }` until Vite 8, which
+      // transforms with Oxc instead and ignores esbuild options outright —
+      // it says so at startup, and the stripping had silently stopped
+      // happening. Do not use the minifier's dropConsole: that kills
+      // console.error and console.warn too.
+      treeshake: {
+        manualPureFunctions: ['console.log', 'console.info', 'console.debug'],
+      },
       output: {
         manualChunks: undefined,
         assetFileNames: 'assets/[name].[hash].[ext]'

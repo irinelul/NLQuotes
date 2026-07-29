@@ -81,6 +81,38 @@ const App = () => {
     }, [year]);
 
 
+    // Declared above the effect that calls it: an effect reaching forward to a
+    // function defined further down is a temporal-dead-zone hazard the moment
+    // that call stops being deferred, which is what the hooks lint flags.
+    const fetchQuotes = async (pageNum, channel, year, sort, strictMode, game) => {
+        const seq = ++fetchSeqRef.current;
+        try {
+            const response = await query.getAll(
+                searchTerm,
+                pageNum,
+                strictMode,
+                channel,
+                "searchText",
+                year,
+                sort,
+                game
+            );
+            if (seq !== fetchSeqRef.current) return; // stale response — a newer request is in flight
+            setQuotes(response.data || []);
+            setTotalPages(Math.ceil((response.total || 0) / 10));
+            setTotalQuotes(response.totalQuotes || 0);
+        } catch (error) {
+            if (seq !== fetchSeqRef.current) return;
+            console.error('Error fetching quotes:', error);
+            setError(describeApiError(error, 'search'));
+            setQuotes([]);
+            setTotalPages(0);
+            setTotalQuotes(0);
+        } finally {
+            if (seq === fetchSeqRef.current) setLoading(false);
+        }
+    };
+
     // Effect to handle URL parameter changes
     useEffect(() => {
         if (searchTerm.trim().length > 2) {
@@ -268,35 +300,6 @@ const App = () => {
         setQuotes([]);
         setHasSearched(false);
         navigate("/", { replace: true });
-    };
-
-    const fetchQuotes = async (pageNum, channel, year, sort, strictMode, game) => {
-        const seq = ++fetchSeqRef.current;
-        try {
-            const response = await query.getAll(
-                searchTerm,
-                pageNum,
-                strictMode,
-                channel,
-                "searchText",
-                year,
-                sort,
-                game
-            );
-            if (seq !== fetchSeqRef.current) return; // stale response — a newer request is in flight
-            setQuotes(response.data || []);
-            setTotalPages(Math.ceil((response.total || 0) / 10));
-            setTotalQuotes(response.totalQuotes || 0);
-        } catch (error) {
-            if (seq !== fetchSeqRef.current) return;
-            console.error('Error fetching quotes:', error);
-            setError(describeApiError(error, 'search'));
-            setQuotes([]);
-            setTotalPages(0);
-            setTotalQuotes(0);
-        } finally {
-            if (seq === fetchSeqRef.current) setLoading(false);
-        }
     };
 
     const searchPageElement = <SearchPage
