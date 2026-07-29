@@ -13,6 +13,9 @@ import styles from './SearchPage.module.css';
 // results (.quotesTable chrome + 10 x .videoRow at 450px) — this is what makes
 // the skeleton itself the reserved space, so first-load => data is shift-free.
 import quotesStyles from './Quotes.module.css';
+// Same reason, for the top pagination bar: the placeholder borrows the real
+// bar's container so the reserved slot is exactly its height.
+import paginationStyles from './PaginationButtons/PaginationButtons.module.css';
 
 // Number of placeholder rows in the first-load skeleton. Real result pages are
 // 10 rows, so the skeleton matches that height exactly.
@@ -48,6 +51,19 @@ const ResultsSkeleton = () => (
             ))}
         </tbody>
     </table>
+);
+
+// Empty stand-in for the top pagination bar, same container as the real one
+// (40px buttons + 2rem margin-top) so the slot above the results keeps its
+// height while the first page is loading. Hidden rather than empty because the
+// height must come from real content, not a hardcoded number that drifts.
+const PaginationPlaceholder = () => (
+    <div
+        className={`${paginationStyles.container} ${styles.paginationPlaceholder}`}
+        aria-hidden="true"
+    >
+        <button tabIndex={-1}>&nbsp;</button>
+    </div>
 );
 
 const SearchPage = ({
@@ -142,7 +158,18 @@ const SearchPage = ({
                     onClick={handleRandomQuotes}
                     disabled={loading}
                 >
-                    {loading ? loadingMessage : randomQuotesText}
+                    {/* Both labels share one grid cell, so the button is always
+                        as wide as the longer of the two and swapping them can
+                        not drag the search input's edge sideways. Sizing it by
+                        whichever label is showing did exactly that. */}
+                    <span className={styles.buttonLabelStack}>
+                        <span className={loading ? styles.labelHidden : undefined}>
+                            {randomQuotesText}
+                        </span>
+                        <span className={loading ? undefined : styles.labelHidden}>
+                            {loadingMessage}
+                        </span>
+                    </span>
                 </button>
                 <input
                     type="text"
@@ -201,30 +228,43 @@ const SearchPage = ({
                 <Disclaimer />
             ) : (
                 <>
-                    {/* Suppress the total-count label during first-load:
-                        totalQuotes is 0 there, so "Total quotes found: 0"
-                        above the skeleton is misleading and shifts when the
-                        real count arrives. Shown in data/refetch/empty (0 is
-                        correct once loading is done, including the empty state). */}
-                    {resultsState !== 'first-load' && (
-                        <div className={styles.totalQuotes}>
-                            {`${totalQuotesLabel} ${numberFormatter.format(totalQuotes)}`}
-                        </div>
-                    )}
+                    {/* The count line and the top pagination bar sit ABOVE the
+                        results, so a slot that is empty during first-load and
+                        occupied once data lands pushes the entire results
+                        region down — measured at ~0.056 CLS on a desktop
+                        search page, the largest shift on the site. Both slots
+                        therefore stay occupied for the whole fetch; only their
+                        contents change.
 
-                    {/* Top pagination bar. Stays mounted across refetch
-                        (keep-previous-data) so it never reattaches/detaches
-                        mid-fetch; gated on having results. */}
-                    {quotes.length > 0 && (
+                        The count text is still withheld during first-load
+                        (totalQuotes is 0 there, and "Total quotes found: 0"
+                        above a skeleton is a lie) — the literal U+00A0 below
+                        holds the line's height instead. Keep it a non-breaking
+                        space: a plain one collapses away and the line loses
+                        its height, which is the shift all over again. */}
+                    <div className={styles.totalQuotes}>
+                        {resultsState === 'first-load'
+                            ? ' '
+                            : `${totalQuotesLabel} ${numberFormatter.format(totalQuotes)}`}
+                    </div>
+
+                    {/* Stays mounted across refetch (keep-previous-data) so it
+                        never reattaches mid-fetch. With no results there are no
+                        pages to offer, but the slot still holds its height —
+                        letting it collapse would move the results region under
+                        it, which is the shift this is here to prevent. */}
+                    {quotes.length > 0 ? (
                         <PaginationButtons
                             page={page}
                             totalPages={totalPages}
                             handlePageChange={handlePageChange}
                         />
+                    ) : (
+                        <PaginationPlaceholder />
                     )}
 
                     <div
-                        className={resultsState === 'refetch' ? styles.resultsStale : undefined}
+                        className={`${styles.resultsRegion}${resultsState === 'refetch' ? ` ${styles.resultsStale}` : ''}`}
                         aria-busy={loading}
                     >
                         {/* Accessible loading status: announced to AT, visually

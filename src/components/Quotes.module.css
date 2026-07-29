@@ -369,8 +369,18 @@
     transform: scale(1.3);
 }
 
-/* No quotes message */
+/* No quotes message.
+   A search that returns nothing replaces a 10-row loading skeleton (~4,500px)
+   with one line of text. Everything below — the footer — would otherwise fly up
+   from far below the fold into view, which is a layout shift of the whole
+   viewport (measured 0.42 CLS, four times the "poor" threshold). Holding the
+   empty state a viewport tall keeps the footer off-screen across the swap, so
+   nothing that moves is ever visible; it also reads as a normal empty panel. */
 .noQuotes {
+    /* Tall block, message at the top of it: centering the text inside a
+       viewport-tall box would push the only thing the user needs to read below
+       the fold. */
+    min-height: 100vh;
     text-align: center;
     color: var(--text-secondary);
     padding: 2rem;

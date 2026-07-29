@@ -90,6 +90,11 @@
     align-items: center;
     gap: 0.5rem;
     margin-bottom: 1.5rem;
+    /* Fixed width, not content width: the first button's label swaps between
+       "Random Quotes" and "Loading...", and a content-sized row would resize
+       and re-centre on every search. At a fixed width the flex:1 input absorbs
+       the difference and none of the controls move. */
+    width: 100%;
     max-width: 800px;
     margin-left: auto;
     margin-right: auto;
@@ -122,6 +127,20 @@
 .inputContainer button:disabled {
     opacity: 0.7;
     cursor: not-allowed;
+}
+
+/* Two labels stacked in one cell: the box takes the width of the wider one and
+   holds it while they swap, so the controls next to it never move. */
+.buttonLabelStack {
+    display: grid;
+}
+
+.buttonLabelStack > span {
+    grid-area: 1 / 1;
+}
+
+.labelHidden {
+    visibility: hidden;
 }
 
 .searchInput {
@@ -191,10 +210,31 @@
 
 /* Total quotes */
 .totalQuotes {
+    /* .mainContainer centers via align-items, which sizes children to their
+       content — so this box is as wide as its text and re-centres itself every
+       time the text changes length. Full width + centered text keeps the box
+       still while the label inside it changes. */
+    width: 100%;
     text-align: center;
     color: var(--text-secondary);
     margin-bottom: 1rem;
     font-size: 1.1rem;
+}
+
+/* The results region, for the same reason, must not be sized by its contents:
+   the skeleton's placeholder bars are far narrower than a real results table,
+   so a content-sized region snapped ~170px sideways when the data landed. That
+   horizontal jump — not the vertical one — was the bulk of this page's CLS. */
+.resultsRegion {
+    width: 100%;
+}
+
+/* Stand-in for the top pagination bar during first-load. It composes the real
+   bar's .container, so it takes up exactly that height and only needs hiding —
+   visibility (not display/opacity) keeps the box in flow while making its
+   placeholder button invisible and non-interactive. */
+.paginationPlaceholder {
+    visibility: hidden;
 }
 
 /* Refetch affordance: keep previous results mounted but dim them so the user

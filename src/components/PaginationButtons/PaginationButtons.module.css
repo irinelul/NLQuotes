@@ -4,6 +4,11 @@
     gap: 1rem;
     margin-top: 2rem;
     align-items: center;
+    /* Full width (contents stay centered) so the bar's box does not resize
+       with its contents — the page centers its children by sizing them to
+       their content, which would move the bar sideways as the placeholder
+       gives way to the real buttons. */
+    width: 100%;
 
     & button {
         min-width: 120px;
