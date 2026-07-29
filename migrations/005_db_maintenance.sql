@@ -6,6 +6,8 @@
 --   * idx_channel_game (46 MB) has zero scans ever; idx_game_name (44 MB)
 --     is redundant — idx_game_date has the same leading column and serves
 --     every game_name = ... lookup.
+--     ^ The idx_game_name half of that is NO LONGER TRUE as of 2026-07-29;
+--       see step 1. The sizes above also predate the TOAST reclaim.
 --   * pg_stat monitoring counters were reset at some point and the table
 --     has never been manually ANALYZEd since.
 --
@@ -14,10 +16,18 @@
 -- Idempotent: safe to re-run (IF EXISTS / re-ANALYZE are no-ops).
 
 -- 1. Drop unused/redundant indexes FIRST so the rewrite below doesn't
---    waste time rebuilding them. Instant, ~90 MB freed, less write
---    amplification on future ingests.
-DROP INDEX IF EXISTS idx_channel_game;
-DROP INDEX IF EXISTS idx_game_name;
+--    waste time rebuilding them. Instant, less write amplification on
+--    future ingests.
+DROP INDEX IF EXISTS idx_channel_game;   -- 16 MB, 33 scans, still redundant
+
+-- DO NOT DROP idx_game_name. It was redundant when this file was written and
+-- is not any more: getGameList (models/postgres.js) was rewritten on
+-- 2026-07-29 from SELECT DISTINCT into a loose index scan that walks this
+-- index one distinct value at a time. That took the game-list query from
+-- 407,286 buffers to 8,295, and it is what stops /api/games costing seconds
+-- on a cold cache after every deploy. The index now shows ~47,000 scans.
+-- Dropping it silently reverts that query to a full-table scan.
+--   DROP INDEX IF EXISTS idx_game_name;   -- superseded, see above
 
 -- 2. Reclaim the dead TOAST. Two options — pick ONE:
 --
