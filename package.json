@@ -24,14 +24,12 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.6.1",
     "express-slow-down": "^3.1.0",
-    "mongoose": "^9.8.1",
     "morgan": "^1.11.0",
     "nodemon": "^3.1.14",
     "pg": "^8.22.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.2",
-    "redis": "^6.1.0",
     "vite": "^8.1.5"
   },
   "devDependencies": {
@@ -39,7 +37,6 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "concurrently": "^10.0.4",
-    "date-fns": "^4.4.0",
     "eslint": "^9.39.5",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
