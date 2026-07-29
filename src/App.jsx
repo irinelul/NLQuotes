@@ -1,16 +1,24 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import query from './services/quotes';
 import { track } from './services/analytics';
 import { describeApiError } from './services/apiError';
 import { useNavigate, Routes, Route, useSearchParams, useLocation } from 'react-router-dom';
-import Changelog from './components/Changelog';
 import ScrollToTop from './components/ScrollToTop';
 import { useFetchGames } from './hooks/useFetchGames';
 import { useSearchState } from './hooks/useSearchState';
-import Privacy from './components/Privacy';
 import SearchPage from './components/SearchPage';
-import Stats from './components/Stats';
-import { TopicPage } from './components/TopicPage';
+
+// Everything except the search page is split out of the initial bundle: these
+// four routes are never on the path to first paint, but their code was being
+// downloaded and parsed before anyone could search. SearchPage stays eagerly
+// imported — it IS the landing page, and lazy-loading it would only add a
+// round trip in front of the content people came for.
+const Changelog = lazy(() => import('./components/Changelog'));
+const Privacy = lazy(() => import('./components/Privacy'));
+const Stats = lazy(() => import('./components/Stats'));
+const TopicPage = lazy(() =>
+    import('./components/TopicPage').then((m) => ({ default: m.TopicPage }))
+);
 
 // In-house pageview tracking (route changes)
 function usePageviewTracking() {
@@ -350,14 +358,19 @@ const App = () => {
     return (
         <>
         <ScrollToTop />
-        <Routes>
-            <Route path="/" element={searchPageElement} />
-            <Route path="/search" element={searchPageElement} />
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="/changelog" element={<Changelog />} />
-            <Route path="/stats" element={<Stats />} />
-            <Route path="/topic/:term" element={<TopicPage />} />
-        </Routes>
+        {/* Only the lazy routes suspend; the search page renders straight
+            through, so the null fallback is never shown on the landing path
+            and cannot introduce a layout shift there. */}
+        <Suspense fallback={null}>
+            <Routes>
+                <Route path="/" element={searchPageElement} />
+                <Route path="/search" element={searchPageElement} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/changelog" element={<Changelog />} />
+                <Route path="/stats" element={<Stats />} />
+                <Route path="/topic/:term" element={<TopicPage />} />
+            </Routes>
+        </Suspense>
         </>
     );
 };

@@ -139,10 +139,24 @@ const quoteModel = {
       const pool = getPoolForTenant(tenant);
       const client = await pool.connect();
       try {
+        // Loose index scan (walk idx_game_name one distinct value at a time)
+        // rather than SELECT DISTINCT. Postgres has no skip scan for DISTINCT,
+        // so it read all 407,286 buffers (~3.2 GB) of the table to return 2,035
+        // names; this reads 8,295. Warm that is 430ms -> 120ms, but the reason
+        // it matters is cold: this runs once at boot, and the version that read
+        // the whole table from disk is what put a 3.7s /api/games in the
+        // critical path of the first page load after every deploy.
         const result = await client.query(`
-          SELECT DISTINCT game_name
-          FROM quotes
-          WHERE game_name IS NOT NULL
+          WITH RECURSIVE walk AS (
+            (SELECT game_name FROM quotes WHERE game_name IS NOT NULL
+              ORDER BY game_name LIMIT 1)
+            UNION ALL
+            SELECT (SELECT q.game_name FROM quotes q
+                     WHERE q.game_name > w.game_name AND q.game_name IS NOT NULL
+                     ORDER BY q.game_name LIMIT 1)
+              FROM walk w WHERE w.game_name IS NOT NULL
+          )
+          SELECT game_name FROM walk WHERE game_name IS NOT NULL
           ORDER BY game_name ASC
         `);
         return result.rows.map(row => row.game_name);
@@ -491,6 +505,18 @@ const quoteModel = {
   //
   // minQuotes keeps thin videos out; at 20 it still admits 23,308 of 23,595.
   // limit is only a safety valve against a misconfigured `since`.
+  //
+  // `since` is applied in WHERE as well as HAVING, and that is not redundant:
+  // the HAVING form alone had to aggregate every row in the table before it
+  // could discard 23,278 of 23,595 videos — 407,286 buffers (~3.2 GB) touched
+  // to return 317 rows. Warm that ran in 650ms, but cold it read from disk and
+  // blew the pool's 10s statement_timeout, which is what emptied the batch and
+  // put noindex on every video page. Pre-filtering costs 9,549 buffers instead.
+  //
+  // The two clauses are equivalent because upload_date is denormalised onto
+  // every quote row and constant per video (verified: zero videos have more
+  // than one distinct upload_date, zero rows are null). The HAVING stays as the
+  // authoritative condition in case that ever stops being true.
   async listVideosForIndex({ minQuotes = 20, since = null, limit = 0 } = {}, tenant = null) {
     let client;
     try {
@@ -503,6 +529,7 @@ const quoteModel = {
                 max(q.upload_date) AS upload_date,
                 count(*)           AS quote_count
          FROM quotes q
+         WHERE ($2::date IS NULL OR q.upload_date >= $2::date)
          GROUP BY q.video_id
          HAVING count(*) >= $1
             AND ($2::date IS NULL OR max(q.upload_date) >= $2::date)
@@ -518,8 +545,12 @@ const quoteModel = {
         quoteCount: parseInt(r.quote_count, 10),
       }));
     } catch (error) {
+      // Deliberately NOT swallowed into an empty array. This list decides which
+      // video pages are indexable, so "the query failed" and "there are no
+      // videos" must never look the same to the caller: returning [] once put
+      // noindex on every video page for six hours.
       console.error('Error listing videos for index:', error);
-      return [];
+      throw new Error(`Database error occurred: ${error.message}`);
     } finally {
       if (client) client.release();
     }

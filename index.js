@@ -153,9 +153,12 @@ app.use((req, res, next) => {
     // Hashed filenames in /assets/ can be cached aggressively (1 year)
     res.set('Cache-Control', 'public, max-age=31536000, immutable');
   } else if (req.path === '/' || req.path.endsWith('.html')) {
-    // NEVER cache index.html — it contains references to hashed assets
-    // Stale HTML after redeployment causes MIME type errors
-    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    // Never REUSE index.html without revalidating — it references hashed
+    // assets, and stale HTML after a redeploy causes MIME type errors.
+    // no-cache already guarantees that. Deliberately not no-store: that also
+    // forbids storing the response, which disables the back/forward cache for
+    // the whole site, and revalidation is what keeps the HTML fresh anyway.
+    res.set('Cache-Control', 'no-cache, must-revalidate');
   } else if (/^\/(nlquotes|hivemind|jrequotes|vinesauce|lttquotes)\//.test(req.path)) {
     // Tenant branding/logo folders are unhashed public assets (not under
     // /assets/): cache briefly but always revalidate so a branding change
@@ -240,18 +243,30 @@ const VIDEOS_PER_HUB_PAGE = 50;
 
 const videoIndexCache = new Map(); // tenantId -> { at, value }
 
+// Returns { list, ids } on success, or null when the batch can't be determined.
+// Callers must treat null as "unknown", never as "empty": this list gates the
+// robots meta on every video page, and one failed query cached as [] is enough
+// to noindex the whole rollout for six hours.
 async function getIndexableVideos(tenant) {
   const tenantId = tenant?.id || 'default';
   const cached = videoIndexCache.get(tenantId);
   if (cached && Date.now() - cached.at < SITEMAP_CACHE_MS) return cached.value;
 
-  const list = await quoteModel.listVideosForIndex(
-    { minQuotes: VIDEO_MIN_QUOTES, since: VIDEO_INDEX_SINCE, limit: VIDEO_INDEX_MAX },
-    tenant
-  );
-  const value = { list, ids: new Set(list.map((v) => v.videoId)) };
-  videoIndexCache.set(tenantId, { at: Date.now(), value });
-  return value;
+  try {
+    const list = await quoteModel.listVideosForIndex(
+      { minQuotes: VIDEO_MIN_QUOTES, since: VIDEO_INDEX_SINCE, limit: VIDEO_INDEX_MAX },
+      tenant
+    );
+    const value = { list, ids: new Set(list.map((v) => v.videoId)) };
+    videoIndexCache.set(tenantId, { at: Date.now(), value });
+    return value;
+  } catch (e) {
+    console.error('Error loading indexable videos:', e.message);
+    // Serve the last good batch rather than nothing — a stale list is far less
+    // damaging than an empty one. The failure itself is never cached, so the
+    // next request retries instead of waiting out the TTL.
+    return cached ? cached.value : null;
+  }
 }
 
 // Newest upload in the corpus — an honest lastmod for the homepage and hub,
@@ -295,11 +310,14 @@ app.get('/sitemap.xml', async (req, res) => {
       children.push({ loc: `${base}/sitemap-topics.xml` });
     }
 
-    const { list } = await getIndexableVideos(req.tenant);
-    const videoChunks = chunk(list);
-    videoChunks.forEach((_, i) => {
-      children.push({ loc: `${base}/sitemap-videos-${i + 1}.xml`, lastmod: corpusDate });
-    });
+    // If the batch is unknown, list no video chunks rather than guessing at a
+    // count — the child sitemaps answer 503 in that state anyway.
+    const batch = await getIndexableVideos(req.tenant);
+    if (batch) {
+      chunk(batch.list).forEach((_, i) => {
+        children.push({ loc: `${base}/sitemap-videos-${i + 1}.xml`, lastmod: corpusDate });
+      });
+    }
   } catch (e) {
     console.error('Error building sitemap index:', e.message);
   }
@@ -342,8 +360,12 @@ app.get(/^\/sitemap-videos-(\d+)\.xml$/, async (req, res) => {
   const index = parseInt(req.params[0], 10) - 1;
 
   try {
-    const { list } = await getIndexableVideos(req.tenant);
-    const chunks = chunk(list);
+    const batch = await getIndexableVideos(req.tenant);
+    // An empty urlset reads as "these pages are gone". A 503 reads as "ask me
+    // again later", which is what we actually mean.
+    if (!batch) return res.status(503).set('Retry-After', '600').type('xml').send('');
+
+    const chunks = chunk(batch.list);
     if (index < 0 || index >= chunks.length) {
       return res.status(404).type('xml').send('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>\n');
     }
@@ -484,9 +506,11 @@ app.get('/api/tenant', (req, res) => {
       gameFilter: tenant.gameFilter
     };
     
-    // Set cache-busting headers - don't cache tenant config
+    // Revalidate every time, but do not forbid storing: the client fetches
+    // this on every load, and a no-store response anywhere in that path takes
+    // the whole page out of the back/forward cache.
     res.set({
-      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Cache-Control': 'no-cache, must-revalidate, proxy-revalidate',
       'Pragma': 'no-cache',
       'Expires': '0',
       'X-Content-Type-Options': 'nosniff'
@@ -1012,7 +1036,15 @@ app.get('/topic/:term', async (req, res, next) => {
 
 async function renderVideosHub(req, res, next, page) {
   try {
-    const { list } = await getIndexableVideos(req.tenant);
+    const batch = await getIndexableVideos(req.tenant);
+    // Better a 503 than a hub advertising "0 most recent videos": the empty
+    // page is the one thing Google should not cache, and Retry-After tells it
+    // to come back rather than treating the emptiness as the new truth.
+    if (!batch) return res.status(503).set('Retry-After', '600').type('html')
+      .send('<!doctype html><meta charset="utf-8"><title>Temporarily unavailable</title>'
+        + '<p>The video list is temporarily unavailable. Please try again shortly.</p>');
+
+    const { list } = batch;
     const totalPages = Math.max(1, Math.ceil(list.length / VIDEOS_PER_HUB_PAGE));
     if (page > totalPages) return next();
 
@@ -1062,7 +1094,10 @@ app.get('/video/:videoId', async (req, res, next) => {
 
     // Batch membership already implies the video cleared VIDEO_MIN_QUOTES.
     // Everything outside the batch still renders — it just isn't indexable yet.
-    const { ids } = await getIndexableVideos(req.tenant);
+    // If the batch is unknown, fail open: a page wrongly left indexable for a
+    // few minutes costs nothing, while a wrongly emitted noindex gets the page
+    // dropped from the index and takes weeks to win back.
+    const batch = await getIndexableVideos(req.tenant);
 
     const html = renderVideoHtml({
       videoId: video.video_id,
@@ -1073,7 +1108,7 @@ app.get('/video/:videoId', async (req, res, next) => {
       totalQuotes: video.total_quotes,
       quotes: video.quotes || [],
       siteBaseUrl: sitemapBase(req),
-      indexable: ids.has(video.video_id),
+      indexable: batch ? batch.ids.has(video.video_id) : true,
     });
 
     res.set('Cache-Control', 'public, max-age=3600').type('html').send(html);
@@ -1205,26 +1240,35 @@ app.use((req, res) => {
           const safeScriptUrl = scriptUrl.replace(/"/g, '&quot;');
           const safeWebsiteId = websiteId.replace(/"/g, '&quot;');
           const umamiScript = `<script defer src="${safeScriptUrl}" data-website-id="${safeWebsiteId}"></script>`;
+          // The Vite build already writes this tag into dist/index.html, so
+          // injecting unconditionally added a second identical <script> — both
+          // ran, and every page load sent two pageview beacons (Umami has been
+          // double-counting). Injecting only when it is absent keeps this
+          // working for HTML that the build did not stamp, without duplicating.
+          if (html.includes(`data-website-id="${safeWebsiteId}"`)) {
+            console.log(`[Umami] Script already present for tenant ${tenant.id}, skipping injection`);
+          } else {
           // Insert after charset meta tag in head (handle both dev and production formats)
           // Try multiple patterns to match different HTML formats
-          if (html.includes('<meta charset="UTF-8" />')) {
-            html = html.replace(
-              /(<meta charset="UTF-8" \/>)/,
-              `$1\n    ${umamiScript}`
-            );
-          } else if (html.includes('<meta charset="UTF-8">')) {
-            html = html.replace(
-              /(<meta charset="UTF-8">)/,
-              `$1\n    ${umamiScript}`
-            );
-          } else {
-            // Fallback: insert after first <head> tag
-            html = html.replace(
-              /(<head[^>]*>)/i,
-              `$1\n    ${umamiScript}`
-            );
+            if (html.includes('<meta charset="UTF-8" />')) {
+              html = html.replace(
+                /(<meta charset="UTF-8" \/>)/,
+                `$1\n    ${umamiScript}`
+              );
+            } else if (html.includes('<meta charset="UTF-8">')) {
+              html = html.replace(
+                /(<meta charset="UTF-8">)/,
+                `$1\n    ${umamiScript}`
+              );
+            } else {
+              // Fallback: insert after first <head> tag
+              html = html.replace(
+                /(<head[^>]*>)/i,
+                `$1\n    ${umamiScript}`
+              );
+            }
+            console.log(`[Umami] Injected script for tenant ${tenant.id}`);
           }
-          console.log(`[Umami] Injected script for tenant ${tenant.id}`);
         } else {
           console.warn(`[Umami] Invalid scriptUrl or websiteId for tenant ${tenant.id}, skipping injection`);
         }
@@ -1283,16 +1327,16 @@ app.use((req, res) => {
       }
       
       // Never cache index.html — stale HTML causes MIME type errors after redeployment
-      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.set('Cache-Control', 'no-cache, must-revalidate');
       res.send(html);
     } else {
-      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.set('Cache-Control', 'no-cache, must-revalidate');
       res.sendFile(indexPath);
     }
   } catch (error) {
     console.error('Error injecting tenant config:', error);
     // Fallback to normal file serving
-    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Cache-Control', 'no-cache, must-revalidate');
     res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
   }
 });
