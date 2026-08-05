@@ -196,6 +196,10 @@ const App = () => {
             page: newPage,
             search_term: searchTerm ? searchTerm.toLowerCase() : null
         });
+        // Paging only changes the query string, so <ScrollToTop> (keyed on
+        // pathname) never fires — without this, clicking the bottom "Next"
+        // leaves you at the bottom of the next page's results.
+        window.scrollTo(0, 0);
         navigate(buildSearchUrl({ page: newPage }));
     };
     const handleGameChange = (e) => {
