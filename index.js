@@ -3,7 +3,8 @@ import express from 'express';
 import morgan from 'morgan';
 import cors from 'cors';
 import quoteModel from './models/postgres.js';
-import { logSearchEvent, logClientEvent, getRemovedTopicTerms } from './models/analytics.js';
+import { logServerEvent, logClientEvent, getRemovedTopicTerms } from './models/analytics.js';
+import { classifySearch } from './models/searchMode.js';
 import axios from 'axios';
 import crypto from 'crypto';
 import fs from 'fs';
@@ -203,7 +204,7 @@ app.use('/api/flag', speedLimiter);
 const corsOptions = {
   origin: '*',
   methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'If-None-Match', 'X-NLQ-Opt-Out'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'If-None-Match', 'X-NLQ-Opt-Out', 'X-NLQ-Session'],
   maxAge: 86400 // 24 hours in seconds
 };
 
@@ -590,11 +591,12 @@ app.get('/api', async (req, res) => {
         console.log(`[Search] Query completed - Tenant: ${tenantId}, Results: ${result.data?.length || 0}, Total: ${result.total || 0}, Time: ${totalTime}ms`);
 
         if (searchTerm.trim().length >= 3) {
-            logSearchEvent(req, {
+            const phrasing = classifySearch(searchTerm);
+            logServerEvent(req, {
                 event_type: 'search',
                 path: '/search',
                 search_term: searchTerm.trim().toLowerCase(),
-                search_mode: exactPhrase ? 'strict' : 'keyword',
+                search_mode: phrasing.mode,
                 game: gameName !== 'all' ? gameName : null,
                 channel: selectedValue !== 'all' ? selectedValue : null,
                 year: year || null,
@@ -602,7 +604,8 @@ app.get('/api', async (req, res) => {
                 page,
                 result_videos: result.total,
                 result_quotes: result.totalQuotes,
-                response_time_ms: totalTime
+                response_time_ms: totalTime,
+                props: phrasing.props
             });
         }
 
@@ -803,7 +806,7 @@ app.post('/api/flag', async (req, res) => {
 app.get('/api/random', async (req, res) => {
     try {
         const result = await quoteModel.getRandom(req.tenant);
-        logSearchEvent(req, { event_type: 'random_quote', path: '/' });
+        logServerEvent(req, { event_type: 'random_quote', path: '/' });
         res.json({ quotes: result });
     } catch (error) {
         console.error('Error fetching random quotes:', error);
@@ -943,6 +946,7 @@ app.get('/topic/:term', async (req, res, next) => {
   // Search Console shows them dropped. Blocking crawl stops Google ever seeing
   // the 410, which freezes them in the index permanently.
   if (!isAllowlistedTopic(term) || isBlockedTopic(term) || !isIndexableTopic(term)) {
+    logServerEvent(req, { event_type: 'ssr_page_view', path: req.path, search_term: term, props: { kind: 'topic_gone' } });
     return res
       .status(410)
       .set('Cache-Control', 'public, max-age=86400')
@@ -953,9 +957,16 @@ app.get('/topic/:term', async (req, res, next) => {
   const encoded = encodeURIComponent(term);
   const staticPath = path.resolve(__dirname, 'dist', 'topic', encoded, 'index.html');
 
+  // These pages are plain HTML with no client JS, so a view is only visible
+  // to analytics if it is logged here. Counted once the page is known to exist.
+  const logTopicView = () => logServerEvent(req, {
+    event_type: 'ssr_page_view', path: req.path, search_term: term, props: { kind: 'topic' },
+  });
+
   // Serve existing file immediately
   try {
     if (fs.existsSync(staticPath)) {
+      logTopicView();
       return res.sendFile(staticPath);
     }
   } catch (e) {
@@ -969,6 +980,7 @@ app.get('/topic/:term', async (req, res, next) => {
       for (let i = 0; i < 100; i++) {
         await new Promise((r) => setTimeout(r, 100));
         if (fs.existsSync(staticPath)) {
+          logTopicView();
           return res.sendFile(staticPath);
         }
         if (!topicGenerating.has(encoded)) break;
@@ -1015,6 +1027,7 @@ app.get('/topic/:term', async (req, res, next) => {
       fs.writeFileSync(path.join(outDir, 'index.html'), html, 'utf8');
       console.log(`[topic] Generated on demand: /topic/${encoded}`);
 
+      logTopicView();
       res.send(html);
     } finally {
       topicGenerating.delete(encoded);
@@ -1058,6 +1071,7 @@ async function renderVideosHub(req, res, next, page) {
       siteBaseUrl: sitemapBase(req),
     });
 
+    logServerEvent(req, { event_type: 'ssr_page_view', path: req.path, page, props: { kind: 'videos_hub' } });
     res.set('Cache-Control', 'public, max-age=3600').type('html').send(html);
   } catch (e) {
     console.error('Error rendering videos hub:', e);
@@ -1099,6 +1113,7 @@ app.get('/video/:videoId', async (req, res, next) => {
     // few minutes costs nothing, while a wrongly emitted noindex gets the page
     // dropped from the index and takes weeks to win back.
     const batch = await getIndexableVideos(req.tenant);
+    const indexable = batch ? batch.ids.has(video.video_id) : true;
 
     const html = renderVideoHtml({
       videoId: video.video_id,
@@ -1109,9 +1124,13 @@ app.get('/video/:videoId', async (req, res, next) => {
       totalQuotes: video.total_quotes,
       quotes: video.quotes || [],
       siteBaseUrl: sitemapBase(req),
-      indexable: batch ? batch.ids.has(video.video_id) : true,
+      indexable,
     });
 
+    logServerEvent(req, {
+      event_type: 'ssr_page_view', path: req.path, video_id: video.video_id,
+      props: { kind: 'video', indexable },
+    });
     res.set('Cache-Control', 'public, max-age=3600').type('html').send(html);
   } catch (e) {
     console.error('Error rendering video page:', e);

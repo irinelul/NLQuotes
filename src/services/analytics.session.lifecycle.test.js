@@ -287,3 +287,17 @@ test('private-mode resilience: storage failures never break tracking', async () 
     const starts = captured.filter((e) => e.event_type === 'session_start');
     expect(starts).toHaveLength(0);
 });
+
+test('analyticsHeaders carries the live session id and shares the session with track()', async () => {
+    const { analyticsHeaders, track } = await import('./analytics');
+
+    // An API call is the first activity: it starts the session.
+    const headers = analyticsHeaders();
+    expect(headers).toEqual({ 'X-NLQ-Session': 'uuid-1' });
+    expect(captured.filter((e) => e.event_type === 'session_start')).toHaveLength(1);
+
+    // A later client event lands in the same session, with no second start.
+    track('page_view');
+    expect(captured.filter((e) => e.event_type === 'session_start')).toHaveLength(1);
+    expect(captured.find((e) => e.event_type === 'page_view').session_id).toBe('uuid-1');
+});

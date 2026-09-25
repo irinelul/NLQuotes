@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { describeApiError } from './apiError';
+import { describeApiError, classifyApiError } from './apiError';
 
 const axiosError = (status, data = {}) => ({ response: { status, data }, request: {} });
 
@@ -38,4 +38,14 @@ test('network failure (no response) says the server was unreachable', () => {
 
 test('unknown errors get the generic fallback with the action named', () => {
     expect(describeApiError(new Error('boom'), 'search')).toMatch(/something went wrong while trying to search/i);
+});
+
+test('classifyApiError buckets failures for analytics', () => {
+    expect(classifyApiError(axiosError(429))).toBe('rate_limited');
+    expect(classifyApiError(axiosError(400))).toBe('bad_request');
+    expect(classifyApiError(axiosError(504))).toBe('timeout');
+    expect(classifyApiError({ code: 'ECONNABORTED', request: {} })).toBe('timeout');
+    expect(classifyApiError(axiosError(500))).toBe('server_error');
+    expect(classifyApiError({ request: {} })).toBe('network');
+    expect(classifyApiError(new Error('boom'))).toBe('other');
 });

@@ -29,6 +29,7 @@ const CLIENT_EVENT_TYPES = new Set([
     'scroll_depth',         // props: { depth } — 25/50/75/100, once per search
     'session_start',        // front-end session beacon
     'session_end',          // props: { duration_ms } — final beacon before unload
+    'search_error',         // props: { kind, status } — a search the user saw fail
 ]);
 
 // ---- opt-out ----------------------------------------------------------------
@@ -162,8 +163,18 @@ function requestContext(req) {
     };
 }
 
-// Server-side logging for search endpoints. Fire-and-forget: do not await.
-export function logSearchEvent(req, event) {
+// The frontend sends its per-tab session id (see src/services/analytics.js) on
+// API calls, so server-logged events join the same session as the client ones.
+// Only a UUID is accepted; anything else is dropped rather than stored.
+const SESSION_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export function sessionIdFrom(req) {
+    const sid = req.get('x-nlq-session');
+    return sid && SESSION_ID_RE.test(sid) ? sid.toLowerCase() : null;
+}
+
+// Server-side logging (searches, random quotes, server-rendered page views).
+// Fire-and-forget: do not await.
+export function logServerEvent(req, event) {
     if (!shouldTrack(req)) return;
     const ctx = requestContext(req);
     if (ctx.device === 'bot') return;
@@ -177,13 +188,14 @@ export function logSearchEvent(req, event) {
         .then((hash) => insertEvent(tenant, {
             source: 'server',
             visitor_hash: hash,
+            session_id: sessionIdFrom(req),
             ...ctx,
             referrer,
             referrer_source,
             referrer_medium,
             ...event,
         }))
-        .catch((err) => console.error('[Analytics] failed to log search event:', err.message));
+        .catch((err) => console.error('[Analytics] failed to log server event:', err.message));
 }
 
 // Top search terms for the sitemap: what people actually searched recently,

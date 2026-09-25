@@ -17,9 +17,14 @@ export function isOptedOut() {
     return false;
 }
 
-// Extra headers for API calls so server-side logging honors the opt-out too.
+// Extra headers for API calls so server-side logging honors the opt-out too,
+// and carries the session id so server-logged searches join the same session
+// as the client events around them. An API call is activity, so it keeps the
+// session alive (and starts one) exactly like track() does.
 export function analyticsHeaders() {
-    return isOptedOut() ? { 'X-NLQ-Opt-Out': '1' } : {};
+    if (isOptedOut()) return { 'X-NLQ-Opt-Out': '1' };
+    const session = touchSession();
+    return session ? { 'X-NLQ-Session': session.sid } : {};
 }
 
 // ---------------------------------------------------------------------------
@@ -171,26 +176,30 @@ function registerExitListeners() {
 // Register the exit listeners on first import (guarded, opt-out aware).
 registerExitListeners();
 
+// Session lifecycle for one unit of activity: rotate when stale, emit
+// session_start once per session. Returns the live session or null.
+function touchSession() {
+    try {
+        const session = ensureSession();
+        if (session && startedSid !== session.sid) {
+            // Mark this session as "started" BEFORE the recursive call so the
+            // re-entrant track('session_start') does not loop.
+            startedSid = session.sid;
+            exitSent = false; // FIX #2: a fresh session may emit its own session_end
+            track('session_start', { session_id: session.sid }, { skipSession: true });
+        }
+        return session;
+    } catch {
+        // session logic must never block the real event
+        return null;
+    }
+}
+
 export function track(eventType, fields = {}, opts = {}) {
     if (isOptedOut()) return;
     const { skipSession = false } = opts;
 
-    // --- session lifecycle: rotate when stale, emit session_start once ---
-    let session = null;
-    if (!skipSession) {
-        try {
-            session = ensureSession();
-            if (session && startedSid !== session.sid) {
-                // Mark this session as "started" BEFORE the recursive call so the
-                // re-entrant track('session_start') does not loop.
-                startedSid = session.sid;
-                exitSent = false; // FIX #2: a fresh session may emit its own session_end
-                track('session_start', { session_id: session.sid }, { skipSession: true });
-            }
-        } catch {
-            // session logic must never block the real event
-        }
-    }
+    const session = skipSession ? null : touchSession();
 
     const payload = {
         event_type: eventType,
