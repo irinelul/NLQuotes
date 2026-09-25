@@ -4,7 +4,6 @@ import morgan from 'morgan';
 import cors from 'cors';
 import quoteModel from './models/postgres.js';
 import { logServerEvent, logClientEvent, getRemovedTopicTerms } from './models/analytics.js';
-import { classifySearch } from './models/searchMode.js';
 import axios from 'axios';
 import crypto from 'crypto';
 import fs from 'fs';
@@ -23,6 +22,7 @@ import { isAllowlistedTopic, allowlistedTopics } from './utils/topicAllowlist.js
 import { normalizeTopicTerm, topicPath } from './utils/topicUrl.js';
 import { buildUrlset, buildSitemapIndex, chunk } from './utils/sitemap.js';
 import { inlineJson } from './utils/inlineJson.js';
+import { buildVideoIndex, relatedVideos } from './utils/videoIndex.js';
 
 // Load environment variables
 dotenv.config();
@@ -225,50 +225,70 @@ app.use(morgan(':method-path :response-info :response-time ms', {
 // omitted rather than invented.
 const SITEMAP_CACHE_MS = 6 * 60 * 60 * 1000;
 
-// Videos are rolled out deliberately rather than all at once. Only videos in
-// this set get index,follow, a sitemap entry, and a link from the /videos hub;
-// everything else still renders for humans but is noindex.
+// Which videos get index,follow, a sitemap entry and a place in the /videos
+// hub. Every other video page still renders for humans but is noindex.
 //
-// The batch is defined by an upload-date cutoff, not a count. Two reasons:
-// newest videos are where the search demand actually is (people look for a line
-// from something they just watched), and a date window only ever grows — new
-// uploads join automatically and nothing ever falls out and flips back to
-// noindex. Scaling up means moving VIDEO_INDEX_SINCE earlier.
-//
-// 2026-05-01 currently yields ~317 videos. Expand only once Search Console
-// shows this batch earning impressions, not merely getting indexed — ~7,000
-// indexed topic pages earned ~26 clicks across 28 days.
+// History: this started as a cautious rollout (uploads since 2026-05-01, ~317
+// pages) to be widened "once Search Console showed impressions". It never
+// could: those pages had almost no internal links, and 317 pages is too small
+// a surface for long-tail transcript queries to find. Each page is the unique
+// transcript of a real video, not a query page like the pruned /topic/ ones,
+// so the default is now every video with at least VIDEO_MIN_QUOTES lines.
+// VIDEO_INDEX_SINCE (YYYY-MM-DD) can still narrow it if ever needed.
 const VIDEO_MIN_QUOTES = 20;   // 23,308 of 23,595 videos clear this
-const VIDEO_INDEX_SINCE = process.env.VIDEO_INDEX_SINCE || '2026-05-01';
-const VIDEO_INDEX_MAX = parseInt(process.env.VIDEO_INDEX_MAX || '5000', 10); // safety valve
+const VIDEO_INDEX_SINCE = process.env.VIDEO_INDEX_SINCE || null;
+const VIDEO_INDEX_MAX = parseInt(process.env.VIDEO_INDEX_MAX || '50000', 10); // safety valve
 const VIDEOS_PER_HUB_PAGE = 50;
+const VIDEO_INDEX_REFRESH_MS = 6 * 60 * 60 * 1000;
+// The full list aggregates the whole quotes table. It runs in the background,
+// never on a request, so it gets far longer than the pool's 10s timeout —
+// hitting that timeout is what once emptied the list and noindexed every page.
+const VIDEO_INDEX_QUERY_TIMEOUT_MS = 180 * 1000;
+// How long a request waits for the very first load before treating the batch
+// as unknown (callers fail open / answer 503 in that state).
+const VIDEO_INDEX_FIRST_WAIT_MS = 8000;
 
-const videoIndexCache = new Map(); // tenantId -> { at, value }
+const videoIndexCache = new Map();   // tenantId -> { at, value }
+const videoIndexLoading = new Map(); // tenantId -> in-flight load promise
 
-// Returns { list, ids } on success, or null when the batch can't be determined.
-// Callers must treat null as "unknown", never as "empty": this list gates the
-// robots meta on every video page, and one failed query cached as [] is enough
-// to noindex the whole rollout for six hours.
+function refreshVideoIndex(tenant) {
+  const tenantId = tenant?.id || 'default';
+  if (videoIndexLoading.has(tenantId)) return videoIndexLoading.get(tenantId);
+
+  const load = quoteModel.listVideosForIndex(
+    { minQuotes: VIDEO_MIN_QUOTES, since: VIDEO_INDEX_SINCE, limit: VIDEO_INDEX_MAX, timeoutMs: VIDEO_INDEX_QUERY_TIMEOUT_MS },
+    tenant
+  )
+    .then((list) => {
+      videoIndexCache.set(tenantId, { at: Date.now(), value: buildVideoIndex(list) });
+      console.log(`[video-index] ${list.length} indexable videos loaded for ${tenantId}`);
+    })
+    // A failure is never cached: the last good list stays in place, and the
+    // next request after the TTL tries again.
+    .catch((e) => console.error(`[video-index] load failed for ${tenantId}:`, e.message))
+    .finally(() => videoIndexLoading.delete(tenantId));
+
+  videoIndexLoading.set(tenantId, load);
+  return load;
+}
+
+// Returns { list, ids, position, byGame }, or null when the batch can't be
+// determined yet. Callers must treat null as "unknown", never as "empty": this
+// list gates the robots meta on every video page.
+//
+// Stale-while-revalidate: once a list exists it is always answered from memory
+// and refreshed in the background, so no request ever waits on the query
+// except the very first one after a start.
 async function getIndexableVideos(tenant) {
   const tenantId = tenant?.id || 'default';
   const cached = videoIndexCache.get(tenantId);
-  if (cached && Date.now() - cached.at < SITEMAP_CACHE_MS) return cached.value;
+  if (cached && Date.now() - cached.at < VIDEO_INDEX_REFRESH_MS) return cached.value;
 
-  try {
-    const list = await quoteModel.listVideosForIndex(
-      { minQuotes: VIDEO_MIN_QUOTES, since: VIDEO_INDEX_SINCE, limit: VIDEO_INDEX_MAX },
-      tenant
-    );
-    const value = { list, ids: new Set(list.map((v) => v.videoId)) };
-    videoIndexCache.set(tenantId, { at: Date.now(), value });
-    return value;
-  } catch (e) {
-    console.error('Error loading indexable videos:', e.message);
-    // Serve the last good batch rather than nothing — a stale list is far less
-    // damaging than an empty one. The failure itself is never cached, so the
-    // next request retries instead of waiting out the TTL.
-    return cached ? cached.value : null;
-  }
+  const load = refreshVideoIndex(tenant);
+  if (cached) return cached.value;
+
+  await Promise.race([load, new Promise((r) => setTimeout(r, VIDEO_INDEX_FIRST_WAIT_MS).unref())]);
+  return videoIndexCache.get(tenantId)?.value ?? null;
 }
 
 // Newest upload in the corpus — an honest lastmod for the homepage and hub,
@@ -486,6 +506,10 @@ loadGameTitles(defaultTenant).then(() => {
     console.error('Failed to initialize game titles cache:', err);
 });
 
+// Warm the indexable-video list in the background so the first sitemap or
+// video-page request after a deploy doesn't wait on it.
+refreshVideoIndex(defaultTenant);
+
 // Tenant config endpoint - serves tenant configuration to frontend
 app.get('/api/tenant', (req, res) => {
   try {
@@ -591,12 +615,10 @@ app.get('/api', async (req, res) => {
         console.log(`[Search] Query completed - Tenant: ${tenantId}, Results: ${result.data?.length || 0}, Total: ${result.total || 0}, Time: ${totalTime}ms`);
 
         if (searchTerm.trim().length >= 3) {
-            const phrasing = classifySearch(searchTerm);
             logServerEvent(req, {
                 event_type: 'search',
                 path: '/search',
                 search_term: searchTerm.trim().toLowerCase(),
-                search_mode: phrasing.mode,
                 game: gameName !== 'all' ? gameName : null,
                 channel: selectedValue !== 'all' ? selectedValue : null,
                 year: year || null,
@@ -604,8 +626,7 @@ app.get('/api', async (req, res) => {
                 page,
                 result_videos: result.total,
                 result_quotes: result.totalQuotes,
-                response_time_ms: totalTime,
-                props: phrasing.props
+                response_time_ms: totalTime
             });
         }
 
@@ -1125,6 +1146,8 @@ app.get('/video/:videoId', async (req, res, next) => {
       quotes: video.quotes || [],
       siteBaseUrl: sitemapBase(req),
       indexable,
+      creator: req.tenant?.name || null,
+      related: relatedVideos(batch, video.video_id),
     });
 
     logServerEvent(req, {
@@ -1225,6 +1248,14 @@ app.use((req, res) => {
       // tenantDomain comes from tenant config, never the raw Host header, so a
       // spoofed Host can't inject a canonical pointing somewhere else.
       html = applySeoUrls(html, { base: tenantDomain, pathname: req.path });
+
+      // Search result pages are internal search results: keep them out of
+      // the index (Google's guidance, and every ?q= would otherwise compete
+      // with the video pages for the same queries), but let crawlers follow
+      // their links through to the video pages.
+      if (req.path.replace(/\/+$/, '') === '/search') {
+        html = html.replace(/<meta name="robots" content="[^"]*"\s*\/?>/i, '<meta name="robots" content="noindex,follow" />');
+      }
 
       // Create sanitized tenant config (no database URLs)
       const tenantConfig = {

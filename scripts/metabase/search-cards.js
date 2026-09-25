@@ -5,29 +5,10 @@
 // Conventions follow build-journey-cards.js: native SQL on analytics_events,
 // 30-day window, no tenant_id filter (parity with card 40).
 
-// Search phrasing, derived from the stored term rather than the search_mode
-// column. Rows logged before models/searchMode.js existed all say 'keyword'
-// (the UI has had no strict toggle for a long time), so the column can't be
-// trusted for history — but the term still carries the quotes the user typed.
-// Same rules as classifySearch(): exact = only quoted phrase(s), mixed = a
-// phrase plus loose words, flexible = no complete quoted phrase.
-export const SEARCH_MODE_SQL = `CASE
-  WHEN search_term !~ '"[^"]+"' THEN 'Flexible'
-  WHEN btrim(translate(regexp_replace(search_term, '"[^"]+"', ' ', 'g'), '"', ' ')) = '' THEN 'Exact phrase'
-  ELSE 'Mixed'
-END`;
-
 const WINDOW = `created_at >= now() - interval '30 days'`;
 
 export const CARDS = [
   // ---- Search behaviour ----------------------------------------------------
-  {
-    name: 'Search phrasing (exact vs flexible)',
-    display: 'bar',
-    description: 'Searches by how they were phrased, last 30 days. "Exact phrase" = the whole search in double quotes, "Mixed" = a quoted phrase plus loose words, "Flexible" = no quotes. Derived from the search text, so it is correct for older rows too (their search_mode column is always "keyword").',
-    dim: 'Phrasing', metric: 'Searches',
-    sql: `SELECT ${SEARCH_MODE_SQL} AS "Phrasing", count(*) AS "Searches" FROM analytics_events WHERE event_type = 'search' AND ${WINDOW} GROUP BY 1 ORDER BY 2 DESC;`,
-  },
   {
     name: 'Zero-result search rate %',
     display: 'scalar',
@@ -57,13 +38,6 @@ export const CARDS = [
     display: 'table',
     description: 'Most repeated searches that found nothing, last 30 days: transcription misses, spelling variants, or content that is not indexed.',
     sql: `SELECT search_term AS "Search", count(*) AS "Searches", max(created_at)::date AS "Last searched" FROM analytics_events WHERE event_type = 'search' AND result_quotes = 0 AND ${WINDOW} GROUP BY 1 ORDER BY 2 DESC, 3 DESC LIMIT 25;`,
-  },
-  {
-    name: 'Search errors by kind',
-    display: 'bar',
-    description: 'Searches the visitor saw fail, by cause, last 30 days (timeout, rate_limited, server_error, network, ...). Reported by the browser, so it includes failures the server never logs.',
-    dim: 'Kind', metric: 'Errors',
-    sql: `SELECT coalesce(props->>'kind', 'unknown') AS "Kind", count(*) AS "Errors" FROM analytics_events WHERE event_type = 'search_error' AND ${WINDOW} GROUP BY 1 ORDER BY 2 DESC;`,
   },
   {
     name: 'Filter usage',
@@ -98,6 +72,15 @@ export const CARDS = [
 
 // Grid layout, relative to each section's start row. Same sizes as the journey
 // section: 24x1 headings, 6x3 scalars, 12x6 bars/tables.
+// Cards this script used to create and no longer wants. Archived (restorable
+// from Metabase's trash) on every run, along with their dashboard tiles.
+// There is no strict/flexible search mode in the product, so the phrasing
+// split charted nothing useful, and search errors are no longer tracked.
+export const RETIRED_CARDS = [
+  'Search phrasing (exact vs flexible)',
+  'Search errors by kind',
+];
+
 export const SECTIONS = [
   {
     heading: '## 🔎 Search behaviour',
@@ -106,12 +89,10 @@ export const SECTIONS = [
       { name: 'Search p95 response time (ms)', row: 1, col: 6, size_x: 6, size_y: 3 },
       { name: 'Search to play conversion %', row: 1, col: 12, size_x: 6, size_y: 3 },
       { name: 'Searches per searching session', row: 1, col: 18, size_x: 6, size_y: 3 },
-      { name: 'Search phrasing (exact vs flexible)', row: 4, col: 0, size_x: 12, size_y: 6 },
-      { name: 'Search errors by kind', row: 4, col: 12, size_x: 12, size_y: 6 },
-      { name: 'Top zero-result searches', row: 10, col: 0, size_x: 12, size_y: 8 },
-      { name: 'Filter usage', row: 10, col: 12, size_x: 12, size_y: 8 },
+      { name: 'Top zero-result searches', row: 4, col: 0, size_x: 12, size_y: 8 },
+      { name: 'Filter usage', row: 4, col: 12, size_x: 12, size_y: 8 },
     ],
-    height: 18,
+    height: 12,
   },
   {
     heading: '## 🗺️ Server-rendered pages',

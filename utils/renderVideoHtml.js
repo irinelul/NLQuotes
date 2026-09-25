@@ -33,7 +33,33 @@ function formatTimestamp(seconds) {
  * disjoint from every other's — so they cannot cannibalise one another the way
  * /topic/pretzel and /topic/soft pretzel did.
  */
-export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName, totalQuotes, quotes, siteBaseUrl, indexable = true }) {
+// Links to other transcripts: nearby uploads of the same game, then the
+// chronological neighbours. Only ever links to pages in the indexable batch.
+function renderRelated(related, siteBaseUrl) {
+  if (!related) return '';
+  const link = (v) => `${siteBaseUrl}/video/${encodeURIComponent(v.videoId)}`;
+  const item = (v) => {
+    const date = isoDate(v.uploadDate);
+    return `<li><a href="${link(v)}">${escapeHtml(v.title || 'Untitled video')}`
+      + (date ? `<span class="related-date">${escapeHtml(date)}</span>` : '')
+      + '</a></li>';
+  };
+
+  const parts = [];
+  if (related.sameGame?.length) {
+    parts.push(`<h2>More ${escapeHtml(related.gameName)} videos</h2>`
+      + `<ul class="related-list">${related.sameGame.map(item).join('')}</ul>`);
+  }
+  if (related.newer || related.older) {
+    parts.push('<nav class="prev-next" aria-label="Other videos">'
+      + (related.older ? `<a href="${link(related.older)}" rel="prev">&larr; Previous upload: ${escapeHtml(related.older.title || 'Untitled video')}</a>` : '<span></span>')
+      + (related.newer ? `<a href="${link(related.newer)}" rel="next">Next upload: ${escapeHtml(related.newer.title || 'Untitled video')} &rarr;</a>` : '')
+      + '</nav>');
+  }
+  return parts.length ? `<section class="related">${parts.join('')}</section>` : '';
+}
+
+export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName, totalQuotes, quotes, siteBaseUrl, indexable = true, creator = null, related = null }) {
   const safeId = encodeURIComponent(videoId);
   const canonical = `${siteBaseUrl}/video/${safeId}`;
   const ytUrl = `https://www.youtube.com/watch?v=${safeId}`;
@@ -44,8 +70,12 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
   // Structured data needs the timestamp form; the visible meta line stays date-only.
   const publishedDateTime = toIsoDateTime(uploadDate);
 
+  // The creator's name is what people put in the query ("northernlion <quote>")
+  // and is rarely in the video title itself, so it goes in <title> too.
+  const titleSuffix = creator ? `${escapeHtml(creator)} quotes &amp; transcript` : 'transcript &amp; quotes';
+
   const description =
-    `Full searchable transcript of "${displayTitle}"` +
+    `Full searchable transcript of ${creator ? `${creator}'s ` : ''}"${displayTitle}"` +
     (gameName ? ` (${gameName})` : '') +
     ` — ${Number(totalQuotes || 0).toLocaleString()} lines, each linking straight to that moment on YouTube.`;
   const safeDescription = escapeHtml(description);
@@ -80,6 +110,8 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
     ...(channel ? { creator: { '@type': 'Person', name: channel } } : {}),
   };
 
+  const relatedHtml = renderRelated(related, siteBaseUrl);
+
   const metaBits = [
     channel ? `<span>${escapeHtml(channel)}</span>` : '',
     published ? `<span>${escapeHtml(published)}</span>` : '',
@@ -95,15 +127,15 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
     ? 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1'
     : 'noindex,follow'}" />
   <link rel="canonical" href="${canonical}" />
-  <title>${safeTitle} — transcript &amp; quotes | NLQuotes</title>
+  <title>${safeTitle} — ${titleSuffix} | NLQuotes</title>
   <meta name="description" content="${safeDescription}" />
   <meta property="og:type" content="video.other" />
   <meta property="og:url" content="${canonical}" />
-  <meta property="og:title" content="${safeTitle} — transcript &amp; quotes" />
+  <meta property="og:title" content="${safeTitle} — ${titleSuffix}" />
   <meta property="og:description" content="${safeDescription}" />
   <meta property="og:image" content="${thumbnail}" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="${safeTitle} — transcript &amp; quotes" />
+  <meta name="twitter:title" content="${safeTitle} — ${titleSuffix}" />
   <meta name="twitter:description" content="${safeDescription}" />
   <meta name="twitter:image" content="${thumbnail}" />
   <script type="application/ld+json">${inlineJson(jsonLd)}</script>
@@ -175,6 +207,21 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
     .ts-btn:hover { border-color: var(--ts); text-decoration: none; }
     .qt { color: var(--text2); font-size: 14px; }
 
+    .related { margin-top: 28px; }
+    .related h2 { font-size: 18px; margin: 0 0 12px; }
+    .related-list {
+      list-style: none; margin: 0; padding: 0;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px;
+    }
+    .related-list a {
+      display: block; padding: 10px 12px; border-radius: 8px; font-size: 14px;
+      background: var(--surface); border: 1px solid var(--border);
+    }
+    .related-list a:hover { border-color: var(--link); text-decoration: none; }
+    .related-date { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .prev-next { display: flex; justify-content: space-between; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+    .prev-next a { font-size: 14px; max-width: 48%; }
+
     .site-footer {
       margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border);
       font-size: 13px; color: var(--muted); display: flex; gap: 16px; flex-wrap: wrap;
@@ -219,6 +266,8 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
     <ul class="quote-list">
       ${quotesHtml || '<li class="quote-row"><span class="qt">No transcript lines found for this video.</span></li>'}
     </ul>
+
+    ${relatedHtml}
 
     <footer class="site-footer">
       <a href="${siteBaseUrl}/">&larr; Back to NLQuotes</a>

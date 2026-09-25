@@ -11,6 +11,24 @@ import styles from './Quotes.module.css';
 // `b` is returned from ts_headline when a match is found
 const ALLOWED_TAGS = ['b'];
 
+// The video title links to that video's own transcript page (/video/:id,
+// server-rendered, so a plain <a> rather than a router Link). These links are
+// how people and crawlers get from a search to the transcript pages.
+const VideoPageLink = ({ videoId, title }) => {
+    const text = title || 'N/A';
+    if (!/^[A-Za-z0-9_-]{11}$/.test(videoId || '')) return text;
+    return (
+        <a
+            href={`/video/${videoId}`}
+            className={styles.videoPageLink}
+            title="Full transcript of this video"
+            onClick={() => track('video_page_open', { video_id: videoId })}
+        >
+            {text}
+        </a>
+    );
+};
+
 export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = false }) => {
   const [flagging, setFlagging] = useState({});
   const [modalState, setModalState] = useState({
@@ -169,7 +187,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = fal
                       <td className={styles.videoCell}>
                           <div className={styles.videoInfoContainer}>
                               <div className={styles.videoInfoTitle}>
-                                  {quoteGroup.quotes[0]?.title || 'N/A'}
+                                  <VideoPageLink videoId={quoteGroup.video_id} title={quoteGroup.quotes[0]?.title} />
                               </div>
                               <YouTubePlayer
                                   videoId={quoteGroup.video_id}
@@ -284,7 +302,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = fal
               <React.Fragment key={quoteGroup.video_id || `quote-group-${index}`}>
                   <div className={styles.mobileQuoteGroup}>
                   <div className={styles.mobileVideoTitle}>
-                      {quoteGroup.quotes[0]?.title || 'N/A'}
+                      <VideoPageLink videoId={quoteGroup.video_id} title={quoteGroup.quotes[0]?.title} />
                   </div>
 
                   <div className={styles.mobileVideoContainer}>

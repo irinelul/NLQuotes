@@ -272,6 +272,16 @@
     font-weight: bold;
 }
 
+.videoPageLink {
+    color: inherit;
+    text-decoration: none;
+}
+
+.videoPageLink:hover,
+.videoPageLink:focus-visible {
+    text-decoration: underline;
+}
+
 /* Mobile quotes container */
 .mobileQuotesContainer {
     width: 100%;

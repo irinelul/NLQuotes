@@ -6,9 +6,13 @@
 // upsert by card name, new dashcards appended below existing content, every
 // existing dashcard carried through untouched.
 //
+// Cards listed in RETIRED_CARDS (ones earlier versions of this script made)
+// are archived and their tiles removed from the dashboard on every run.
+//
 // It also looks for the old strict/flexible cards: any other card whose SQL
-// reads the search_mode column. That column said 'keyword' for every search
-// until this release, so those charts show nothing real. They are listed by
+// reads the search_mode column. It recorded a strict/flexible toggle the UI
+// no longer has (always 'keyword'; no longer written at all), so those charts
+// show nothing real. They are listed by
 // default and archived (not deleted — restorable from Metabase's trash) only
 // with --archive-stale.
 //
@@ -21,7 +25,7 @@
 //   --archive-stale  archive the old cards that chart the search_mode column
 
 import process from 'node:process';
-import { CARDS, SECTIONS } from './search-cards.js';
+import { CARDS, SECTIONS, RETIRED_CARDS } from './search-cards.js';
 
 const BASE_URL = (process.env.METABASE_BASE_URL || 'https://metabase.nlquotes.com').replace(/\/+$/, '');
 const API_KEY = process.env.METABASE_API_KEY;
@@ -141,9 +145,28 @@ async function handleStaleCards(allCards) {
   }
 }
 
-async function updateDashboard(ids) {
+async function archiveRetiredCards(allCards) {
+  const retired = allCards.filter((c) => RETIRED_CARDS.includes(c.name));
+  if (retired.length === 0) {
+    console.log('  none left.');
+    return new Set();
+  }
+  for (const c of retired) {
+    await write('PUT', `/api/card/${c.id}`, { archived: true }, `archive card ${c.id} — ${c.name}`);
+    if (!DRY_RUN) console.log(`  archived card ${c.id} — ${c.name}`);
+  }
+  return new Set(retired.map((c) => c.id));
+}
+
+async function updateDashboard(ids, retiredIds) {
   const dash = await api('GET', `/api/dashboard/${DASHBOARD_ID}`);
-  const existing = Array.isArray(dash.dashcards) ? dash.dashcards : [];
+  const all = Array.isArray(dash.dashcards) ? dash.dashcards : [];
+  // Tiles of retired cards (by id, or by name in case the card is already
+  // archived and no longer in the card list) are dropped from the dashboard.
+  const isRetired = (d) => retiredIds.has(d.card_id) || RETIRED_CARDS.includes(d.card?.name);
+  const existing = all.filter((d) => !isRetired(d));
+  const removed = all.length - existing.length;
+  for (const d of all.filter(isRetired)) console.log(`  - remove tile "${d.card?.name ?? d.card_id}"`);
   const namesOnDash = new Set(existing.map((d) => d.card?.name).filter(Boolean));
   const headingsOnDash = new Set(existing.map((d) => d.visualization_settings?.text).filter(Boolean));
   const preserved = existing.map(({ card: _card, ...rest }) => rest);
@@ -191,9 +214,9 @@ async function updateDashboard(ids) {
     baseRow += section.height;
   }
 
-  if (added.length === 0) return 0;
+  if (added.length === 0 && removed === 0) return 0;
   await write('PUT', `/api/dashboard/${DASHBOARD_ID}`, { dashcards: [...preserved, ...added] },
-    `save ${added.length} new dashcard(s) on dashboard ${DASHBOARD_ID}`);
+    `save dashboard ${DASHBOARD_ID} (+${added.length} tile(s), -${removed} retired)`);
   return added.length;
 }
 
@@ -212,11 +235,14 @@ async function main() {
   console.log('Cards:');
   const ids = await upsertCards(allCards);
 
+  console.log('\nRetired cards:');
+  const retiredIds = await archiveRetiredCards(allCards);
+
   console.log('\nOld cards charting the search_mode column:');
-  await handleStaleCards(allCards);
+  await handleStaleCards(allCards.filter((c) => !retiredIds.has(c.id)));
 
   console.log(`\nDashboard ${DASHBOARD_ID}:`);
-  const added = await updateDashboard(ids);
+  const added = await updateDashboard(ids, retiredIds);
 
   console.log(`\nDone. ${CARDS.length} cards ensured, ${added} dashboard placement(s)${DRY_RUN ? ' would be' : ''} added.`);
 }

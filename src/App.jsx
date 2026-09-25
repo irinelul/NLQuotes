@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import query from './services/quotes';
 import { track } from './services/analytics';
-import { describeApiError, classifyApiError } from './services/apiError';
+import { describeApiError } from './services/apiError';
 import { useNavigate, Routes, Route, useSearchParams, useLocation } from 'react-router-dom';
 import ScrollToTop from './components/ScrollToTop';
 import { useFetchGames } from './hooks/useFetchGames';
@@ -104,13 +104,6 @@ const App = () => {
         } catch (error) {
             if (seq !== fetchSeqRef.current) return;
             console.error('Error fetching quotes:', error);
-            // Failed searches never reach the server's search log (a 429 or a
-            // network error doesn't get that far), so report them from here.
-            track('search_error', {
-                search_term: searchTerm ? searchTerm.toLowerCase() : null,
-                page: pageNum,
-                props: { kind: classifyApiError(error), status: error?.response?.status ?? 0 }
-            });
             setError(describeApiError(error, 'search'));
             setQuotes([]);
             setTotalPages(0);

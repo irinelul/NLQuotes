@@ -29,7 +29,7 @@ const CLIENT_EVENT_TYPES = new Set([
     'scroll_depth',         // props: { depth } — 25/50/75/100, once per search
     'session_start',        // front-end session beacon
     'session_end',          // props: { duration_ms } — final beacon before unload
-    'search_error',         // props: { kind, status } — a search the user saw fail
+    'video_page_open',      // search result title clicked through to /video/:id
 ]);
 
 // ---- opt-out ----------------------------------------------------------------

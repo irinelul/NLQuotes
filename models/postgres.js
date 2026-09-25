@@ -517,11 +517,24 @@ const quoteModel = {
   // every quote row and constant per video (verified: zero videos have more
   // than one distinct upload_date, zero rows are null). The HAVING stays as the
   // authoritative condition in case that ever stops being true.
-  async listVideosForIndex({ minQuotes = 20, since = null, limit = 0 } = {}, tenant = null) {
+  //
+  // timeoutMs overrides the pool's 10s statement_timeout for this one query.
+  // With no `since` it aggregates the whole table, which is fine off the
+  // request path (index.js runs it in the background) but can take longer than
+  // a request is allowed to, especially on a cold cache.
+  async listVideosForIndex({ minQuotes = 20, since = null, limit = 0, timeoutMs = 0 } = {}, tenant = null) {
     let client;
+    let inTxn = false;
     try {
       const pool = getPoolForTenant(tenant);
       client = await pool.connect();
+      if (timeoutMs > 0) {
+        // SET LOCAL only lasts until COMMIT/ROLLBACK, so the pooled connection
+        // goes back with its normal timeout.
+        await client.query('BEGIN');
+        inTxn = true;
+        await client.query(`SET LOCAL statement_timeout = ${parseInt(timeoutMs, 10)}`);
+      }
       const result = await client.query(
         `SELECT q.video_id,
                 max(q.title)       AS title,
@@ -537,6 +550,10 @@ const quoteModel = {
          ${limit > 0 ? 'LIMIT ' + parseInt(limit, 10) : ''}`,
         [minQuotes, since]
       );
+      if (inTxn) {
+        await client.query('COMMIT');
+        inTxn = false;
+      }
       return result.rows.map((r) => ({
         videoId: r.video_id,
         title: r.title,
@@ -550,6 +567,7 @@ const quoteModel = {
       // videos" must never look the same to the caller: returning [] once put
       // noindex on every video page for six hours.
       console.error('Error listing videos for index:', error);
+      if (inTxn) await client.query('ROLLBACK').catch(() => {});
       throw new Error(`Database error occurred: ${error.message}`);
     } finally {
       if (client) client.release();
