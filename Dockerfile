@@ -1,5 +1,5 @@
-# Use Node.js LTS version
-FROM node:20-slim
+# Use Node.js LTS version (Node 20 is end-of-life and no longer patched)
+FROM node:24-slim
 
 # Set working directory
 WORKDIR /app
@@ -41,5 +41,11 @@ EXPOSE ${PORT}
 
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
+
+# Run as the image's unprivileged "node" user rather than root. The only thing
+# written at runtime is dist/ (on-demand and startup-generated topic pages), so
+# that is all it needs to own.
+RUN chown -R node:node /app/dist
+USER node
 
 CMD ["/app/docker-entrypoint.sh"]

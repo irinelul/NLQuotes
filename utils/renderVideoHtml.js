@@ -1,4 +1,5 @@
 import { toDateOnly as isoDate, toIsoDateTime } from './dateOnly.js';
+import { inlineJson } from './inlineJson.js';
 
 function escapeHtml(str) {
   return String(str)
@@ -105,7 +106,7 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
   <meta name="twitter:title" content="${safeTitle} — transcript &amp; quotes" />
   <meta name="twitter:description" content="${safeDescription}" />
   <meta name="twitter:image" content="${thumbnail}" />
-  <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>
+  <script type="application/ld+json">${inlineJson(jsonLd)}</script>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     :root {

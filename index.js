@@ -21,6 +21,7 @@ import { isBlockedTopic } from './utils/topicBlocklist.js';
 import { isAllowlistedTopic, allowlistedTopics } from './utils/topicAllowlist.js';
 import { normalizeTopicTerm, topicPath } from './utils/topicUrl.js';
 import { buildUrlset, buildSitemapIndex, chunk } from './utils/sitemap.js';
+import { inlineJson } from './utils/inlineJson.js';
 
 // Load environment variables
 dotenv.config();
@@ -1222,7 +1223,7 @@ app.use((req, res) => {
       };
       
       // Inject tenant config as a script tag before the main script
-      const tenantScript = `<script>window.__TENANT_CONFIG__ = ${JSON.stringify(tenantConfig)};</script>`;
+      const tenantScript = `<script>window.__TENANT_CONFIG__ = ${inlineJson(tenantConfig)};</script>`;
       
       // Insert before the main script tag (handle both dev and production builds)
       // Production: <script type="module" crossorigin src="/assets/index-*.js"></script>
