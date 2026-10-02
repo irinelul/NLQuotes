@@ -6,7 +6,7 @@ from cheapest to most realistic:
 
 | Script | Runs where | Answers |
 |---|---|---|
-| `baseline.sql` | any psql client | Size, cache hit, per-read latency, scans, spills, checkpoints, top statements. This is the "current baseline". |
+| `baseline.sql` | DataGrip or psql | One query, one result grid (`section · object · metric · value · detail`): size, cache hit, per-read latency, scans, spills, checkpoints, top statements. This is the "current baseline". |
 | `disk-bench.sh` | **on the DB host** (needs `fio`) | Raw disk latency and throughput in Postgres-shaped I/O (8k random reads, WAL fsync). |
 | `query-bench.js` | any machine with Node + `pg` | Our real queries (copied from both apps): cold, warm, client-observed, and under concurrent load. |
 
@@ -42,7 +42,9 @@ memory, not the disk. `baseline.sql` section 0 prints these settings, so you
 can diff them. Run `query-bench.js` from the same machine both times (ideally
 the app server), so that network latency matches production.
 
-1. **Baseline on the current server** (do this first, today):
+1. **Baseline on the current server** (do this first, today). In DataGrip,
+   open a console on each database, run `baseline.sql`, and export the grid
+   (CSV/TSV) as `baseline-old-<db>.csv`. Or use psql:
    ```sh
    # once per database: each NLQuotes tenant DB and the ChatAudit DB
    psql "$DATABASE_URL"           -X -q -f scripts/db-bench/baseline.sql > baseline-old-nlquotes.txt
