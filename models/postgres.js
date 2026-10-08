@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import pg from 'pg';
 import { getTenantDatabaseUrl } from '../tenants/tenant-manager.js';
+import { normalizeSearchTerm } from '../utils/searchTerm.js';
 const { Pool } = pg;
 
 dotenv.config();
@@ -176,6 +177,7 @@ const quoteModel = {
     page = Math.max(1, parseInt(page) || 1);
     limit = Math.min(50, Math.max(1, parseInt(limit) || 10)); // Cap at 50 items
 
+        searchTerm = normalizeSearchTerm(searchTerm);
     // Validate search term length
     if (searchTerm && searchTerm.trim().length < 3) {
       return { data: [], total: 0, totalQuotes: 0 };
