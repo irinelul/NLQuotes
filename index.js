@@ -22,7 +22,8 @@ import { isAllowlistedTopic, allowlistedTopics } from './utils/topicAllowlist.js
 import { normalizeTopicTerm, topicPath } from './utils/topicUrl.js';
 import { buildUrlset, buildSitemapIndex, chunk } from './utils/sitemap.js';
 import { inlineJson } from './utils/inlineJson.js';
-import { buildVideoIndex, relatedVideos } from './utils/videoIndex.js';
+import { buildVideoIndex, relatedVideos, archiveLinksFor, monthPath, gamePath } from './utils/videoIndex.js';
+import { renderVideoMonthHtml, renderVideoGameHtml, renderVideoGamesHtml } from './utils/renderVideoArchiveHtml.js';
 
 // Load environment variables
 dotenv.config();
@@ -356,6 +357,25 @@ app.get('/sitemap-core.xml', async (req, res) => {
     console.error('Error reading corpus date:', e.message);
   }
 
+  // The month and game archives. Their lastmod is the newest upload they list,
+  // which is exactly when the page last gained a row. Skipped (not emptied)
+  // while the batch is unknown.
+  const archives = [];
+  try {
+    const batch = await getIndexableVideos(req.tenant);
+    if (batch) {
+      archives.push({ loc: `${base}/videos/games`, lastmod: corpusDate });
+      for (const [ym, indices] of batch.months) {
+        archives.push({ loc: `${base}${monthPath(ym)}`, lastmod: batch.list[indices[0]].uploadDate });
+      }
+      for (const game of batch.games.values()) {
+        archives.push({ loc: `${base}${gamePath(game.slug)}`, lastmod: batch.list[game.indices[0]].uploadDate });
+      }
+    }
+  } catch (e) {
+    console.error('Error listing archive pages for sitemap:', e.message);
+  }
+
   // /privacy and /changelog carry no lastmod — we genuinely don't track when
   // they last changed, and a made-up date is worse than none.
   sendXml(res, buildUrlset([
@@ -363,6 +383,7 @@ app.get('/sitemap-core.xml', async (req, res) => {
     { loc: `${base}/videos`, lastmod: corpusDate },
     { loc: `${base}/changelog` },
     { loc: `${base}/privacy` },
+    ...archives,
   ]));
 });
 
@@ -1090,6 +1111,8 @@ async function renderVideosHub(req, res, next, page) {
       totalPages,
       totalVideos: list.length,
       siteBaseUrl: sitemapBase(req),
+      months: [...batch.months].map(([ym, indices]) => ({ ym, count: indices.length })),
+      gameCount: batch.games.size,
     });
 
     logServerEvent(req, { event_type: 'ssr_page_view', path: req.path, page, props: { kind: 'videos_hub' } });
@@ -1108,6 +1131,78 @@ app.get('/videos/page/:n', (req, res, next) => {
   // Page 1 already lives at /videos; don't let a second URL serve it.
   if (n === 1) return res.redirect(301, '/videos');
   return renderVideosHub(req, res, next, n);
+});
+
+// ---- Archive pages: one per upload month, one per game ----
+// The numbered hub above is one long chain, so most of the back catalogue sat
+// dozens of clicks deep and stalled as "Discovered - currently not indexed".
+// These put every video two clicks from /videos. Unknown months/games fall
+// through to the 404 at the bottom.
+function archiveUnavailable(res) {
+  return res.status(503).set('Retry-After', '600').type('html')
+    .send('<!doctype html><meta charset="utf-8"><title>Temporarily unavailable</title>'
+      + '<p>The video list is temporarily unavailable. Please try again shortly.</p>');
+}
+
+function sendArchive(req, res, html, kind) {
+  logServerEvent(req, { event_type: 'ssr_page_view', path: req.path, props: { kind } });
+  res.set('Cache-Control', 'public, max-age=3600').type('html').send(html);
+}
+
+app.get('/videos/games', async (req, res, next) => {
+  try {
+    const batch = await getIndexableVideos(req.tenant);
+    if (!batch) return archiveUnavailable(res);
+    sendArchive(req, res, renderVideoGamesHtml({
+      games: [...batch.games.values()].map((g) => ({ slug: g.slug, name: g.name, count: g.indices.length })),
+      siteBaseUrl: sitemapBase(req),
+      creator: req.tenant?.name || null,
+    }), 'videos_games');
+  } catch (e) {
+    console.error('Error rendering games directory:', e);
+    next();
+  }
+});
+
+app.get('/videos/game/:slug', async (req, res, next) => {
+  try {
+    const batch = await getIndexableVideos(req.tenant);
+    if (!batch) return archiveUnavailable(res);
+    const game = batch.games.get(req.params.slug);
+    if (!game) return next();
+    sendArchive(req, res, renderVideoGameHtml({
+      game,
+      videos: game.indices.map((i) => batch.list[i]),
+      siteBaseUrl: sitemapBase(req),
+      creator: req.tenant?.name || null,
+    }), 'videos_game');
+  } catch (e) {
+    console.error('Error rendering game archive:', e);
+    next();
+  }
+});
+
+app.get(/^\/videos\/(\d{4})\/(\d{2})$/, async (req, res, next) => {
+  try {
+    const batch = await getIndexableVideos(req.tenant);
+    if (!batch) return archiveUnavailable(res);
+    const ym = `${req.params[0]}-${req.params[1]}`;
+    const indices = batch.months.get(ym);
+    if (!indices) return next();
+    const keys = [...batch.months.keys()]; // newest first
+    const at = keys.indexOf(ym);
+    sendArchive(req, res, renderVideoMonthHtml({
+      ym,
+      videos: indices.map((i) => batch.list[i]),
+      newer: at > 0 ? keys[at - 1] : null,
+      older: at < keys.length - 1 ? keys[at + 1] : null,
+      siteBaseUrl: sitemapBase(req),
+      creator: req.tenant?.name || null,
+    }), 'videos_month');
+  } catch (e) {
+    console.error('Error rendering month archive:', e);
+    next();
+  }
 });
 
 app.get('/video/:videoId', async (req, res, next) => {
@@ -1148,6 +1243,7 @@ app.get('/video/:videoId', async (req, res, next) => {
       indexable,
       creator: req.tenant?.name || null,
       related: relatedVideos(batch, video.video_id),
+      archive: archiveLinksFor(batch, video.video_id),
     });
 
     logServerEvent(req, {
@@ -1210,6 +1306,9 @@ function applySeoUrls(html, { base, pathname }) {
     .replaceAll('https://example.com', base);
 }
 
+// Keep in sync with the <Routes> in src/App.jsx.
+const SPA_ROUTES = new Set(['/', '/search', '/privacy', '/changelog', '/stats']);
+
 // SPA fallback for React Router with CSP header
 // This must be LAST so it doesn't catch API routes
 app.use((req, res) => {
@@ -1218,6 +1317,15 @@ app.use((req, res) => {
   if (staticExtensions.test(req.path)) {
     return res.status(404).end();
   }
+  // Anything the React router has no route for used to answer 200 with the
+  // app shell and an index,follow tag — a soft 404 for every mistyped or
+  // retired URL, each one declaring itself canonical. Still serve the shell
+  // (the app shows its own not-found state) but with a real 404 and noindex.
+  // /topic/* only reaches here when the topic handler above bailed out.
+  const spaPath = req.path.replace(/\/+$/, '') || '/';
+  const isSpaRoute = SPA_ROUTES.has(spaPath) || spaPath.startsWith('/topic/');
+  if (!isSpaRoute) res.status(404);
+
   // Get tenant hostname for CSP
   const tenantHostname = req.tenant?.hostnames?.[0] || 'nlquotes.com';
   const tenantDomain = `https://${tenantHostname}`;
@@ -1253,7 +1361,7 @@ app.use((req, res) => {
       // the index (Google's guidance, and every ?q= would otherwise compete
       // with the video pages for the same queries), but let crawlers follow
       // their links through to the video pages.
-      if (req.path.replace(/\/+$/, '') === '/search') {
+      if (spaPath === '/search' || !isSpaRoute) {
         html = html.replace(/<meta name="robots" content="[^"]*"\s*\/?>/i, '<meta name="robots" content="noindex,follow" />');
       }
 

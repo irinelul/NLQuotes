@@ -59,7 +59,34 @@ function renderRelated(related, siteBaseUrl) {
   return parts.length ? `<section class="related">${parts.join('')}</section>` : '';
 }
 
-export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName, totalQuotes, quotes, siteBaseUrl, indexable = true, creator = null, related = null }) {
+// Breadcrumb trail up to the archive pages this video is listed on, both as
+// visible links and as BreadcrumbList structured data. The game is the more
+// meaningful parent, so it wins the structured trail when there is one.
+// archive: { month: { label, path } | null, game: { name, path } | null }
+function renderCrumbs(archive, siteBaseUrl, canonical, displayTitle) {
+  const trail = [{ name: 'NLQuotes', path: '/' }, { name: 'Videos', path: '/videos' }];
+  if (archive?.game) trail.push({ name: archive.game.name, path: archive.game.path });
+  else if (archive?.month) trail.push({ name: archive.month.label, path: archive.month.path });
+
+  const visible = [...trail];
+  if (archive?.game && archive?.month) visible.push({ name: archive.month.label, path: archive.month.path });
+
+  const html = `<nav class="crumbs" aria-label="Breadcrumb">${visible
+    .map((c) => `<a href="${siteBaseUrl}${c.path}">${escapeHtml(c.name)}</a>`)
+    .join('<span class="sep">&rsaquo;</span>')}</nav>`;
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      ...trail.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c.name, item: `${siteBaseUrl}${c.path}` })),
+      { '@type': 'ListItem', position: trail.length + 1, name: displayTitle, item: canonical },
+    ],
+  };
+  return { html, jsonLd };
+}
+
+export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName, totalQuotes, quotes, siteBaseUrl, indexable = true, creator = null, related = null, archive = null }) {
   const safeId = encodeURIComponent(videoId);
   const canonical = `${siteBaseUrl}/video/${safeId}`;
   const ytUrl = `https://www.youtube.com/watch?v=${safeId}`;
@@ -111,6 +138,7 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
   };
 
   const relatedHtml = renderRelated(related, siteBaseUrl);
+  const crumbs = renderCrumbs(archive, siteBaseUrl, canonical, displayTitle);
 
   const metaBits = [
     channel ? `<span>${escapeHtml(channel)}</span>` : '',
@@ -139,6 +167,7 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
   <meta name="twitter:description" content="${safeDescription}" />
   <meta name="twitter:image" content="${thumbnail}" />
   <script type="application/ld+json">${inlineJson(jsonLd)}</script>
+  <script type="application/ld+json">${inlineJson(crumbs.jsonLd)}</script>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     :root {
@@ -165,7 +194,10 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
     .site-name { font-size: 18px; font-weight: 700; color: var(--text); }
     .site-name:hover { text-decoration: none; color: var(--accent); }
 
-    .page { max-width: 900px; margin: 0 auto; padding: 32px 20px 64px; }
+    .page { max-width: 900px; margin: 0 auto; padding: 24px 20px 64px; }
+
+    .crumbs { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+    .crumbs .sep { margin: 0 8px; }
 
     .hero { display: flex; gap: 20px; margin-bottom: 24px; flex-wrap: wrap; }
     .hero-thumb {
@@ -244,6 +276,8 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
   </header>
 
   <main class="page">
+
+    ${crumbs.html}
 
     <div class="hero">
       <a href="${ytUrl}" target="_blank" rel="noopener noreferrer">

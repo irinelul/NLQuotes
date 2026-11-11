@@ -1,4 +1,32 @@
 import { toDateOnly as isoDate } from './dateOnly.js';
+import { monthPath } from './videoIndex.js';
+
+const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// Links to every month archive, grouped by year. This block is what keeps the
+// whole back catalogue two clicks from the hub: without it the only route to
+// an old video is walking the numbered pages one window at a time.
+// months: [{ ym: 'YYYY-MM', count }] newest first.
+function renderBrowse(months, gameCount, siteBaseUrl) {
+  if (!months?.length) return '';
+  const byYear = new Map();
+  for (const m of months) {
+    const year = m.ym.slice(0, 4);
+    if (!byYear.has(year)) byYear.set(year, []);
+    byYear.get(year).push(m);
+  }
+  const rows = [...byYear].map(([year, list]) => {
+    const links = [...list].reverse().map((m) =>
+      `<a href="${siteBaseUrl}${monthPath(m.ym)}" title="${m.count} videos">${MONTH_SHORT[parseInt(m.ym.slice(5), 10) - 1]}</a>`).join('');
+    return `<div class="year-row"><span class="year">${year}</span><span class="months">${links}</span></div>`;
+  }).join('');
+  return `
+    <section class="browse">
+      <h2>Browse the archive</h2>
+      ${gameCount ? `<p class="sub"><a href="${siteBaseUrl}/videos/games">Browse by game</a> &middot; ${Number(gameCount).toLocaleString('en-US')} games</p>` : ''}
+      ${rows}
+    </section>`;
+}
 
 function escapeHtml(str) {
   return String(str)
@@ -19,7 +47,7 @@ const pagePath = (n) => (n <= 1 ? '/videos' : `/videos/page/${n}`);
  * "Discovered - currently not indexed". Internal links are what actually get
  * pages crawled, so every indexable video is reachable from here in a few hops.
  */
-export function renderVideosHubHtml({ videos, page, totalPages, totalVideos, siteBaseUrl }) {
+export function renderVideosHubHtml({ videos, page, totalPages, totalVideos, siteBaseUrl, months = [], gameCount = 0 }) {
   const canonical = `${siteBaseUrl}${pagePath(page)}`;
   // "Latest", not "All": this lists the current rollout batch (videos newer than
   // VIDEO_INDEX_SINCE), not the full 23k archive. Calling it "All videos" would
@@ -118,6 +146,11 @@ export function renderVideosHubHtml({ videos, page, totalPages, totalVideos, sit
     .pg { padding: 7px 12px; }
     .pg-current { background: var(--accent); border-color: var(--accent); color: #fff; }
     .pg-gap { color: var(--muted); padding: 0 4px; }
+    .browse { margin-top: 36px; }
+    .browse h2 { font-size: 18px; margin: 0 0 8px; }
+    .year-row { display: flex; gap: 12px; align-items: baseline; padding: 4px 0; font-size: 14px; }
+    .year { width: 44px; color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+    .months { display: flex; flex-wrap: wrap; gap: 4px 12px; }
     .site-footer {
       margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border);
       font-size: 13px; color: var(--muted); display: flex; gap: 16px; flex-wrap: wrap;
@@ -147,9 +180,11 @@ export function renderVideosHubHtml({ videos, page, totalPages, totalVideos, sit
       ${numbered.join('')}
       ${nextLink}
     </nav>
+    ${renderBrowse(months, gameCount, siteBaseUrl)}
 
     <footer class="site-footer">
       <a href="${siteBaseUrl}/">&larr; Back to NLQuotes</a>
+      <a href="${siteBaseUrl}/videos/games">Browse by game</a>
     </footer>
   </main>
 
