@@ -21,6 +21,7 @@ import { isBlockedTopic } from './utils/topicBlocklist.js';
 import { isAllowlistedTopic, allowlistedTopics } from './utils/topicAllowlist.js';
 import { normalizeTopicTerm, topicPath } from './utils/topicUrl.js';
 import { buildUrlset, buildSitemapIndex, chunk } from './utils/sitemap.js';
+import { renderHomeFallbackHtml, renderLlmsTxt } from './utils/renderHomeFallback.js';
 import { inlineJson } from './utils/inlineJson.js';
 import { buildVideoIndex, relatedVideos, archiveLinksFor, monthPath, gamePath } from './utils/videoIndex.js';
 import { renderVideoMonthHtml, renderVideoGameHtml, renderVideoGamesHtml } from './utils/renderVideoArchiveHtml.js';
@@ -442,6 +443,14 @@ app.get('/sitemap-removed.xml', async (req, res) => {
     console.error('Error building removal sitemap:', e.message);
     sendXml(res, buildUrlset([]));
   }
+});
+
+// Plain-Markdown summary of the site for language models (llmstxt.org).
+app.get('/llms.txt', (req, res) => {
+  res
+    .set('Cache-Control', 'public, max-age=86400')
+    .type('text/plain; charset=utf-8')
+    .send(renderLlmsTxt(req.tenant, sitemapBase(req)));
 });
 
 // ======= STREAMLINED STATIC FILE SERVING =======
@@ -1363,6 +1372,16 @@ app.use((req, res) => {
       // their links through to the video pages.
       if (spaPath === '/search' || !isSpaRoute) {
         html = html.replace(/<meta name="robots" content="[^"]*"\s*\/?>/i, '<meta name="robots" content="noindex,follow" />');
+      }
+
+      // The home page is a client-rendered search box: crawlers that don't run
+      // JavaScript got an empty #root and no links. Give them a description and
+      // links into the server-rendered pages; createRoot() replaces it on mount.
+      if (spaPath === '/') {
+        html = html.replace(
+          '<div id="root"></div>',
+          () => `<div id="root">${renderHomeFallbackHtml(tenant, tenantDomain)}</div>`
+        );
       }
 
       // Create sanitized tenant config (no database URLs)
