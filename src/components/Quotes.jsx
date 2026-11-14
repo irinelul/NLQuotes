@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import React, { useState, useEffect } from 'react';
 import { pauseOtherPlayers } from '../services/youtubeApiLoader';
 import DOMPurify from 'dompurify';
@@ -58,7 +59,7 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = fal
       pauseOtherPlayers(null);
       setActiveTimestamp({ videoId: null, timestamp: null });
     }
-  }, [quotes, searchTerm]); // Reset when quotes or searchTerm changes
+  }, [quotes, searchTerm, activeTimestamp.videoId]); // Reset when quotes or searchTerm changes
 
   // Effect to handle responsive layout
   useEffect(() => {
@@ -132,10 +133,11 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = fal
   };
 
   const handleFlagClick = (quote, videoId, title, channel, timestamp, lineNumber) => {
+      const cleanQuote = typeof quote === 'string' ? quote.replace(/<[^>]*>/g, '') : quote;
       trackQuoteEvent('quote_flag', videoId, timestamp);
       setModalState({
           isOpen: true,
-          quote,
+          quote: cleanQuote,
           videoId,
           title,
           channel,
@@ -181,13 +183,17 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = fal
               </tr>
           </thead>
           <tbody>
-              {quotes.map((quoteGroup, index) => (
+              {quotes.map((quoteGroup, index) => {
+                  const groupTitle = quoteGroup.title || quoteGroup.quotes?.[0]?.title;
+                  const groupChannel = quoteGroup.channel_source || quoteGroup.quotes?.[0]?.channel_source || 'N/A';
+                  const groupUploadDate = quoteGroup.upload_date || quoteGroup.quotes?.[0]?.upload_date;
+                  return (
                   <React.Fragment key={quoteGroup.video_id || `quote-group-${index}`}>
                       <tr className={styles.videoRow}>
                       <td className={styles.videoCell}>
                           <div className={styles.videoInfoContainer}>
                               <div className={styles.videoInfoTitle}>
-                                  <VideoPageLink videoId={quoteGroup.video_id} title={quoteGroup.quotes[0]?.title} />
+                                  <VideoPageLink videoId={quoteGroup.video_id} title={groupTitle} />
                               </div>
                               <YouTubePlayer
                                   videoId={quoteGroup.video_id}
@@ -195,8 +201,8 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = fal
                                   onTimestampClick={handleTimestampClick}
                               />
                               <div>
-                                  {quoteGroup.quotes[0]?.channel_source || 'N/A'} - {quoteGroup.quotes[0]?.upload_date
-                                      ? formatDate(quoteGroup.quotes[0].upload_date)
+                                  {groupChannel} - {groupUploadDate
+                                      ? formatDate(groupUploadDate)
                                       : 'N/A'}
                               </div>
                           </div>
@@ -253,10 +259,12 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = fal
                                                   trackQuoteEvent('tweet_share', quoteGroup.video_id, backdateTimestamp(quote.timestamp_start));
                                                   const videoUrl = `https://youtu.be/${quoteGroup.video_id}?t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`;
                                                   const pageUrl = window.location.href;
-                                                  const cleanSearchTerm = searchTerm.replace(/"/g, '');
-                                                  const tweetText = totalQuotes === 1 
-                                                      ? `The only quote mentioning "${cleanSearchTerm}": ${videoUrl}\n\nFound on: ${pageUrl}`
-                                                      : `Just one of ${totalQuotes} quotes mentioning "${cleanSearchTerm}": ${videoUrl}\n\nSee them all here! ${pageUrl}`;
+                                                  const cleanSearchTerm = (searchTerm || '').replace(/"/g, '').trim();
+                                                  const tweetText = !cleanSearchTerm
+                                                      ? `Check out this quote: ${videoUrl}\n\nFound on: ${pageUrl}`
+                                                      : totalQuotes === 1 
+                                                          ? `The only quote mentioning "${cleanSearchTerm}": ${videoUrl}\n\nFound on: ${pageUrl}`
+                                                          : `Just one of ${totalQuotes} quotes mentioning "${cleanSearchTerm}": ${videoUrl}\n\nSee them all here! ${pageUrl}`;
                                                   window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`, '_blank');
                                               }}
                                               className={styles.actionButton}
@@ -269,8 +277,8 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = fal
                                               onClick={() => handleFlagClick(
                                                   quote.text,
                                                   quoteGroup.video_id,
-                                                  quoteGroup.quotes[0]?.title,
-                                                  quoteGroup.quotes[0]?.channel_source,
+                                                  groupTitle,
+                                                  groupChannel,
                                                   quote.timestamp_start,
                                                   quote.line_number
                                               )}
@@ -287,7 +295,8 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = fal
                       </td>
                   </tr>
                   </React.Fragment>
-              ))}
+                  );
+              })}
           </tbody>
       </table>
     );
@@ -298,11 +307,15 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = fal
 
     return (
       <div className={styles.mobileQuotesContainer}>
-          {quotes.map((quoteGroup, index) => (
+          {quotes.map((quoteGroup, index) => {
+              const groupTitle = quoteGroup.title || quoteGroup.quotes?.[0]?.title;
+              const groupChannel = quoteGroup.channel_source || quoteGroup.quotes?.[0]?.channel_source || 'N/A';
+              const groupUploadDate = quoteGroup.upload_date || quoteGroup.quotes?.[0]?.upload_date;
+              return (
               <React.Fragment key={quoteGroup.video_id || `quote-group-${index}`}>
                   <div className={styles.mobileQuoteGroup}>
                   <div className={styles.mobileVideoTitle}>
-                      <VideoPageLink videoId={quoteGroup.video_id} title={quoteGroup.quotes[0]?.title} />
+                      <VideoPageLink videoId={quoteGroup.video_id} title={groupTitle} />
                   </div>
 
                   <div className={styles.mobileVideoContainer}>
@@ -314,8 +327,8 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = fal
                   </div>
 
                   <div className={styles.mobileVideoInfo}>
-                      {quoteGroup.quotes[0]?.channel_source || 'N/A'} - {quoteGroup.quotes[0]?.upload_date
-                          ? formatDate(quoteGroup.quotes[0].upload_date)
+                      {groupChannel} - {groupUploadDate
+                          ? formatDate(groupUploadDate)
                           : 'N/A'}
                   </div>
 
@@ -370,10 +383,12 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = fal
                                           trackQuoteEvent('tweet_share', quoteGroup.video_id, backdateTimestamp(quote.timestamp_start));
                                           const videoUrl = `https://youtu.be/${quoteGroup.video_id}?t=${Math.floor(backdateTimestamp(quote.timestamp_start))}`;
                                           const pageUrl = window.location.href;
-                                          const cleanSearchTerm = searchTerm.replace(/"/g, '');
-                                          const tweetText = totalQuotes === 1 
-                                              ? `The only quote mentioning "${cleanSearchTerm}": ${videoUrl}\n\nFound on: ${pageUrl}`
-                                              : `Just one of ${totalQuotes} quotes mentioning "${cleanSearchTerm}": ${videoUrl}\n\nSee them all here! ${pageUrl}`;
+                                          const cleanSearchTerm = (searchTerm || '').replace(/"/g, '').trim();
+                                          const tweetText = !cleanSearchTerm
+                                              ? `Check out this quote: ${videoUrl}\n\nFound on: ${pageUrl}`
+                                              : totalQuotes === 1 
+                                                  ? `The only quote mentioning "${cleanSearchTerm}": ${videoUrl}\n\nFound on: ${pageUrl}`
+                                                  : `Just one of ${totalQuotes} quotes mentioning "${cleanSearchTerm}": ${videoUrl}\n\nSee them all here! ${pageUrl}`;
                                           window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`, '_blank');
                                       }}
                                       className={styles.mobileActionButton}
@@ -386,8 +401,8 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = fal
                                       onClick={() => handleFlagClick(
                                           quote.text,
                                           quoteGroup.video_id,
-                                          quoteGroup.quotes[0]?.title,
-                                          quoteGroup.quotes[0]?.channel_source,
+                                          groupTitle,
+                                          groupChannel,
                                           quote.timestamp_start,
                                           quote.line_number
                                       )}
@@ -403,7 +418,8 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = fal
                   </div>
               </div>
               </React.Fragment>
-          ))}
+              );
+          })}
       </div>
     );
   };

@@ -86,13 +86,32 @@ function renderCrumbs(archive, siteBaseUrl, canonical, displayTitle) {
   return { html, jsonLd };
 }
 
-export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName, totalQuotes, quotes, siteBaseUrl, indexable = true, creator = null, related = null, archive = null }) {
+export function renderVideoHtml({
+  videoId,
+  title,
+  channel,
+  uploadDate,
+  gameName,
+  totalQuotes,
+  quotes,
+  siteBaseUrl,
+  indexable = true,
+  creator = null,
+  related = null,
+  archive = null,
+  siteName = 'NLQuotes',
+  logoPath = '/nlquotes/nlquotes.svg',
+  logoFallbackPath = '/nlquotes/NLogo.png',
+}) {
   const safeId = encodeURIComponent(videoId);
   const canonical = `${siteBaseUrl}/video/${safeId}`;
   const ytUrl = `https://www.youtube.com/watch?v=${safeId}`;
   const thumbnail = `https://i.ytimg.com/vi/${safeId}/hqdefault.jpg`;
   const displayTitle = title || 'Untitled video';
   const safeTitle = escapeHtml(displayTitle);
+  const safeSiteName = escapeHtml(siteName || 'NLQuotes');
+  const safeLogoUrl = `${siteBaseUrl}${escapeHtml(logoPath || '/nlquotes/nlquotes.svg')}`;
+  const safeLogoFallbackUrl = `${siteBaseUrl}${escapeHtml(logoFallbackPath || '/nlquotes/NLogo.png')}`;
   const published = isoDate(uploadDate);
   // Structured data needs the timestamp form; the visible meta line stays date-only.
   const publishedDateTime = toIsoDateTime(uploadDate);
@@ -155,7 +174,7 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
     ? 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1'
     : 'noindex,follow'}" />
   <link rel="canonical" href="${canonical}" />
-  <title>${safeTitle} — ${titleSuffix} | NLQuotes</title>
+  <title>${safeTitle} — ${titleSuffix} | ${safeSiteName}</title>
   <meta name="description" content="${safeDescription}" />
   <meta property="og:type" content="video.other" />
   <meta property="og:url" content="${canonical}" />
@@ -269,10 +288,10 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
 
   <header class="site-header">
     <a href="${siteBaseUrl}/">
-      <img src="${siteBaseUrl}/nlquotes/nlquotes.svg" alt="NLQuotes" class="site-logo" width="28" height="32"
-           onerror="this.src='${siteBaseUrl}/nlquotes/NLogo.png'" />
+      <img src="${safeLogoUrl}" alt="${safeSiteName}" class="site-logo" width="28" height="32"
+           onerror="this.src='${safeLogoFallbackUrl}'" />
     </a>
-    <a href="${siteBaseUrl}/" class="site-name">NLQuotes</a>
+    <a href="${siteBaseUrl}/" class="site-name">${safeSiteName}</a>
   </header>
 
   <main class="page">
@@ -304,7 +323,7 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
     ${relatedHtml}
 
     <footer class="site-footer">
-      <a href="${siteBaseUrl}/">&larr; Back to NLQuotes</a>
+      <a href="${siteBaseUrl}/">&larr; Back to ${safeSiteName}</a>
       <a href="${siteBaseUrl}/videos">Latest videos</a>
     </footer>
 

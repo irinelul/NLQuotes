@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import styles from './Modals.module.css';
 
 export const FeedbackModal = ({ isOpen, onClose, onSubmit }) => {
@@ -6,6 +6,21 @@ export const FeedbackModal = ({ isOpen, onClose, onSubmit }) => {
     const [email, setEmail] = useState('');
     const [status, setStatus] = useState(null); // null | 'sending' | 'success' | 'error'
     const [errorMsg, setErrorMsg] = useState(null); // specific reason from the API, if any
+
+    const handleClose = useCallback(() => {
+        setStatus(null);
+        setErrorMsg(null);
+        onClose();
+    }, [onClose]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        const onKeyDown = (e) => {
+            if (e.key === 'Escape') handleClose();
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [isOpen, handleClose]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -26,16 +41,18 @@ export const FeedbackModal = ({ isOpen, onClose, onSubmit }) => {
         }
     };
 
-    const handleClose = () => {
-        setStatus(null);
-        setErrorMsg(null);
-        onClose();
-    };
-
     if (!isOpen) return null;
 
     return (
-        <div className={styles.modalOverlay}>
+        <div
+            className={styles.modalOverlay}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Send Feedback"
+            onClick={(e) => {
+                if (e.target === e.currentTarget) handleClose();
+            }}
+        >
             <div className={styles.modalContent}>
                 <h3>Send Feedback</h3>
                 <p>

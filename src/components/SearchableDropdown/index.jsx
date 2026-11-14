@@ -37,6 +37,11 @@ export const SearchableDropdown = ({ options = [], value, onChange, placeholder 
                         setSearchTerm(e.target.value);
                         setIsOpen(true);
                     }}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Escape') {
+                            setIsOpen(false);
+                        }
+                    }}
                     placeholder={value === "all" ? placeholder : value}
                     className={styles.dropdownInput}
                 />

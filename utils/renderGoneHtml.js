@@ -12,8 +12,9 @@ function escapeHtml(str) {
 // who land here from a stale search result. noindex is belt-and-braces: a 410
 // already drops the URL, but if anything ever downgrades the status to 200 this
 // still keeps it out of the index.
-export function renderRemovedTopicHtml({ term, siteBaseUrl }) {
+export function renderRemovedTopicHtml({ term, siteBaseUrl, siteName = 'NLQuotes' }) {
   const safeTerm = escapeHtml(term || '');
+  const safeSiteName = escapeHtml(siteName || 'NLQuotes');
   const searchUrl = `${siteBaseUrl}/?q=${encodeURIComponent(term || '')}`;
 
   return `<!doctype html>
@@ -22,7 +23,7 @@ export function renderRemovedTopicHtml({ term, siteBaseUrl }) {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex,follow" />
-  <title>Page removed — NLQuotes</title>
+  <title>Page removed — ${safeSiteName}</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body {
@@ -61,7 +62,7 @@ export function renderRemovedTopicHtml({ term, siteBaseUrl }) {
       ? `The standalone page for &ldquo;${safeTerm}&rdquo; is gone, but the quotes are still searchable.`
       : 'This page is gone, but the quotes are still searchable.'}</p>
     <a class="btn" href="${searchUrl}">Search for &ldquo;${safeTerm}&rdquo;</a>
-    <a class="alt" href="${siteBaseUrl}/">Go to NLQuotes home</a>
+    <a class="alt" href="${siteBaseUrl}/">Go to ${safeSiteName} home</a>
   </main>
 </body>
 </html>`;

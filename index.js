@@ -579,6 +579,25 @@ app.get('/api/tenant', (req, res) => {
   }
 });
 
+app.get('/api/health', async (req, res) => {
+  try {
+    const tenant = req.tenant || detectTenant(req.get('host') || 'localhost');
+    const health = await quoteModel.checkHealth(tenant);
+    res
+      .status(health.healthy ? 200 : 503)
+      .set({
+        'Cache-Control': 'no-store',
+        'X-Content-Type-Options': 'nosniff',
+      })
+      .json(health);
+  } catch (error) {
+    res.status(503).set('Cache-Control', 'no-store').json({
+      healthy: false,
+      error: error.message,
+    });
+  }
+});
+
 app.get('/api', async (req, res) => {
     // Log search request details for debugging - THIS SHOULD ALWAYS APPEAR
     console.log('=== SEARCH ENDPOINT HIT ===');
@@ -644,11 +663,16 @@ app.get('/api', async (req, res) => {
         const totalTime = Date.now() - startTime;
         console.log(`[Search] Query completed - Tenant: ${tenantId}, Results: ${result.data?.length || 0}, Total: ${result.total || 0}, Time: ${totalTime}ms`);
 
-        if (searchTerm.trim().length >= 3) {
+        const trimmedSearch = searchTerm.trim();
+        if (trimmedSearch.length >= 3 || gameName !== 'all') {
+            const searchMode = trimmedSearch.length >= 3
+                ? ((exactPhrase || /^".+"$/.test(trimmedSearch)) ? 'strict' : 'keyword')
+                : 'browse';
             logServerEvent(req, {
                 event_type: 'search',
                 path: '/search',
-                search_term: searchTerm.trim().toLowerCase(),
+                search_term: trimmedSearch.length >= 3 ? trimmedSearch.toLowerCase() : null,
+                search_mode: searchMode,
                 game: gameName !== 'all' ? gameName : null,
                 channel: selectedValue !== 'all' ? selectedValue : null,
                 year: year || null,
@@ -714,13 +738,16 @@ app.post('/api/flag', async (req, res) => {
         // Extract and sanitize fields
         const quote = sanitizeInput(req.body.quote);
         const searchTerm = sanitizeInput(req.body.searchTerm);
-        const timestamp = req.body.timestamp ? parseFloat(req.body.timestamp) : null;
+        const parsedTs = req.body.timestamp !== undefined && req.body.timestamp !== null
+            ? parseFloat(req.body.timestamp)
+            : NaN;
+        const timestamp = Number.isFinite(parsedTs) ? parsedTs : null;
         
         // Validate videoId format (YouTube IDs are 11 chars)
         const videoId = /^[a-zA-Z0-9_-]{11}$/.test(req.body.videoId) ?
                         req.body.videoId : "invalid";
 
-        // line_number is stored as text in the DB; accept digits only
+        // line_number is stored as text/int in the DB; accept digits only
         const lineNumber = /^\d{1,10}$/.test(String(req.body.lineNumber ?? '')) ?
                            String(req.body.lineNumber) : null;
         
@@ -785,7 +812,7 @@ app.post('/api/flag', async (req, res) => {
                     },
                     {
                         name: "Timestamp",
-                        value: timestamp ? `[${timestamp}](https://www.youtube.com/watch?v=${videoId}&t=${Math.floor(timestamp) - 1})` : "N/A",
+                        value: timestamp !== null ? `[${timestamp}](https://www.youtube.com/watch?v=${videoId}&t=${Math.max(0, Math.floor(timestamp) - 1)})` : "N/A",
                         inline: true
                     },
                     {
@@ -856,8 +883,15 @@ app.post('/api/flag', async (req, res) => {
 
 app.get('/api/random', async (req, res) => {
     try {
+        const startTime = Date.now();
         const result = await quoteModel.getRandom(req.tenant);
-        logServerEvent(req, { event_type: 'random_quote', path: '/' });
+        const totalTime = Date.now() - startTime;
+        logServerEvent(req, {
+            event_type: 'random_quote',
+            path: '/',
+            result_quotes: Array.isArray(result) ? result.length : 0,
+            response_time_ms: totalTime,
+        });
         res.json({ quotes: result });
     } catch (error) {
         console.error('Error fetching random quotes:', error);
@@ -983,6 +1017,7 @@ app.get('/topic/:term', async (req, res, next) => {
   const term = normalizeTopicTerm(rawTerm);
   const hostname = req.tenant?.hostnames?.[0] || 'nlquotes.com';
   const siteBaseUrl = `https://${hostname}`;
+  const siteName = req.tenant?.displayName || 'NLQuotes';
 
   // One term, one URL.
   if (rawTerm !== term) {
@@ -1002,7 +1037,7 @@ app.get('/topic/:term', async (req, res, next) => {
       .status(410)
       .set('Cache-Control', 'public, max-age=86400')
       .type('html')
-      .send(renderRemovedTopicHtml({ term, siteBaseUrl }));
+      .send(renderRemovedTopicHtml({ term, siteBaseUrl, siteName }));
   }
 
   const encoded = encodeURIComponent(term);
@@ -1062,7 +1097,7 @@ app.get('/topic/:term', async (req, res, next) => {
           .status(410)
           .set('Cache-Control', 'public, max-age=86400')
           .type('html')
-          .send(renderRemovedTopicHtml({ term, siteBaseUrl }));
+          .send(renderRemovedTopicHtml({ term, siteBaseUrl, siteName }));
       }
 
       const html = renderTopicHtml({
@@ -1122,6 +1157,10 @@ async function renderVideosHub(req, res, next, page) {
       siteBaseUrl: sitemapBase(req),
       months: [...batch.months].map(([ym, indices]) => ({ ym, count: indices.length })),
       gameCount: batch.games.size,
+      siteName: req.tenant?.displayName || 'NLQuotes',
+      creatorName: req.tenant?.name || 'Northernlion',
+      logoPath: req.tenant?.branding?.logo || '/nlquotes/nlquotes.svg',
+      logoFallbackPath: req.tenant?.branding?.logoFallback || '/nlquotes/NLogo.png',
     });
 
     logServerEvent(req, { event_type: 'ssr_page_view', path: req.path, page, props: { kind: 'videos_hub' } });
@@ -1229,7 +1268,11 @@ app.get('/video/:videoId', async (req, res, next) => {
       return res
         .status(404)
         .type('html')
-        .send(renderRemovedTopicHtml({ term: '', siteBaseUrl: `https://${hostname}` }));
+        .send(renderRemovedTopicHtml({
+          term: '',
+          siteBaseUrl: `https://${hostname}`,
+          siteName: req.tenant?.displayName || 'NLQuotes',
+        }));
     }
 
     // Batch membership already implies the video cleared VIDEO_MIN_QUOTES.
@@ -1253,6 +1296,9 @@ app.get('/video/:videoId', async (req, res, next) => {
       creator: req.tenant?.name || null,
       related: relatedVideos(batch, video.video_id),
       archive: archiveLinksFor(batch, video.video_id),
+      siteName: req.tenant?.displayName || 'NLQuotes',
+      logoPath: req.tenant?.branding?.logo || '/nlquotes/nlquotes.svg',
+      logoFallbackPath: req.tenant?.branding?.logoFallback || '/nlquotes/NLogo.png',
     });
 
     logServerEvent(req, {
@@ -1289,7 +1335,11 @@ app.use((req, res, next) => {
     .status(410)
     .set('Cache-Control', 'public, max-age=86400')
     .type('html')
-    .send(renderRemovedTopicHtml({ term: '', siteBaseUrl: `https://${hostname}` }));
+    .send(renderRemovedTopicHtml({
+      term: '',
+      siteBaseUrl: `https://${hostname}`,
+      siteName: req.tenant?.displayName || 'NLQuotes',
+    }));
 });
 
 // The built index.html ships placeholder https://example.com URLs — canonical,

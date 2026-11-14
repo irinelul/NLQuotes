@@ -30,8 +30,8 @@
   },
   "channels": [
     { "id": "all", "name": "All Sources" },
-    { "id": "HIVEMINDTV", "name": "HivemindTV" },
-    { "id": "HIVEMINDUNLIMITED", "name": "HivemindUNLIMITED" }
+    { "id": "HIVEMINDTV", "name": "HivemindTV", "dbValue": "HIVEMINDTV" },
+    { "id": "HIVEMINDUNLIMITED", "name": "HivemindUNLIMITED", "dbValue": "HIVEMINDUNLIMITED" }
   ],
   "database": {
     "envVar": "DATABASE_URL_HIVEMIND",

@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import pg from 'pg';
-import { getTenantDatabaseUrl } from '../tenants/tenant-manager.js';
+import { applyV2DatabaseSuffix, getTenantDatabaseUrl } from '../tenants/tenant-manager.js';
 import { normalizeSearchTerm } from '../utils/searchTerm.js';
 const { Pool } = pg;
 
@@ -8,13 +8,50 @@ dotenv.config();
 
 // Pool manager - creates and caches pools per tenant
 const pools = new Map();
+// Tracks whether a pool's `quotes` table uses the v2 columns (`start_s`/`end_s`, integer `line_number`)
+// vs the v1 columns (`timestamp_start`/`timestamp_start_seconds`, varchar `line_number`).
+// Both v1 and v2 databases have the normalized `videos` table.
+const poolQuotesSchema = new WeakMap();
+
+function isV2QuotesConnectionString(connectionString = '') {
+  return (
+    process.env.USE_V2_DB === 'true' ||
+    process.env.DB_SCHEMA_VERSION === '2' ||
+    /\/[^/?#]+_v2(?:[?#]|$)/i.test(String(connectionString))
+  );
+}
+
+export function getQuotesSchemaForPool(pool) {
+  const isV2 = poolQuotesSchema.get(pool) ?? false;
+  return isV2
+    ? {
+        isV2: true,
+        tsStartCol: 'q.start_s',
+        tsStartSecsCol: 'q.start_s',
+        tsStartRawCol: 'start_s',
+        lineOrderExpr: 'q.line_number',
+      }
+    : {
+        isV2: false,
+        tsStartCol: 'q.timestamp_start',
+        tsStartSecsCol: 'q.timestamp_start_seconds',
+        tsStartRawCol: 'timestamp_start',
+        lineOrderExpr: 'q.line_number::int',
+      };
+}
+
+function flipQuotesSchemaForPool(pool) {
+  const current = poolQuotesSchema.get(pool) ?? false;
+  poolQuotesSchema.set(pool, !current);
+  return getQuotesSchemaForPool(pool);
+}
 
 function getPoolForTenant(tenant) {
   if (!tenant) {
     // Fallback to default pool
     const defaultId = 'default';
     if (!pools.has(defaultId)) {
-      pools.set(defaultId, createPool(process.env.DATABASE_URL));
+      pools.set(defaultId, createPool(applyV2DatabaseSuffix(process.env.DATABASE_URL)));
     }
     return pools.get(defaultId);
   }
@@ -51,6 +88,8 @@ function createPool(connectionString) {
     keepAliveInitialDelayMillis: 5000
   });
 
+  poolQuotesSchema.set(pool, isV2QuotesConnectionString(connectionString));
+
   // Better connection error handling
   pool.on('error', (err) => {
     console.error('PostgreSQL Error:', err.message);
@@ -60,39 +99,51 @@ function createPool(connectionString) {
 }
 
 // Create default pool for backward compatibility
-const defaultPool = createPool(process.env.DATABASE_URL);
+const defaultPool = createPool(applyV2DatabaseSuffix(process.env.DATABASE_URL));
 pools.set('default', defaultPool);
 
 export { getPoolForTenant };
 
-// Warm up the default connection pool
-(async () => {
-  try {
-    const pool = getPoolForTenant(null);
-    const client = await pool.connect();
+// Warm up the default connection pool (skip during unit test runs)
+if (process.env.NODE_ENV !== 'test' && !process.env.VITEST && process.env.DATABASE_URL) {
+  (async () => {
     try {
-      const tableRes = await client.query(`
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables
-          WHERE table_schema = 'public'
-          AND table_name = 'quotes'
-        ) as table_exists
-      `);
+      const pool = getPoolForTenant(null);
+      const client = await pool.connect();
+      try {
+        const schemaRes = await client.query(`
+          SELECT
+            EXISTS (
+              SELECT 1 FROM information_schema.tables
+              WHERE table_schema = 'public' AND table_name = 'videos'
+            ) AS has_videos,
+            EXISTS (
+              SELECT 1 FROM information_schema.columns
+              WHERE table_schema = 'public' AND table_name = 'quotes' AND column_name = 'start_s'
+            ) AS has_start_s
+        `);
+        const { has_videos: hasVideos, has_start_s: hasStartS } = schemaRes.rows[0] || {};
+        poolQuotesSchema.set(pool, Boolean(hasStartS));
 
-      if (tableRes.rows[0].table_exists) {
-        const countRes = await client.query('SELECT COUNT(*) as quote_count FROM quotes');
-        const sampleRes = await client.query('SELECT video_id, text FROM quotes LIMIT 1');
-        if (sampleRes.rows.length > 0) {
-          console.log(`Database connected successfully with ${countRes.rows[0].quote_count} quotes`);
+        if (hasVideos) {
+          // Summing quote_count from the normalized videos table reads ~24k rows
+          // instead of scanning all 13.8M rows of quotes on every server boot.
+          const countRes = await client.query(
+            'SELECT COALESCE(SUM(quote_count), 0) AS quote_count, COUNT(*) AS video_count FROM videos'
+          );
+          const { quote_count: quoteCount, video_count: videoCount } = countRes.rows[0] || {};
+          console.log(
+            `Database connected successfully with ${quoteCount} quotes across ${videoCount} videos (schema: ${hasStartS ? 'v2' : 'v1+videos'})`
+          );
         }
+      } finally {
+        client.release();
       }
-    } finally {
-      client.release();
+    } catch (err) {
+      console.error('Initial PostgreSQL connection failed:', err.message);
     }
-  } catch (err) {
-    console.error('Initial PostgreSQL connection failed:', err.message);
-  }
-})();
+  })();
+}
 
 // Health check function to verify database connectivity
 const checkDatabaseHealth = async (tenant = null) => {
@@ -134,30 +185,20 @@ const quoteModel = {
   // Database health check exposed to API
   checkHealth: checkDatabaseHealth,
 
-  // Get list of unique games
+  // Get list of unique games from the normalized videos table
   async getGameList(tenant = null) {
     try {
       const pool = getPoolForTenant(tenant);
       const client = await pool.connect();
       try {
-        // Loose index scan (walk idx_game_name one distinct value at a time)
-        // rather than SELECT DISTINCT. Postgres has no skip scan for DISTINCT,
-        // so it read all 407,286 buffers (~3.2 GB) of the table to return 2,035
-        // names; this reads 8,295. Warm that is 430ms -> 120ms, but the reason
-        // it matters is cold: this runs once at boot, and the version that read
-        // the whole table from disk is what put a 3.7s /api/games in the
-        // critical path of the first page load after every deploy.
+        // Query the normalized `videos` table (~23.6k rows, 130 buffers, ~14ms)
+        // instead of walking the 13.8M-row `quotes` table (which required 8,295
+        // buffers with a recursive loose index scan or 407,286 buffers without it,
+        // and does not have `game_name` in the v2 schema).
         const result = await client.query(`
-          WITH RECURSIVE walk AS (
-            (SELECT game_name FROM quotes WHERE game_name IS NOT NULL
-              ORDER BY game_name LIMIT 1)
-            UNION ALL
-            SELECT (SELECT q.game_name FROM quotes q
-                     WHERE q.game_name > w.game_name AND q.game_name IS NOT NULL
-                     ORDER BY q.game_name LIMIT 1)
-              FROM walk w WHERE w.game_name IS NOT NULL
-          )
-          SELECT game_name FROM walk WHERE game_name IS NOT NULL
+          SELECT DISTINCT game_name
+          FROM videos
+          WHERE game_name IS NOT NULL
           ORDER BY game_name ASC
         `);
         return result.rows.map(row => row.game_name);
@@ -170,14 +211,14 @@ const quoteModel = {
     }
   },
 
-  // Search quotes with pagination using PostgreSQL FTS
+  // Search quotes with pagination using PostgreSQL FTS and the normalized videos + quotes schema
   async search({ searchTerm, searchPath: _searchPath, gameName, selectedValue, year, sortOrder, page = 1, limit = 10, exactPhrase = false, tenant = null }) {
     // Validate and sanitize inputs
     // Ensure page and limit are positive integers
     page = Math.max(1, parseInt(page) || 1);
     limit = Math.min(50, Math.max(1, parseInt(limit) || 10)); // Cap at 50 items
 
-        searchTerm = normalizeSearchTerm(searchTerm);
+    searchTerm = normalizeSearchTerm(searchTerm);
     // Validate search term length
     if (searchTerm && searchTerm.trim().length < 3) {
       return { data: [], total: 0, totalQuotes: 0 };
@@ -199,40 +240,48 @@ const quoteModel = {
     console.log(`[Search] PostgreSQL search - Tenant: ${tenantId}, term="${searchTerm}", game="${gameName}", channel=${selectedValue}, year=${year}, sort=${sortOrder}, page=${page}, exactPhrase=${exactPhrase}`);
 
     const whereClauses = [];
+    // When exactPhrase (Strict mode) is requested and the term is not already
+    // using quoted websearch syntax, use phraseto_tsquery so multi-word queries
+    // match adjacent phrases (`'word1' <-> 'word2'`) rather than boolean AND.
+    const trimmedTerm = hasTerm ? searchTerm.trim() : '';
+    const tsQueryFn = exactPhrase && !trimmedTerm.includes('"')
+      ? 'phraseto_tsquery'
+      : 'websearch_to_tsquery';
 
-    // --- Search Term Conditions ---
+    // --- Search Term Conditions (on quotes q) ---
     if (hasTerm) {
-      whereClauses.push(`q.fts_doc @@ websearch_to_tsquery('simple', $${paramIndex})`);
-      params.push(searchTerm.trim());
+      whereClauses.push(`q.fts_doc @@ ${tsQueryFn}('simple', $${paramIndex})`);
+      params.push(trimmedTerm);
       paramIndex += 1;
     }
 
-    // --- Filter Conditions (Leverage B-tree indexes) ---
+    // --- Filter Conditions (on normalized videos v, leveraging B-tree indexes) ---
     if (gameName && gameName !== 'all') {
       // Validate game name - basic protection
       const cleanGameName = gameName.replace(/['";]/g, '').trim();
       if (cleanGameName.length > 2) {
-        whereClauses.push(`q.game_name = $${paramIndex}`);
+        whereClauses.push(`v.game_name = $${paramIndex}`);
         params.push(cleanGameName);
         paramIndex++;
       }
     }
 
-    if (selectedValue && selectedValue !== 'all') { // Assuming selectedValue is channel_source
+    if (selectedValue && selectedValue !== 'all') {
       // Resolve the channel id to the exact stored channel_source value from
-      // tenant config (config `name` mirrors the DB value). Exact equality is
-      // index-friendly; LOWER(channel_source) forced a scan of the whole index.
+      // tenant config (`dbValue` or `name`). Exact equality is index-friendly
+      // on `idx_videos_channel`.
       const channels = (tenant?.channels?.length ? tenant.channels : [
-        { id: 'librarian', name: 'Librarian' },
-        { id: 'northernlion', name: 'Northernlion' }
+        { id: 'librarian', name: 'Librarian', dbValue: 'Librarian' },
+        { id: 'northernlion', name: 'Northernlion', dbValue: 'Northernlion' }
       ]);
       const lowerSelectedValue = selectedValue.toLowerCase();
       const channelMatch = channels.find(ch => ch.id !== 'all' && ch.id.toLowerCase() === lowerSelectedValue);
       if (channelMatch) {
-        whereClauses.push(`q.channel_source = $${paramIndex}`);
-        params.push(channelMatch.name);
+        const dbChannelValue = channelMatch.dbValue || channelMatch.name;
+        whereClauses.push(`v.channel_source = $${paramIndex}`);
+        params.push(dbChannelValue);
         paramIndex++;
-        console.log(`[Search] Applied channel filter: ${channelMatch.name}`);
+        console.log(`[Search] Applied channel filter: ${dbChannelValue}`);
       } else {
         console.warn(`[Search] Channel "${selectedValue}" not in valid channels list for tenant ${tenant?.id || 'default'}`);
       }
@@ -243,9 +292,8 @@ const quoteModel = {
       try {
         const yearInt = parseInt(year);
         if (!isNaN(yearInt)) {
-          // Range condition instead of EXTRACT(YEAR ...) so the upload_date
-          // btree indexes stay usable.
-          whereClauses.push(`q.upload_date >= $${paramIndex} AND q.upload_date < $${paramIndex + 1}`);
+          // Range condition instead of EXTRACT(YEAR ...) so idx_videos_upload_date stays usable.
+          whereClauses.push(`v.upload_date >= $${paramIndex} AND v.upload_date < $${paramIndex + 1}`);
           params.push(`${yearInt}-01-01`, `${yearInt + 1}-01-01`);
           paramIndex += 2;
         } else {
@@ -253,65 +301,180 @@ const quoteModel = {
         }
       } catch {
         console.error("Invalid year parameter:", year);
-        // Handle invalid year input appropriately, e.g., return error or empty result
         return { data: [], total: 0, totalQuotes: 0 };
       }
     }
 
     const whereSql = whereClauses.join(' AND ');
 
-    // Highlight matches only when there is a term; game-only browsing has no $1 to reference.
-    const textExpr = hasTerm
-      ? `ts_headline('simple', q.text, websearch_to_tsquery('simple', $1),'MaxWords=5, MinWords=5, HighlightAll=TRUE')`
-      : `q.text`;
-
     // --- Sorting ---
-    // Always order deterministically: LIMIT/OFFSET without a stable ORDER BY
+    // Always order deterministically on videos: LIMIT/OFFSET without a stable ORDER BY
     // lets pages repeat or skip videos between requests.
-    let innerOrder = 'q.video_id';
-    let outerOrder = 'q.video_id';
+    let innerOrder = 'v.video_id';
+    let outerOrder = 'p.video_id';
     if (sortOrder === 'newest' || sortOrder === 'oldest') {
       const dir = sortOrder === 'newest' ? 'DESC' : 'ASC';
-      innerOrder = `MAX(q.upload_date) ${dir}, q.video_id`;
-      outerOrder = `q.upload_date ${dir}, q.video_id`;
+      innerOrder = `v.upload_date ${dir}, v.video_id`;
+      outerOrder = `p.upload_date ${dir}, p.video_id`;
     }
 
-    // Single combined query. The inner CTE picks the page of video_ids from
-    // the index-matched rows and computes the result totals in the same pass
-    // (window functions over the grouped rows). This matters because:
-    //  - the planner always starts from the GIN/btree index; the old
-    //    GROUP BY ... ORDER BY video_id LIMIT shape tempted it into walking
-    //    idx_video_line and filtering row-by-row, which cost ~1.7s for RARE
-    //    terms (benchmarked July 2026);
-    //  - ts_headline runs only for the <= `limit` videos on the page;
-    //  - the separate count query (a second full FTS scan) is gone.
-    const query = `
-      WITH page AS (
-        SELECT q.video_id,
-               COUNT(*) OVER () AS total_videos,
-               SUM(COUNT(*)) OVER () AS total_quotes
-        FROM quotes q
-        WHERE ${whereSql}
-        GROUP BY q.video_id
-        ORDER BY ${innerOrder}
-        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-      )
-      SELECT q.video_id, q.title, q.upload_date, q.channel_source,
-             p.total_videos, p.total_quotes,
-             json_agg(json_build_object(
-               'text', ${textExpr},
-               'line_number', q.line_number,
-               'timestamp_start', q.timestamp_start,
-               'title', q.title,
-               'upload_date', q.upload_date,
-               'channel_source', q.channel_source
-             ) ORDER BY q.line_number::int) AS quotes
-      FROM quotes q
-      JOIN page p ON p.video_id = q.video_id
-      WHERE ${whereSql}
-      GROUP BY q.video_id, q.title, q.upload_date, q.channel_source, p.total_videos, p.total_quotes
-      ORDER BY ${outerOrder}`;
+    const limitParamIdx = paramIndex;
+    const offsetParamIdx = paramIndex + 1;
     params.push(limit, offset);
+
+    const buildSearchQuery = (schema) => {
+      const textExpr = hasTerm
+        ? `ts_headline('simple', q.text, ${tsQueryFn}('simple', $1),'MaxWords=5, MinWords=5, HighlightAll=TRUE')`
+        : `q.text`;
+
+      if (hasTerm && schema.isV2) {
+        // v2 FTS search path: `fts_doc` covers the 3-line sliding window
+        // (prev + current + next line) so phrases split across a line break
+        // match. Adjacent rows matching the same occurrence are collapsed into
+        // one result via gaps-and-islands (`run`), preferring the line that
+        // matches on its own text (`in_line = true`) or the starting line of a
+        // cross-line phrase (`in_line = false`). When `in_line` is false, the
+        // neighboring line text is joined so `ts_headline` highlights the full
+        // cross-line phrase.
+        const v2HeadlineTarget = `CASE
+          WHEN h.in_line THEN h.text
+          WHEN to_tsvector('simple', COALESCE(h.text || ' ' || nq.text, h.text)) @@ tsq.q
+            THEN COALESCE(h.text || ' ' || nq.text, h.text)
+          ELSE CONCAT_WS(' ', pq.text, h.text, nq.text)
+        END`;
+        return `
+          WITH tsq AS (
+            SELECT ${tsQueryFn}('simple', $1) AS q
+          ),
+          raw_hits AS (
+            SELECT q.video_id,
+                   q.line_number,
+                   q.text,
+                   ${schema.tsStartCol} AS timestamp_start,
+                   v.title,
+                   v.upload_date,
+                   v.channel_source,
+                   (to_tsvector('simple', q.text) @@ tsq.q) AS in_line,
+                   q.line_number - ROW_NUMBER() OVER (PARTITION BY q.video_id ORDER BY q.line_number) AS run
+            FROM quotes q
+            JOIN videos v ON v.video_id = q.video_id
+            CROSS JOIN tsq
+            WHERE ${whereSql}
+          ),
+          hits AS (
+            SELECT DISTINCT ON (h.video_id, h.run)
+                   h.video_id,
+                   h.line_number,
+                   h.text,
+                   h.timestamp_start,
+                   h.title,
+                   h.upload_date,
+                   h.channel_source,
+                   h.in_line
+            FROM raw_hits h
+            ORDER BY h.video_id, h.run, h.in_line DESC, h.line_number
+          ),
+          page AS (
+            SELECT v.video_id,
+                   v.title,
+                   v.upload_date,
+                   v.channel_source,
+                   COUNT(*) OVER () AS total_videos,
+                   SUM(COUNT(*)) OVER () AS total_quotes
+            FROM hits v
+            GROUP BY v.video_id, v.title, v.upload_date, v.channel_source
+            ORDER BY ${innerOrder}
+            LIMIT $${limitParamIdx} OFFSET $${offsetParamIdx}
+          )
+          SELECT p.video_id, p.title, p.upload_date, p.channel_source,
+                 p.total_videos, p.total_quotes,
+                 json_agg(json_build_object(
+                   'text', ts_headline('simple', ${v2HeadlineTarget}, tsq.q, 'MaxWords=5, MinWords=5, HighlightAll=TRUE'),
+                   'line_number', h.line_number,
+                   'timestamp_start', h.timestamp_start,
+                   'in_line', h.in_line,
+                   'title', p.title,
+                   'upload_date', p.upload_date,
+                   'channel_source', p.channel_source
+                 ) ORDER BY h.line_number) AS quotes
+          FROM page p
+          CROSS JOIN tsq
+          JOIN hits h ON h.video_id = p.video_id
+          LEFT JOIN quotes pq ON pq.video_id = (CASE WHEN NOT h.in_line THEN h.video_id END) AND pq.line_number = h.line_number - 1
+          LEFT JOIN quotes nq ON nq.video_id = (CASE WHEN NOT h.in_line THEN h.video_id END) AND nq.line_number = h.line_number + 1
+          GROUP BY p.video_id, p.title, p.upload_date, p.channel_source, p.total_videos, p.total_quotes
+          ORDER BY ${outerOrder}`;
+      }
+
+      if (hasTerm) {
+        // v1 FTS search path: join quotes + videos in the `page` CTE to pick the
+        // page of matching videos and compute totals in one pass, carrying
+        // video metadata on `p` so the outer query only fetches quotes for the
+        // <= `limit` videos on the current page.
+        return `
+          WITH page AS (
+            SELECT v.video_id,
+                   v.title,
+                   v.upload_date,
+                   v.channel_source,
+                   COUNT(*) OVER () AS total_videos,
+                   SUM(COUNT(*)) OVER () AS total_quotes
+            FROM quotes q
+            JOIN videos v ON v.video_id = q.video_id
+            WHERE ${whereSql}
+            GROUP BY v.video_id, v.title, v.upload_date, v.channel_source
+            ORDER BY ${innerOrder}
+            LIMIT $${limitParamIdx} OFFSET $${offsetParamIdx}
+          )
+          SELECT p.video_id, p.title, p.upload_date, p.channel_source,
+                 p.total_videos, p.total_quotes,
+                 json_agg(json_build_object(
+                   'text', ${textExpr},
+                   'line_number', q.line_number,
+                   'timestamp_start', ${schema.tsStartCol},
+                   'title', p.title,
+                   'upload_date', p.upload_date,
+                   'channel_source', p.channel_source
+                 ) ORDER BY ${schema.lineOrderExpr}) AS quotes
+          FROM page p
+          JOIN quotes q ON q.video_id = p.video_id
+          WHERE q.fts_doc @@ ${tsQueryFn}('simple', $1)
+          GROUP BY p.video_id, p.title, p.upload_date, p.channel_source, p.total_videos, p.total_quotes
+          ORDER BY ${outerOrder}`;
+      }
+
+      // Filter-only / game-only browse path: scan only the small `videos` table
+      // in the `page` CTE (using precomputed `v.quote_count` for `total_quotes`),
+      // then join `quotes` only for the <= `limit` videos on the requested page.
+      // Benchmarked on Isaac (4,194 videos / 325k quotes): 525ms & 108k buffers -> 23ms & 782 buffers.
+      return `
+        WITH page AS (
+          SELECT v.video_id,
+                 v.title,
+                 v.upload_date,
+                 v.channel_source,
+                 COUNT(*) OVER () AS total_videos,
+                 SUM(v.quote_count) OVER () AS total_quotes
+          FROM videos v
+          WHERE v.quote_count > 0 AND ${whereSql}
+          ORDER BY ${innerOrder}
+          LIMIT $${limitParamIdx} OFFSET $${offsetParamIdx}
+        )
+        SELECT p.video_id, p.title, p.upload_date, p.channel_source,
+               p.total_videos, p.total_quotes,
+               json_agg(json_build_object(
+                 'text', q.text,
+                 'line_number', q.line_number,
+                 'timestamp_start', ${schema.tsStartCol},
+                 'title', p.title,
+                 'upload_date', p.upload_date,
+                 'channel_source', p.channel_source
+               ) ORDER BY ${schema.lineOrderExpr}) AS quotes
+        FROM page p
+        JOIN quotes q ON q.video_id = p.video_id
+        GROUP BY p.video_id, p.title, p.upload_date, p.channel_source, p.total_videos, p.total_quotes
+        ORDER BY ${outerOrder}`;
+    };
 
     try {
       console.log(`[Search] Getting database pool for tenant: ${tenantId}`);
@@ -322,7 +485,18 @@ const quoteModel = {
       const client = await pool.connect();
 
       try {
-        const result = await client.query(query, params);
+        let schema = getQuotesSchemaForPool(pool);
+        let result;
+        try {
+          result = await client.query(buildSearchQuery(schema), params);
+        } catch (err) {
+          if (err.code === '42703') {
+            schema = flipQuotesSchemaForPool(pool);
+            result = await client.query(buildSearchQuery(schema), params);
+          } else {
+            throw err;
+          }
+        }
 
         let totalVideos = 0;
         let totalQuotes = 0;
@@ -332,12 +506,43 @@ const quoteModel = {
         } else if (offset > 0) {
           // A page past the last result has no rows to carry the window
           // totals — recount so the pager still gets real numbers.
-          const countResult = await client.query(
-            `SELECT COUNT(*) AS total_videos, SUM(quote_count) AS total_quotes
-             FROM (SELECT q.video_id, COUNT(*) AS quote_count
+          const countQuery = hasTerm
+            ? schema.isV2
+              ? `WITH tsq AS (
+                   SELECT ${tsQueryFn}('simple', $1) AS q
+                 ),
+                 raw_hits AS (
+                   SELECT q.video_id,
+                          q.line_number,
+                          (to_tsvector('simple', q.text) @@ tsq.q) AS in_line,
+                          q.line_number - ROW_NUMBER() OVER (PARTITION BY q.video_id ORDER BY q.line_number) AS run
                    FROM quotes q
+                   JOIN videos v ON v.video_id = q.video_id
+                   CROSS JOIN tsq
                    WHERE ${whereSql}
-                   GROUP BY q.video_id) AS video_counts`,
+                 ),
+                 hits AS (
+                   SELECT DISTINCT ON (h.video_id, h.run)
+                          h.video_id,
+                          h.line_number
+                   FROM raw_hits h
+                   ORDER BY h.video_id, h.run, h.in_line DESC, h.line_number
+                 )
+                 SELECT COUNT(*) AS total_videos, COALESCE(SUM(quote_count), 0) AS total_quotes
+                 FROM (SELECT h.video_id, COUNT(*) AS quote_count
+                       FROM hits h
+                       GROUP BY h.video_id) AS video_counts`
+              : `SELECT COUNT(*) AS total_videos, COALESCE(SUM(quote_count), 0) AS total_quotes
+                 FROM (SELECT q.video_id, COUNT(*) AS quote_count
+                       FROM quotes q
+                       JOIN videos v ON v.video_id = q.video_id
+                       WHERE ${whereSql}
+                       GROUP BY q.video_id) AS video_counts`
+            : `SELECT COUNT(*) AS total_videos, COALESCE(SUM(v.quote_count), 0) AS total_quotes
+               FROM videos v
+               WHERE v.quote_count > 0 AND ${whereSql}`;
+          const countResult = await client.query(
+            countQuery,
             params.slice(0, params.length - 2)
           );
           totalVideos = parseInt(countResult.rows[0]?.total_videos || 0, 10);
@@ -385,34 +590,52 @@ const quoteModel = {
   async getRandom(tenant = null) {
     // SYSTEM sampling reads only the randomly-chosen blocks, so ORDER BY
     // random() over the (small) sample stays cheap while drawing from the
-    // whole table. The previous BERNOULLI + LIMIT with no ORDER BY stopped
-    // scanning after the first ~10 sampled rows, so "random" quotes always
-    // came from the earliest physical blocks. If a pass samples too few rows
-    // (small tables), escalate; the plain ORDER BY random() fallback is only
-    // reachable on tables tiny enough for it to be cheap.
-    const sampled = (pct) => `
-        SELECT
-        video_id, title, upload_date, channel_source, text, line_number, timestamp_start
-        FROM quotes
-        TABLESAMPLE SYSTEM (${pct})
-        ORDER BY random()
-        LIMIT 10;`;
+    // whole table. Joining `videos` after sampling 10 rows performs only 10
+    // primary-key lookups on `videos_pkey`.
+    const sampled = (pct, schema) => `
+        SELECT q.video_id, v.title, v.upload_date, v.channel_source,
+               q.text, q.line_number, ${schema.tsStartCol} AS timestamp_start
+        FROM (
+          SELECT video_id, text, line_number, ${schema.tsStartRawCol}
+          FROM quotes
+          TABLESAMPLE SYSTEM (${pct})
+          ORDER BY random()
+          LIMIT 10
+        ) q
+        JOIN videos v ON v.video_id = q.video_id;`;
+
+    const fullRandom = (schema) => `
+        SELECT q.video_id, v.title, v.upload_date, v.channel_source,
+               q.text, q.line_number, ${schema.tsStartCol} AS timestamp_start
+        FROM (
+          SELECT video_id, text, line_number, ${schema.tsStartRawCol}
+          FROM quotes
+          ORDER BY random()
+          LIMIT 10
+        ) q
+        JOIN videos v ON v.video_id = q.video_id;`;
 
     let client;
     try {
       const pool = getPoolForTenant(tenant);
       client = await pool.connect();
-      let result = await client.query(sampled(0.02));
-      if (result.rows.length < 10) {
-        result = await client.query(sampled(1));
+      let schema = getQuotesSchemaForPool(pool);
+      let result;
+      try {
+        result = await client.query(sampled(0.02, schema));
+      } catch (err) {
+        if (err.code === '42703') {
+          schema = flipQuotesSchemaForPool(pool);
+          result = await client.query(sampled(0.02, schema));
+        } else {
+          throw err;
+        }
       }
       if (result.rows.length < 10) {
-        result = await client.query(`
-        SELECT
-        video_id, title, upload_date, channel_source, text, line_number, timestamp_start
-        FROM quotes
-        ORDER BY random()
-        LIMIT 10;`);
+        result = await client.query(sampled(1, schema));
+      }
+      if (result.rows.length < 10) {
+        result = await client.query(fullRandom(schema));
       }
 
       if (!result.rows || result.rows.length === 0) {
@@ -448,7 +671,7 @@ const quoteModel = {
   async getLatestUploadDate(tenant = null) {
     try {
       const pool = getPoolForTenant(tenant);
-      const result = await pool.query('SELECT max(upload_date) AS latest FROM quotes');
+      const result = await pool.query('SELECT max(upload_date) AS latest FROM videos');
       return result.rows[0]?.latest || null;
     } catch (error) {
       console.error('Error fetching latest upload date:', error);
@@ -457,33 +680,45 @@ const quoteModel = {
   },
 
   // One video and every quote in it, for the server-rendered /video/:id page.
-  // Aggregates title/game/channel rather than grouping by them so a row with a
-  // stray differing value can't split one video into two result rows.
+  // Reads video metadata from the normalized `videos` primary key and aggregates
+  // quote lines from `quotes` in line_number order.
   async getVideo(videoId, tenant = null) {
     if (!videoId || typeof videoId !== 'string') return null;
+
+    const buildVideoQuery = (schema) => `
+      SELECT v.video_id,
+             v.title,
+             v.channel_source,
+             v.upload_date,
+             v.game_name,
+             count(q.id) AS total_quotes,
+             json_agg(json_build_object(
+               'text', q.text,
+               'line_number', q.line_number,
+               'timestamp_start', ${schema.tsStartCol},
+               'timestamp_start_seconds', ${schema.tsStartSecsCol}
+             ) ORDER BY ${schema.lineOrderExpr}) AS quotes
+      FROM videos v
+      JOIN quotes q ON q.video_id = v.video_id
+      WHERE v.video_id = $1
+      GROUP BY v.video_id, v.title, v.channel_source, v.upload_date, v.game_name`;
 
     let client;
     try {
       const pool = getPoolForTenant(tenant);
       client = await pool.connect();
-      const result = await client.query(
-        `SELECT q.video_id,
-                max(q.title)          AS title,
-                max(q.channel_source) AS channel_source,
-                max(q.upload_date)    AS upload_date,
-                max(q.game_name)      AS game_name,
-                count(*)              AS total_quotes,
-                json_agg(json_build_object(
-                  'text', q.text,
-                  'line_number', q.line_number,
-                  'timestamp_start', q.timestamp_start,
-                  'timestamp_start_seconds', q.timestamp_start_seconds
-                ) ORDER BY q.line_number::int) AS quotes
-         FROM quotes q
-         WHERE q.video_id = $1
-         GROUP BY q.video_id`,
-        [videoId]
-      );
+      let schema = getQuotesSchemaForPool(pool);
+      let result;
+      try {
+        result = await client.query(buildVideoQuery(schema), [videoId]);
+      } catch (err) {
+        if (err.code === '42703') {
+          schema = flipQuotesSchemaForPool(pool);
+          result = await client.query(buildVideoQuery(schema), [videoId]);
+        } else {
+          throw err;
+        }
+      }
 
       if (!result.rows.length) return null;
       const row = result.rows[0];
@@ -498,32 +733,10 @@ const quoteModel = {
 
   // Video ids eligible for their own page, newest first.
   //
-  // Ordered by upload date rather than transcript length because search demand
-  // for a video decays sharply with age — people look for a phrase from
-  // something they just watched, not from a 2019 upload. `since` gates the set
-  // by date rather than by count so it only ever grows: a rolling "newest N"
-  // would push older videos out of the batch and flip them from index to
-  // noindex, and churning pages in and out of the index does real damage.
-  //
-  // minQuotes keeps thin videos out; at 20 it still admits 23,308 of 23,595.
-  // limit is only a safety valve against a misconfigured `since`.
-  //
-  // `since` is applied in WHERE as well as HAVING, and that is not redundant:
-  // the HAVING form alone had to aggregate every row in the table before it
-  // could discard 23,278 of 23,595 videos — 407,286 buffers (~3.2 GB) touched
-  // to return 317 rows. Warm that ran in 650ms, but cold it read from disk and
-  // blew the pool's 10s statement_timeout, which is what emptied the batch and
-  // put noindex on every video page. Pre-filtering costs 9,549 buffers instead.
-  //
-  // The two clauses are equivalent because upload_date is denormalised onto
-  // every quote row and constant per video (verified: zero videos have more
-  // than one distinct upload_date, zero rows are null). The HAVING stays as the
-  // authoritative condition in case that ever stops being true.
-  //
-  // timeoutMs overrides the pool's 10s statement_timeout for this one query.
-  // With no `since` it aggregates the whole table, which is fine off the
-  // request path (index.js runs it in the background) but can take longer than
-  // a request is allowed to, especially on a cold cache.
+  // Queries the normalized `videos` table directly using `v.quote_count` and
+  // `idx_videos_upload_date` (`videos(upload_date DESC, video_id)`). Instead of
+  // aggregating 13.8M rows (407,286 buffers / ~3.2 GB) of `quotes`, this scans
+  // `videos` (~23.6k rows, 18–550 buffers) in ~15–56ms.
   async listVideosForIndex({ minQuotes = 20, since = null, limit = 0, timeoutMs = 0 } = {}, tenant = null) {
     let client;
     let inTxn = false;
@@ -538,17 +751,15 @@ const quoteModel = {
         await client.query(`SET LOCAL statement_timeout = ${parseInt(timeoutMs, 10)}`);
       }
       const result = await client.query(
-        `SELECT q.video_id,
-                max(q.title)       AS title,
-                max(q.game_name)   AS game_name,
-                max(q.upload_date) AS upload_date,
-                count(*)           AS quote_count
-         FROM quotes q
-         WHERE ($2::date IS NULL OR q.upload_date >= $2::date)
-         GROUP BY q.video_id
-         HAVING count(*) >= $1
-            AND ($2::date IS NULL OR max(q.upload_date) >= $2::date)
-         ORDER BY max(q.upload_date) DESC, q.video_id
+        `SELECT v.video_id,
+                v.title,
+                v.game_name,
+                v.upload_date,
+                v.quote_count
+         FROM videos v
+         WHERE v.quote_count >= $1
+           AND ($2::date IS NULL OR v.upload_date >= $2::date)
+         ORDER BY v.upload_date DESC, v.video_id
          ${limit > 0 ? 'LIMIT ' + parseInt(limit, 10) : ''}`,
         [minQuotes, since]
       );

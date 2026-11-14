@@ -340,7 +340,7 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                 }
             }
         };
-    }, [isPlaying, videoId, currentTimestamp]);
+    }, [isPlaying, videoId, currentTimestamp, flushWatchTime]);
 
     // Handle timestamp changes - use a ref to track previous values
     const prevTimestampRef = React.useRef(null);
@@ -486,7 +486,7 @@ export const YouTubePlayer = ({ videoId, timestamp }) => {
                 playerRef.current = null;
             }
         };
-    }, []);
+    }, [flushWatchTime]);
 
     // Handle play button click - load video with iframe
     const handlePlayClick = () => {

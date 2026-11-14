@@ -47,13 +47,29 @@ const pagePath = (n) => (n <= 1 ? '/videos' : `/videos/page/${n}`);
  * "Discovered - currently not indexed". Internal links are what actually get
  * pages crawled, so every indexable video is reachable from here in a few hops.
  */
-export function renderVideosHubHtml({ videos, page, totalPages, totalVideos, siteBaseUrl, months = [], gameCount = 0 }) {
+export function renderVideosHubHtml({
+  videos,
+  page,
+  totalPages,
+  totalVideos,
+  siteBaseUrl,
+  months = [],
+  gameCount = 0,
+  siteName = 'NLQuotes',
+  creatorName = 'Northernlion',
+  logoPath = '/nlquotes/nlquotes.svg',
+  logoFallbackPath = '/nlquotes/NLogo.png',
+}) {
   const canonical = `${siteBaseUrl}${pagePath(page)}`;
+  const safeSiteName = escapeHtml(siteName || 'NLQuotes');
+  const safeCreatorName = escapeHtml(creatorName || 'Northernlion');
+  const safeLogoUrl = `${siteBaseUrl}${escapeHtml(logoPath || '/nlquotes/nlquotes.svg')}`;
+  const safeLogoFallbackUrl = `${siteBaseUrl}${escapeHtml(logoFallbackPath || '/nlquotes/NLogo.png')}`;
   // "Latest", not "All": this lists the current rollout batch (videos newer than
   // VIDEO_INDEX_SINCE), not the full 23k archive. Calling it "All videos" would
   // be wrong for users and for Google.
   const description =
-    `The ${Number(totalVideos || 0).toLocaleString()} most recent Northernlion videos with full searchable transcripts` +
+    `The ${Number(totalVideos || 0).toLocaleString()} most recent ${creatorName || 'Northernlion'} videos with full searchable transcripts` +
     (totalPages > 1 ? ` (page ${page} of ${totalPages})` : '') + '.';
 
   const rowsHtml = videos.map((v) => {
@@ -100,7 +116,7 @@ export function renderVideosHubHtml({ videos, page, totalPages, totalVideos, sit
   <link rel="canonical" href="${canonical}" />
   ${page > 1 ? `<link rel="prev" href="${siteBaseUrl}${pagePath(page - 1)}" />` : ''}
   ${page < totalPages ? `<link rel="next" href="${siteBaseUrl}${pagePath(page + 1)}" />` : ''}
-  <title>Latest videos${totalPages > 1 ? ` (page ${page} of ${totalPages})` : ''} — NLQuotes</title>
+  <title>Latest videos${totalPages > 1 ? ` (page ${page} of ${totalPages})` : ''} — ${safeSiteName}</title>
   <meta name="description" content="${escapeHtml(description)}" />
   <style>
     *, *::before, *::after { box-sizing: border-box; }
@@ -161,15 +177,15 @@ export function renderVideosHubHtml({ videos, page, totalPages, totalVideos, sit
 
   <header class="site-header">
     <a href="${siteBaseUrl}/">
-      <img src="${siteBaseUrl}/nlquotes/nlquotes.svg" alt="NLQuotes" class="site-logo" width="28" height="32"
-           onerror="this.src='${siteBaseUrl}/nlquotes/NLogo.png'" />
+      <img src="${safeLogoUrl}" alt="${safeSiteName}" class="site-logo" width="28" height="32"
+           onerror="this.src='${safeLogoFallbackUrl}'" />
     </a>
-    <a href="${siteBaseUrl}/" class="site-name">NLQuotes</a>
+    <a href="${siteBaseUrl}/" class="site-name">${safeSiteName}</a>
   </header>
 
   <main class="page">
     <h1>Latest videos</h1>
-    <p class="sub">The ${Number(totalVideos || 0).toLocaleString()} most recent Northernlion videos with full searchable transcripts. Every timestamp links straight to that moment on YouTube.</p>
+    <p class="sub">The ${Number(totalVideos || 0).toLocaleString()} most recent ${safeCreatorName} videos with full searchable transcripts. Every timestamp links straight to that moment on YouTube.</p>
 
     <ul class="video-list">
       ${rowsHtml || '<li class="video-row"><span class="video-meta">No videos available.</span></li>'}
@@ -183,8 +199,12 @@ export function renderVideosHubHtml({ videos, page, totalPages, totalVideos, sit
     ${renderBrowse(months, gameCount, siteBaseUrl)}
 
     <footer class="site-footer">
+<<<<<<< HEAD
       <a href="${siteBaseUrl}/">&larr; Back to NLQuotes</a>
       <a href="${siteBaseUrl}/videos/games">Browse by game</a>
+=======
+      <a href="${siteBaseUrl}/">&larr; Back to ${safeSiteName}</a>
+>>>>>>> 6b75db3 (feat(search): normalized v2 schema queries + 3-line window FTS deduplication)
     </footer>
   </main>
 

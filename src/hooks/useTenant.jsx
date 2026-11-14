@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { useState, useEffect, createContext, useContext } from 'react';
 import axios from 'axios';
 
@@ -83,7 +84,6 @@ export function TenantProvider({ children }) {
     // If we already have a tenant config (from injection or sync fetch), update metadata immediately
     if (initialTenantConfig) {
       updateDocumentMetadata(initialTenantConfig);
-      setLoading(false);
       
       // Optionally refresh from API in background to ensure we have the latest config
       // This is non-blocking - we already have the correct tenant loaded

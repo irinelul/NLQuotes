@@ -175,10 +175,10 @@ const Stats = () => {
           {!isHiveQuotes && tenant?.channels && (
             <>
               {tenant.channels.find(c => c.id === 'librarian') && (
-                <p>Librarian has indexed 1,135 videos (Some older NLSS vids are assigned to Librarian but on different channel)</p>
+                <p>Librarian has indexed 1,270 videos (Some older NLSS vids are assigned to Librarian but on different channel)</p>
               )}
               {tenant.channels.find(c => c.id === 'northernlion') && (
-                <p>NL has 21,951 videos</p>
+                <p>NL has 22,604 videos</p>
               )}
             </>
           )}

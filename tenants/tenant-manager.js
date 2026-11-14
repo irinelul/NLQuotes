@@ -18,6 +18,7 @@ function loadTenantConfigs() {
     const files = fs.readdirSync(tenantsDir);
     const jsonFiles = files.filter(f => f.endsWith('.json'));
     
+    let loadedCount = 0;
     for (const file of jsonFiles) {
       const filePath = path.join(tenantsDir, file);
       const content = fs.readFileSync(filePath, 'utf8');
@@ -30,6 +31,7 @@ function loadTenantConfigs() {
       }
       
       tenantConfigs.set(config.id, config);
+      loadedCount += 1;
       
       // Also index by hostname for quick lookup
       for (const hostname of config.hostnames) {
@@ -39,7 +41,7 @@ function loadTenantConfigs() {
       }
     }
     
-    console.log(`Loaded ${tenantConfigs.size / 2} tenant configurations`);
+    console.log(`Loaded ${loadedCount} tenant configurations`);
   } catch (error) {
     console.error('Error loading tenant configs:', error);
     // Fallback to default tenant
@@ -66,8 +68,8 @@ function loadTenantConfigs() {
       },
       channels: [
         { id: 'all', name: 'All Sources' },
-        { id: 'librarian', name: 'Librarian' },
-        { id: 'northernlion', name: 'Northernlion' }
+        { id: 'librarian', name: 'Librarian', dbValue: 'Librarian' },
+        { id: 'northernlion', name: 'Northernlion', dbValue: 'Northernlion' }
       ],
       database: {
         envVar: 'DATABASE_URL'
@@ -133,16 +135,33 @@ export function getAllTenants() {
   return tenants;
 }
 
+// Optionally rewrite database name to *_v2 when USE_V2_DB=true
+export function applyV2DatabaseSuffix(dbUrl) {
+  if (!dbUrl || process.env.USE_V2_DB !== 'true') return dbUrl;
+  try {
+    const parsed = new URL(dbUrl);
+    if (parsed.pathname && parsed.pathname !== '/' && !parsed.pathname.endsWith('_v2')) {
+      parsed.pathname = `${parsed.pathname}_v2`;
+      return parsed.toString();
+    }
+  } catch {
+    return dbUrl.replace(/\/([^/?#]+)(\?.*)?$/, (match, dbName, query = '') =>
+      dbName.endsWith('_v2') ? match : `/${dbName}_v2${query}`
+    );
+  }
+  return dbUrl;
+}
+
 // Get database connection string for tenant
 export function getTenantDatabaseUrl(tenant) {
-  const envVar = tenant.database?.envVar || 'DATABASE_URL';
+  const envVar = tenant?.database?.envVar || 'DATABASE_URL';
   const dbUrl = process.env[envVar];
   
   if (!dbUrl) {
-    console.warn(`Database URL not found for tenant ${tenant.id} (env var: ${envVar})`);
+    console.warn(`Database URL not found for tenant ${tenant?.id || 'default'} (env var: ${envVar})`);
     // Fallback to default
-    return process.env.DATABASE_URL;
+    return applyV2DatabaseSuffix(process.env.DATABASE_URL);
   }
   
-  return dbUrl;
+  return applyV2DatabaseSuffix(dbUrl);
 }

@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+/* eslint-disable react-hooks/set-state-in-effect */
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import query from './services/quotes';
 import { track } from './services/analytics';
 import { describeApiError } from './services/apiError';
@@ -84,18 +85,18 @@ const App = () => {
     // Declared above the effect that calls it: an effect reaching forward to a
     // function defined further down is a temporal-dead-zone hazard the moment
     // that call stops being deferred, which is what the hooks lint flags.
-    const fetchQuotes = async (pageNum, channel, year, sort, strictMode, game) => {
+    const fetchQuotes = useCallback(async (pageNum, channelVal, yearVal, sortVal, strictMode, gameVal) => {
         const seq = ++fetchSeqRef.current;
         try {
             const response = await query.getAll(
                 searchTerm,
                 pageNum,
                 strictMode,
-                channel,
+                channelVal,
                 "searchText",
-                year,
-                sort,
-                game
+                yearVal,
+                sortVal,
+                gameVal
             );
             if (seq !== fetchSeqRef.current) return; // stale response — a newer request is in flight
             setQuotes(response.data || []);
@@ -111,11 +112,13 @@ const App = () => {
         } finally {
             if (seq === fetchSeqRef.current) setLoading(false);
         }
-    };
+    }, [searchTerm]);
 
-    // Effect to handle URL parameter changes
+    // Effect to handle URL parameter changes (supports both FTS search and game-only browsing)
     useEffect(() => {
-        if (searchTerm.trim().length > 2) {
+        const hasValidTerm = searchTerm.trim().length > 2;
+        const hasGameFilter = Boolean(game && game !== 'all' && game.trim().length > 2);
+        if (hasValidTerm || (!searchTerm.trim() && hasGameFilter)) {
             // Clear previous results ONLY when the search TERM changes. A new
             // term means any currently-mounted results belong to a different
             // query, so dimming them would show the wrong videos/total (a
@@ -130,13 +133,13 @@ const App = () => {
             setError(null);
             setHasSearched(true);
             fetchQuotes(page, channel, year, sort, strict, game);
-        } else if (!searchTerm) {
+        } else if (!searchTerm && !hasGameFilter) {
             setQuotes([]);
             setTotalPages(0);
             setTotalQuotes(0);
             setHasSearched(false);
         }
-    }, [searchTerm, page, channel, year, sort, game]);
+    }, [searchTerm, page, channel, year, sort, game, strict, fetchQuotes]);
 
     // One event per filter interaction; the resulting search (with the full
     // parameter set and result counts) is logged server-side.
@@ -158,6 +161,9 @@ const App = () => {
         if (value.length === 4 && /^\d{4}$/.test(value)) {
             trackFilterChange('year', value);
             navigate(buildSearchUrl({ year: value, page: 1 }));
+        } else if (value.trim() === '' && year) {
+            trackFilterChange('year', 'all');
+            navigate(buildSearchUrl({ year: '', page: 1 }));
         }
     };
 
@@ -172,8 +178,8 @@ const App = () => {
     // a client-side event fired before navigating never does.
     const handleSearch = (e) => {
         e.preventDefault();
-        if (searchInput.trim().length > 2) {
-            navigate(buildSearchUrl({ q: searchInput, page: 1 }));
+        if (searchInput.trim().length > 2 || (searchInput.trim().length === 0 && game !== 'all')) {
+            navigate(buildSearchUrl({ q: searchInput.trim(), page: 1 }));
         } else {
             setError('Please enter at least 3 characters to search');
             setTimeout(() => setError(null), 3000);
@@ -182,8 +188,8 @@ const App = () => {
 
     const handleKeyPress = (event) => {
         if (event.key === 'Enter' && !loading) {
-            if (searchInput.trim().length > 2) {
-                navigate(buildSearchUrl({ q: searchInput, page: 1 }));
+            if (searchInput.trim().length > 2 || (searchInput.trim().length === 0 && game !== 'all')) {
+                navigate(buildSearchUrl({ q: searchInput.trim(), page: 1 }));
             } else {
                 setError('Please enter at least 3 characters to search');
                 setTimeout(() => setError(null), 3000);
