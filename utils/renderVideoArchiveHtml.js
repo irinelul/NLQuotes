@@ -161,12 +161,21 @@ export function renderVideoMonthHtml({ ym, videos, newer = null, older = null, s
 /** Every video of one game, newest first. */
 export function renderVideoGameHtml({ game, videos, siteBaseUrl, creator = null }) {
   const who = creator ? `${creator} ` : '';
+  // Facts about this game's run of videos, so the page says something no other
+  // game page does. videos is newest first.
+  const one = videos.length === 1;
+  const lines = videos.reduce((n, v) => n + (Number(v.quoteCount) || 0), 0);
+  const first = isoDate(videos[videos.length - 1]?.uploadDate)?.slice(0, 7);
+  const last = isoDate(videos[0]?.uploadDate)?.slice(0, 7);
+  const span = first && last
+    ? (first === last ? `, uploaded in ${monthLabel(first)}` : `, uploaded between ${monthLabel(first)} and ${monthLabel(last)}`)
+    : '';
   return shell({
     title: `${who}${game.name} videos — transcripts & quotes | NLQuotes`,
-    description: `All ${num(videos.length)} ${who}${game.name} videos with full searchable transcripts. Every line links straight to that moment on YouTube.`,
+    description: `All ${num(videos.length)} ${who}${game.name} video${one ? '' : 's'} with full searchable transcripts. Every line links straight to that moment on YouTube.`,
     canonical: `${siteBaseUrl}${gamePath(game.slug)}`,
     heading: `${who}${game.name} videos`,
-    intro: `${num(videos.length)} ${game.name} videos, newest first, each with a full searchable transcript.`,
+    intro: `${num(videos.length)} ${game.name} video${one ? '' : 's'}${span}, newest first — ${num(lines)} transcribed lines in all, each one linked to its moment in the video.`,
     crumbs: [HOME, VIDEOS, { name: 'Games', path: '/videos/games' }, { name: game.name, path: gamePath(game.slug) }],
     body: `<ul class="video-list">${videoRows(videos, siteBaseUrl, { showGame: false })}</ul>`,
     siteBaseUrl,

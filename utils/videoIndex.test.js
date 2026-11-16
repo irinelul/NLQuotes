@@ -124,3 +124,8 @@ test('the hub links to every month archive', () => {
         expect(html).toContain(`href="https://nlquotes.com${p}"`);
     }
 });
+
+test('topGames ranks games by video count', () => {
+    expect(batch.topGames.map((g) => [g.name, g.count])).toEqual([['Isaac', 4], ['Balatro', 2]]);
+    expect(batch.topGames[0].slug).toBe('isaac');
+});

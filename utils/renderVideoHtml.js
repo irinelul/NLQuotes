@@ -25,6 +25,55 @@ function formatTimestamp(seconds) {
   return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
 
+// 2289 -> "PT38M9S" (schema.org duration).
+export function isoDuration(seconds) {
+  const total = Math.floor(Number(seconds) || 0);
+  if (total <= 0) return null;
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return `PT${h ? `${h}H` : ''}${m ? `${m}M` : ''}${s || (!h && !m) ? `${s}S` : ''}`;
+}
+
+// 2289 -> "38-minute", 4350 -> "1-hour 13-minute" (used attributively).
+function spokenDuration(seconds) {
+  const total = Math.floor(Number(seconds) || 0);
+  if (total < 60) return null;
+  const mins = Math.round(total / 60);
+  if (mins < 60) return `${mins}-minute`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${h}-hour${m ? ` ${m}-minute` : ''}`;
+}
+
+// 2289 -> "38 min", 4350 -> "1 h 13 min" (for the meta description).
+function shortDuration(seconds) {
+  const total = Math.floor(Number(seconds) || 0);
+  if (total < 60) return null;
+  const mins = Math.round(total / 60);
+  if (mins < 60) return `${mins} min`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${h} h${m ? ` ${m} min` : ''}`;
+}
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+  'August', 'September', 'October', 'November', 'December'];
+
+// '2026-07-05' -> 'July 5, 2026'. Built from the date-only string so the
+// server's timezone can't shift it by a day.
+function longDate(dateOnly) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateOnly || '');
+  if (!m) return null;
+  return `${MONTHS[parseInt(m[2], 10) - 1]} ${parseInt(m[3], 10)}, ${m[1]}`;
+}
+
+// Rounded so the figure reads as the estimate it is.
+function approxWords(quotes) {
+  let n = 0;
+  for (const q of quotes || []) n += String(q.text || '').split(/\s+/).filter(Boolean).length;
+  return n < 100 ? n : Math.round(n / 100) * 100;
+}
 
 /**
  * A per-video entity page: one real video, its metadata, and its full quote list.
@@ -86,7 +135,7 @@ function renderCrumbs(archive, siteBaseUrl, canonical, displayTitle) {
   return { html, jsonLd };
 }
 
-export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName, totalQuotes, quotes, siteBaseUrl, indexable = true, creator = null, related = null, archive = null }) {
+export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName, totalQuotes, quotes, siteBaseUrl, indexable = true, creator = null, related = null, archive = null, durationSeconds = null }) {
   const safeId = encodeURIComponent(videoId);
   const canonical = `${siteBaseUrl}/video/${safeId}`;
   const ytUrl = `https://www.youtube.com/watch?v=${safeId}`;
@@ -101,11 +150,30 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
   // and is rarely in the video title itself, so it goes in <title> too.
   const titleSuffix = creator ? `${escapeHtml(creator)} quotes &amp; transcript` : 'transcript &amp; quotes';
 
+  // The description and intro are built from this video's own facts (length,
+  // date, game, size of the transcript) rather than one sentence with the title
+  // swapped in, which is how 23,000 pages came to read as near-duplicates.
+  const who = creator || channel || '';
+  const lineCount = Number(totalQuotes || 0).toLocaleString('en-US');
+  const words = approxWords(quotes);
+  const runtime = spokenDuration(durationSeconds);
+  const uploadedOn = longDate(published);
+
+  const facts = [gameName, uploadedOn, shortDuration(durationSeconds)].filter(Boolean).join(', ');
   const description =
-    `Full searchable transcript of ${creator ? `${creator}'s ` : ''}"${displayTitle}"` +
-    (gameName ? ` (${gameName})` : '') +
-    ` — ${Number(totalQuotes || 0).toLocaleString()} lines, each linking straight to that moment on YouTube.`;
+    `Transcript of ${who ? `${who}'s ` : ''}"${displayTitle}"` +
+    (facts ? ` (${facts})` : '') +
+    ` — ${lineCount} timestamped lines to read, search and play from any moment.`;
   const safeDescription = escapeHtml(description);
+
+  const introHtml =
+    `The full transcript of <strong>${safeTitle}</strong>, ` +
+    `a ${runtime ? `${runtime} ` : ''}${who ? `${escapeHtml(who)} ` : ''}video` +
+    (gameName ? ` (${escapeHtml(gameName)})` : '') +
+    (uploadedOn ? ` uploaded on ${uploadedOn}` : '') +
+    `: ${lineCount} timestamped lines` +
+    (words ? `, about ${words.toLocaleString('en-US')} words` : '') +
+    '. Press any timestamp to play the video from that moment.';
 
   const quotesHtml = (quotes || [])
     .map((q) => {
@@ -115,16 +183,16 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
       const text = escapeHtml(stripSimpleTags(q.text || ''));
       return `
         <li class="quote-row">
-          <a class="ts-btn" href="${ytUrl}&t=${tParam}" target="_blank" rel="noopener noreferrer"
-             title="Watch at ${label} on YouTube">${label}</a>
+          <a class="ts-btn" href="${ytUrl}&t=${tParam}" data-t="${tParam}" target="_blank" rel="noopener noreferrer"
+             title="Play from ${label}">${label}</a>
           <span class="qt">${text}</span>
         </li>`;
     })
     .join('');
 
-  // VideoObject describes the real video this page is about. Worth having for
-  // the entity signals; note Google normally credits video rich results to the
-  // canonical host (YouTube), so do not expect a video carousel from this.
+  // VideoObject describes the real video this page is about, which plays on the
+  // page itself (the player below). Search Console's video report had already
+  // indexed 103 of these as video pages on the structured data alone.
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'VideoObject',
@@ -134,6 +202,7 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
     embedUrl: `https://www.youtube.com/embed/${safeId}`,
     url: canonical,
     ...(publishedDateTime ? { uploadDate: publishedDateTime } : {}),
+    ...(isoDuration(durationSeconds) ? { duration: isoDuration(durationSeconds) } : {}),
     ...(channel ? { creator: { '@type': 'Person', name: channel } } : {}),
   };
 
@@ -199,12 +268,38 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
     .crumbs { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
     .crumbs .sep { margin: 0 8px; }
 
-    .hero { display: flex; gap: 20px; margin-bottom: 24px; flex-wrap: wrap; }
-    .hero-thumb {
-      width: 240px; max-width: 100%; border-radius: var(--radius);
-      border: 1px solid var(--border); display: block;
+    /* The video itself. Until it is played this is only the thumbnail, so the
+       page makes no request to YouTube; the iframe is created on first play. */
+    .player {
+      position: relative; width: 100%; max-width: 640px; aspect-ratio: 16 / 9;
+      margin: 0 0 20px; background: #000; overflow: hidden;
+      border: 1px solid var(--border); border-radius: var(--radius);
     }
-    .hero-body { flex: 1; min-width: 260px; }
+    /* Once playing it follows the reader down the transcript. */
+    .player.playing {
+      position: sticky; top: 8px; z-index: 5; max-width: 480px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+    }
+    .player iframe { width: 100%; height: 100%; border: 0; display: block; }
+    .player-facade {
+      display: block; width: 100%; height: 100%; padding: 0; border: 0;
+      background: none; cursor: pointer; position: relative;
+    }
+    .player-facade img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .play-icon {
+      position: absolute; left: 50%; top: 50%; width: 68px; height: 48px;
+      transform: translate(-50%, -50%); border-radius: 12px; background: var(--accent);
+    }
+    .play-icon::after {
+      content: ''; position: absolute; left: 50%; top: 50%; transform: translate(-40%, -50%);
+      border-style: solid; border-width: 10px 0 10px 18px;
+      border-color: transparent transparent transparent #fff;
+    }
+    .player-facade:hover .play-icon, .player-facade:focus-visible .play-icon { opacity: 0.85; }
+
+    .hero { margin-bottom: 20px; }
+    .intro { margin: 0 0 14px; font-size: 15px; color: var(--text2); }
+    .intro strong { color: var(--text); font-weight: 600; }
     .hero h1 { margin: 0 0 8px; font-size: clamp(20px, 3.4vw, 28px); line-height: 1.25; }
     .video-meta {
       display: flex; flex-wrap: wrap; gap: 8px 16px;
@@ -218,12 +313,6 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
     .btn:hover { background: var(--border); text-decoration: none; }
     .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
     .btn-primary:hover { opacity: 0.9; background: var(--accent); }
-
-    .stats-bar {
-      padding: 12px 16px; background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius); margin-bottom: 20px; font-size: 14px; color: var(--text2);
-    }
-    .stats-bar strong { color: var(--text); }
 
     .quote-list {
       list-style: none; margin: 0; padding: 10px 16px 14px;
@@ -261,7 +350,7 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
 
     @media (max-width: 600px) {
       .quote-row { grid-template-columns: 60px 1fr; gap: 10px; }
-      .hero-thumb { width: 100%; }
+      .player.playing { max-width: 100%; top: 0; }
     }
   </style>
 </head>
@@ -279,22 +368,22 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
 
     ${crumbs.html}
 
-    <div class="hero">
-      <a href="${ytUrl}" target="_blank" rel="noopener noreferrer">
-        <img class="hero-thumb" src="${thumbnail}" alt="${safeTitle}" loading="lazy" width="240" height="180" />
-      </a>
-      <div class="hero-body">
-        <h1>${safeTitle}</h1>
-        <div class="video-meta">${metaBits}</div>
-        <div class="hero-actions">
-          <a class="btn btn-primary" href="${ytUrl}" target="_blank" rel="noopener noreferrer">Watch on YouTube &#8599;</a>
-          <a class="btn" href="${siteBaseUrl}/videos">Latest videos</a>
-        </div>
-      </div>
+    <div class="player" id="player" data-id="${safeId}" data-title="${safeTitle}">
+      <button type="button" class="player-facade" aria-label="Play ${safeTitle}">
+        <img src="${thumbnail}" alt="${safeTitle}" width="480" height="360" fetchpriority="high" />
+        <span class="play-icon" aria-hidden="true"></span>
+      </button>
     </div>
 
-    <div class="stats-bar">
-      <strong>${Number(totalQuotes || 0).toLocaleString()} lines</strong> transcribed from this video. Click any timestamp to jump to that moment.
+    <div class="hero">
+      <h1>${safeTitle}</h1>
+      <div class="video-meta">${metaBits}</div>
+      <p class="intro">${introHtml}</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="${ytUrl}" target="_blank" rel="noopener noreferrer">Watch on YouTube &#8599;</a>
+        <a class="btn" href="${siteBaseUrl}/">Search all quotes</a>
+        <a class="btn" href="${siteBaseUrl}/videos">Latest videos</a>
+      </div>
     </div>
 
     <ul class="quote-list">
@@ -309,6 +398,55 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
     </footer>
 
   </main>
+
+  <script>
+  // Plays the video on this page, from the top or from a transcript timestamp.
+  // Without JavaScript every timestamp is still a plain link to YouTube.
+  (function () {
+    var box = document.getElementById('player');
+    if (!box) return;
+    var id = box.getAttribute('data-id');
+    var origin = 'https://www.youtube-nocookie.com';
+    var frame = null, ready = false;
+
+    function command(func, args) {
+      frame.contentWindow.postMessage(JSON.stringify({ event: 'command', func: func, args: args || [] }), origin);
+    }
+
+    function play(t) {
+      t = t > 0 ? Math.floor(t) : 0;
+      if (frame && ready) {
+        command('seekTo', [t, true]);
+        command('playVideo');
+        return;
+      }
+      if (!frame) {
+        frame = document.createElement('iframe');
+        frame.title = box.getAttribute('data-title') || 'Video player';
+        frame.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+        frame.allowFullscreen = true;
+        frame.referrerPolicy = 'strict-origin-when-cross-origin';
+        frame.addEventListener('load', function () { ready = true; });
+        box.textContent = '';
+        box.appendChild(frame);
+        box.classList.add('playing');
+      }
+      ready = false;
+      frame.src = origin + '/embed/' + id + '?autoplay=1&rel=0&enablejsapi=1&start=' + t;
+    }
+
+    box.addEventListener('click', function (e) {
+      if (e.target.closest && e.target.closest('.player-facade')) play(0);
+    });
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('a.ts-btn');
+      // Leave modified clicks alone so "open in new tab" still goes to YouTube.
+      if (!a || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      e.preventDefault();
+      play(parseInt(a.getAttribute('data-t'), 10) || 0);
+    });
+  })();
+  </script>
 
 </body>
 </html>`;

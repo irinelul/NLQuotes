@@ -241,6 +241,7 @@ const VIDEO_MIN_QUOTES = 20;   // 23,308 of 23,595 videos clear this
 const VIDEO_INDEX_SINCE = process.env.VIDEO_INDEX_SINCE || null;
 const VIDEO_INDEX_MAX = parseInt(process.env.VIDEO_INDEX_MAX || '50000', 10); // safety valve
 const VIDEOS_PER_HUB_PAGE = 50;
+const HOME_LATEST_VIDEOS = 12; // newest uploads linked from the home page fallback
 const VIDEO_INDEX_REFRESH_MS = 6 * 60 * 60 * 1000;
 // The full list aggregates the whole quotes table. It runs in the background,
 // never on a request, so it gets far longer than the pool's 10s timeout —
@@ -467,12 +468,20 @@ app.use((req, res, next) => {
   const userAgent = req.get('User-Agent') || '';
   const requestPath = req.path || '';
   
+  // Video pages are exempt from the path patterns: a YouTube id is 11 chars of
+  // [A-Za-z0-9_-], so some contain "wp-" by chance (/video/J0vgWp-vrrU,
+  // /video/rTsStISwP-I) and were answering 403 to visitors and crawlers alike.
+  // The /video/ route validates the id itself before touching the database.
+  const isVideoPage = /^\/video\/[A-Za-z0-9_-]{11}\/?$/.test(requestPath);
+
   // Simplified pattern matching for better performance. The admin check is
   // anchored to the path START so legit content paths (e.g. a topic page for
-  // "administrator") aren't 403'd by a substring match.
+  // "administrator") aren't 403'd by a substring match. Scanner names are
+  // matched as whole words: bare /nmap/ also matches every "sitemap" fetcher,
+  // and bare /zap/ matches unrelated agents.
   if (
-    /sqlmap|nikto|nmap|acunetix|burpsuite|ZAP/i.test(userAgent) ||
-    /wp-|xmlrpc|\.php|\.asp/i.test(requestPath) ||
+    /\b(sqlmap|nikto|nmap|acunetix|burpsuite|zap)\b/i.test(userAgent) ||
+    (!isVideoPage && /wp-|xmlrpc|\.php|\.asp/i.test(requestPath)) ||
     /^\/admin/i.test(requestPath)
   ) {
     return res.status(403).json({ error: 'Forbidden' });
@@ -962,10 +971,26 @@ app.get('/api/topic/:term', async (req, res) => {
   }
 });
 
-// Strip trailing slash on /topic/ routes so /topic/cruise/ → /topic/cruise
+// A retired topic term: not curated, blocked, or not a plausible phrase.
+// `term` must already be normalized.
+function isGoneTopic(term) {
+  return !isAllowlistedTopic(term) || isBlockedTopic(term) || !isIndexableTopic(term);
+}
+
+// Strip trailing slash on /topic/ routes so /topic/cruise/ → /topic/cruise.
+// Retired terms are left alone: the route below answers them 410 directly,
+// and redirecting first would cost a crawler two requests to learn one fact.
 app.use('/topic', (req, res, next) => {
   if (req.path !== '/' && req.path.endsWith('/')) {
-    return res.redirect(301, '/topic/' + req.path.slice(1, -1));
+    const raw = req.path.slice(1, -1);
+    let term = null;
+    try {
+      term = normalizeTopicTerm(decodeURIComponent(raw));
+    } catch {
+      // Malformed escape: let the route (and Express) deal with it.
+    }
+    if (term === null || isGoneTopic(term)) return next();
+    return res.redirect(301, '/topic/' + raw);
   }
   next();
 });
@@ -984,25 +1009,31 @@ app.get('/topic/:term', async (req, res, next) => {
   const hostname = req.tenant?.hostnames?.[0] || 'nlquotes.com';
   const siteBaseUrl = `https://${hostname}`;
 
-  // One term, one URL.
-  if (rawTerm !== term) {
-    return res.redirect(301, topicPath(term));
-  }
-
   // 410 rather than 404: it is the strongest "this is permanently gone" signal
   // and Google drops 410s from the index faster. The response body is still a
   // useful page for the humans arriving from stale search results.
   //
+  // This runs BEFORE the spelling redirect below. It used to run after, so
+  // /topic/Mushroom answered 301 -> /topic/mushroom -> 410: two crawls per dead
+  // URL. Search Console's crawl stats showed 21% of all Googlebot requests
+  // (9,080 in 90 days) were exactly that first hop, on top of the 63% spent
+  // on the 410s themselves — crawl that the video pages were waiting for.
+  //
   // Note for whoever revisits this: do NOT add these paths to robots.txt until
   // Search Console shows them dropped. Blocking crawl stops Google ever seeing
   // the 410, which freezes them in the index permanently.
-  if (!isAllowlistedTopic(term) || isBlockedTopic(term) || !isIndexableTopic(term)) {
+  if (isGoneTopic(term)) {
     logServerEvent(req, { event_type: 'ssr_page_view', path: req.path, search_term: term, props: { kind: 'topic_gone' } });
     return res
       .status(410)
       .set('Cache-Control', 'public, max-age=86400')
       .type('html')
       .send(renderRemovedTopicHtml({ term, siteBaseUrl }));
+  }
+
+  // One term, one URL — for the terms that still have a page.
+  if (rawTerm !== term) {
+    return res.redirect(301, topicPath(term));
   }
 
   const encoded = encodeURIComponent(term);
@@ -1247,6 +1278,7 @@ app.get('/video/:videoId', async (req, res, next) => {
       uploadDate: video.upload_date,
       gameName: video.game_name,
       totalQuotes: video.total_quotes,
+      durationSeconds: video.duration_seconds,
       quotes: video.quotes || [],
       siteBaseUrl: sitemapBase(req),
       indexable,
@@ -1378,9 +1410,15 @@ app.use((req, res) => {
       // JavaScript got an empty #root and no links. Give them a description and
       // links into the server-rendered pages; createRoot() replaces it on mount.
       if (spaPath === '/') {
+        // Read straight from the cache: the home page must never wait on the
+        // video list, and simply omits these links until it has loaded.
+        const batch = videoIndexCache.get(tenant?.id || 'default')?.value;
+        const links = batch
+          ? { latest: batch.list.slice(0, HOME_LATEST_VIDEOS), games: batch.topGames }
+          : {};
         html = html.replace(
           '<div id="root"></div>',
-          () => `<div id="root">${renderHomeFallbackHtml(tenant, tenantDomain)}</div>`
+          () => `<div id="root">${renderHomeFallbackHtml(tenant, tenantDomain, links)}</div>`
         );
       }
 
@@ -1469,6 +1507,15 @@ app.use((req, res) => {
 // Global error handler — must be last, after all routes
 // _next: Express needs arity 4 to treat this as an error handler
 app.use((err, req, res, _next) => {
+    // A malformed request (bad percent-encoding such as /topic/%E0%A4%A, an
+    // oversized body…) is the client's error. Express tags these with a 4xx
+    // status; answering 500 instead told crawlers the server was failing,
+    // which is the one signal that makes Google slow its crawl of the site.
+    const clientStatus = err.status || err.statusCode;
+    if (clientStatus >= 400 && clientStatus < 500) {
+        return res.status(clientStatus).json({ error: 'Bad request' });
+    }
+
     console.error('Unhandled application error:', err.stack);
 
     if (err.name === 'CastError') {

@@ -32,9 +32,28 @@ function howItWorks(creator) {
 // Static content for <div id="root"> on the home page. createRoot() discards it
 // as soon as the app mounts, so browsers with JavaScript only see it for the
 // moment before the bundle runs.
-export function renderHomeFallbackHtml(tenant, siteBaseUrl) {
+//
+// latest: [{ videoId, title }] newest first; games: [{ slug, name, count }].
+// Both are optional. They exist because the home page is the only URL other
+// sites link to, so a link from here is the shortest path a crawler has to a
+// new upload — Search Console's link report counted 230 internal links to "/"
+// and none to any video page.
+export function renderHomeFallbackHtml(tenant, siteBaseUrl, { latest = [], games = [] } = {}) {
   const { siteName, creator, description, disclaimer } = siteFacts(tenant);
   const heading = creator ? `${siteName} - search ${creator} quotes` : siteName;
+
+  const latestHtml = latest.length ? `
+  <h2>Latest ${creator ? `${escapeHtml(creator)} ` : ''}video transcripts</h2>
+  <ul>${latest.map((v) => `
+    <li><a href="${siteBaseUrl}/video/${encodeURIComponent(v.videoId)}">${escapeHtml(v.title || 'Untitled video')}</a></li>`).join('')}
+  </ul>` : '';
+
+  const gamesHtml = games.length ? `
+  <h2>Most covered games</h2>
+  <ul>${games.map((g) => `
+    <li><a href="${siteBaseUrl}/videos/game/${encodeURIComponent(g.slug)}">${escapeHtml(g.name)}</a> (${Number(g.count).toLocaleString('en-US')} videos)</li>`).join('')}
+  </ul>` : '';
+
   return `<main style="max-width:40rem;margin:3rem auto;padding:0 1rem;font-family:system-ui,sans-serif;line-height:1.5">
   <h1>${escapeHtml(heading)}</h1>
   <p>${escapeHtml(description)}</p>
@@ -43,7 +62,7 @@ export function renderHomeFallbackHtml(tenant, siteBaseUrl) {
     <li><a href="${siteBaseUrl}/videos">All videos, newest first</a></li>
     <li><a href="${siteBaseUrl}/videos/games">Videos by game</a></li>
     <li><a href="${siteBaseUrl}/stats">Site statistics</a></li>
-  </ul>
+  </ul>${latestHtml}${gamesHtml}
   ${disclaimer ? `<p><small>${escapeHtml(disclaimer)}</small></p>` : ''}
 </main>`;
 }
