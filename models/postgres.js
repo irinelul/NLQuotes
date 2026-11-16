@@ -473,6 +473,9 @@ const quoteModel = {
                 max(q.upload_date)    AS upload_date,
                 max(q.game_name)      AS game_name,
                 count(*)              AS total_quotes,
+                -- End of the last transcribed line: the video's length to
+                -- within a few seconds, without depending on the videos table.
+                max(q.timestamp_end_seconds) AS duration_seconds,
                 json_agg(json_build_object(
                   'text', q.text,
                   'line_number', q.line_number,

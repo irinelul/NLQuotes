@@ -72,6 +72,8 @@ export function slugifyGame(name) {
     .replace(/^-+|-+$/g, '') || 'game';
 }
 
+const TOP_GAMES = 12;
+
 // months: Map 'YYYY-MM' -> [list index, ...]  (newest month first, newest video first)
 // games:  Map slug -> { slug, name, indices }  (alphabetical by name)
 // slugByGame: Map game name -> slug
@@ -99,7 +101,13 @@ export function buildArchives(list, byGame) {
     slugByGame.set(name, slug);
   });
 
-  return { months, games, slugByGame };
+  // The games with the most videos, for the home page's crawlable links.
+  const topGames = [...games.values()]
+    .sort((a, b) => b.indices.length - a.indices.length || a.name.localeCompare(b.name, 'en'))
+    .slice(0, TOP_GAMES)
+    .map((g) => ({ slug: g.slug, name: g.name, count: g.indices.length }));
+
+  return { months, games, slugByGame, topGames };
 }
 
 // The archive pages a given video belongs to, for its breadcrumb links.
