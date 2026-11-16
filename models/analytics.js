@@ -16,6 +16,7 @@ const CLIENT_EVENT_TYPES = new Set([
     'pagination',
     'quote_play',
     'quote_copy',
+    'quote_link_copy',      // link to a moment (/video/:id?t=) copied from a search result
     'youtube_open',
     'tweet_share',
     'quote_flag',

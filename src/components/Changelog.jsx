@@ -4,6 +4,14 @@ import styles from './Changelog.module.css';
 // Newest first
 const changelogEntries = [
     {
+        date: 'November 16, 2026',
+        items: [
+            'Share a moment: the new 🔗 button next to every quote copies a link that opens the video on that exact line, with the quote shown in the preview when you paste it into Discord, Reddit or a chat',
+            'Video pages now play the video right on the page, and clicking any timestamp in the transcript jumps the player to that moment',
+            'Every video is now listed by month and by game under Latest videos'
+        ]
+    },
+    {
         date: 'July 29, 2026',
         items: [
             'Removed Umami analytics entirely — no third-party tracking script is loaded on any page, and our own in-house analytics is now the only one running',

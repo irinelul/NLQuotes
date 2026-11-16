@@ -131,6 +131,29 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = fal
       setActiveTimestamp({ videoId, timestamp });
   };
 
+  // Copies a link that opens this quote on its video's own page:
+  // /video/<id>?t=<seconds>. That page shows the quote, plays from it, and
+  // gives chat apps and social sites a preview card with the quote in it, so
+  // it is the link worth pasting somewhere. The seconds are the line's real
+  // start (not the backdated play position) so the page finds the same line.
+  const copyMomentLink = (e, videoId, quote) => {
+      const button = e.currentTarget;
+      const seconds = Math.max(0, Math.floor(Number(quote.timestamp_start) || 0));
+      const url = `${window.location.origin}/video/${videoId}?t=${seconds}`;
+      trackQuoteEvent('quote_link_copy', videoId, seconds);
+      navigator.clipboard.writeText(url).then(() => {
+          const originalText = button.innerHTML;
+          button.innerHTML = '✓';
+          button.classList.add(styles.copied);
+          setTimeout(() => {
+              button.innerHTML = originalText;
+              button.classList.remove(styles.copied);
+          }, 1000);
+      }).catch(() => {
+          window.prompt('Copy this link', url);
+      });
+  };
+
   const handleFlagClick = (quote, videoId, title, channel, timestamp, lineNumber) => {
       trackQuoteEvent('quote_flag', videoId, timestamp);
       setModalState({
@@ -235,6 +258,14 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = fal
                                               title="Copy quote to clipboard" aria-label="Copy quote to clipboard"
                                           >
                                               📋
+                                          </button>
+
+                                          <button
+                                              onClick={(e) => copyMomentLink(e, quoteGroup.video_id, quote)}
+                                              className={styles.actionButton}
+                                              title="Copy a link to this moment" aria-label="Copy a link to this moment"
+                                          >
+                                              🔗
                                           </button>
 
                                           <button
@@ -352,6 +383,14 @@ export const Quotes = ({ quotes = [], searchTerm, totalQuotes = 0, loading = fal
                                       title="Copy quote to clipboard" aria-label="Copy quote to clipboard"
                                   >
                                       📋
+                                  </button>
+
+                                  <button
+                                      onClick={(e) => copyMomentLink(e, quoteGroup.video_id, quote)}
+                                      className={styles.mobileActionButton}
+                                      title="Copy a link to this moment" aria-label="Copy a link to this moment"
+                                  >
+                                      🔗
                                   </button>
 
                                   <button
