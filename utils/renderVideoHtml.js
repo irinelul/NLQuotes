@@ -68,6 +68,35 @@ function longDate(dateOnly) {
   return `${MONTHS[parseInt(m[2], 10) - 1]} ${parseInt(m[3], 10)}, ${m[1]}`;
 }
 
+// Whole seconds into the video at which a transcript line starts.
+function lineSeconds(q) {
+  return Math.max(0, Math.floor(Number(q.timestamp_start_seconds ?? q.timestamp_start) || 0));
+}
+
+// The line being spoken at `seconds`: the last one that starts at or before it.
+// Returns { quote, t } with t the line's own start, or null when `seconds` is
+// missing, invalid or before the first line. Assumes quotes are in order.
+export function findMoment(quotes, seconds) {
+  if (seconds === null || seconds === undefined || seconds === '') return null;
+  const at = Number(seconds);
+  if (!Number.isFinite(at) || at < 0) return null;
+  let found = null;
+  for (const q of quotes || []) {
+    const t = lineSeconds(q);
+    if (t > at) break;
+    found = { quote: q, t };
+  }
+  return found;
+}
+
+// Cuts at a word boundary and marks the cut.
+function excerpt(text, max) {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const space = cut.lastIndexOf(' ');
+  return `${(space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s,;:.—-]+$/, '')}…`;
+}
+
 // Rounded so the figure reads as the estimate it is.
 function approxWords(quotes) {
   let n = 0;
@@ -135,7 +164,7 @@ function renderCrumbs(archive, siteBaseUrl, canonical, displayTitle) {
   return { html, jsonLd };
 }
 
-export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName, totalQuotes, quotes, siteBaseUrl, indexable = true, creator = null, related = null, archive = null, durationSeconds = null }) {
+export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName, totalQuotes, quotes, siteBaseUrl, indexable = true, creator = null, related = null, archive = null, durationSeconds = null, sharedAt = null }) {
   const safeId = encodeURIComponent(videoId);
   const canonical = `${siteBaseUrl}/video/${safeId}`;
   const ytUrl = `https://www.youtube.com/watch?v=${safeId}`;
@@ -175,20 +204,53 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
     (words ? `, about ${words.toLocaleString('en-US')} words` : '') +
     '. Press any timestamp to play the video from that moment.';
 
+  // A shared link is /video/<id>?t=<seconds>: the same page, opened on one
+  // line. The canonical stays the bare video URL, so every link to a moment
+  // counts toward the video page rather than minting a page of its own.
+  const moment = findMoment(quotes, sharedAt);
+  const momentLabel = moment ? formatTimestamp(moment.t) : null;
+  const momentText = moment ? stripSimpleTags(moment.quote.text || '').trim() : '';
+
+  // The link buttons are <button>s, not links, on purpose. As <a href="?t=…">
+  // they would hand crawlers a hundred extra URLs per video (2.3M site-wide),
+  // which is the crawl waste the retired /topic/ pages were.
   const quotesHtml = (quotes || [])
     .map((q) => {
-      const secs = q.timestamp_start_seconds ?? q.timestamp_start;
-      const label = formatTimestamp(secs);
-      const tParam = Math.max(0, Math.floor(Number(secs) || 0));
+      const tParam = lineSeconds(q);
+      const label = formatTimestamp(tParam);
       const text = escapeHtml(stripSimpleTags(q.text || ''));
+      const isMoment = moment && q === moment.quote;
       return `
-        <li class="quote-row">
+        <li class="quote-row${isMoment ? ' hl' : ''}"${isMoment ? ' id="moment-line"' : ''}>
           <a class="ts-btn" href="${ytUrl}&t=${tParam}" data-t="${tParam}" target="_blank" rel="noopener noreferrer"
              title="Play from ${label}">${label}</a>
           <span class="qt">${text}</span>
+          <button type="button" class="link-btn" data-link="${tParam}" title="Copy a link to this moment"
+                  aria-label="Copy a link to ${label}">&#128279;</button>
         </li>`;
     })
     .join('');
+
+  const momentHtml = moment ? `
+    <aside class="moment" aria-label="Shared moment">
+      <div class="moment-label">Shared moment &middot; ${momentLabel}</div>
+      <blockquote>${escapeHtml(momentText)}</blockquote>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="${ytUrl}&t=${moment.t}" data-t="${moment.t}" target="_blank" rel="noopener noreferrer">&#9654; Play from ${momentLabel}</a>
+        <a class="btn" href="#moment-line">Show in transcript</a>
+      </div>
+    </aside>` : '';
+
+  // What a chat app or social site shows when the link is pasted. For a shared
+  // moment that is the quote itself; og:url keeps the ?t= so a scraper that
+  // re-fetches og:url lands on the same card.
+  const shareUrl = moment ? `${canonical}?t=${moment.t}` : canonical;
+  const shareTitle = moment
+    ? `${safeTitle} — at ${momentLabel}`
+    : `${safeTitle} — ${titleSuffix}`;
+  const shareDescription = moment
+    ? escapeHtml(`“${excerpt(momentText, 280)}”${who ? ` — ${who}` : ''}`)
+    : safeDescription;
 
   // VideoObject describes the real video this page is about, which plays on the
   // page itself (the player below). Search Console's video report had already
@@ -227,13 +289,14 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
   <title>${safeTitle} — ${titleSuffix} | NLQuotes</title>
   <meta name="description" content="${safeDescription}" />
   <meta property="og:type" content="video.other" />
-  <meta property="og:url" content="${canonical}" />
-  <meta property="og:title" content="${safeTitle} — ${titleSuffix}" />
-  <meta property="og:description" content="${safeDescription}" />
+  <meta property="og:site_name" content="NLQuotes" />
+  <meta property="og:url" content="${shareUrl}" />
+  <meta property="og:title" content="${shareTitle}" />
+  <meta property="og:description" content="${shareDescription}" />
   <meta property="og:image" content="${thumbnail}" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="${safeTitle} — ${titleSuffix}" />
-  <meta name="twitter:description" content="${safeDescription}" />
+  <meta name="twitter:title" content="${shareTitle}" />
+  <meta name="twitter:description" content="${shareDescription}" />
   <meta name="twitter:image" content="${thumbnail}" />
   <script type="application/ld+json">${inlineJson(jsonLd)}</script>
   <script type="application/ld+json">${inlineJson(crumbs.jsonLd)}</script>
@@ -319,7 +382,34 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
       background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
       display: flex; flex-direction: column; gap: 8px;
     }
-    .quote-row { display: grid; grid-template-columns: 66px 1fr; align-items: baseline; gap: 12px; }
+    /* scroll-margin leaves room for the sticky player above a jumped-to line. */
+    .quote-row {
+      display: grid; grid-template-columns: 66px 1fr 30px; align-items: baseline; gap: 12px;
+      padding: 2px 6px; margin: 0 -6px; border-radius: 6px; scroll-margin-top: 300px;
+    }
+    .quote-row.hl { background: rgba(255, 75, 75, 0.12); box-shadow: inset 3px 0 0 var(--accent); }
+    .link-btn {
+      padding: 2px 4px; border: 0; border-radius: 6px; background: none; cursor: pointer;
+      font-size: 13px; line-height: 1.4; color: var(--muted); opacity: 0.35;
+    }
+    .quote-row:hover .link-btn, .link-btn:focus-visible, .link-btn.copied { opacity: 1; }
+    .link-btn.copied { color: #4CAF50; }
+
+    /* The quote a shared link points at, shown above the fold with its own play button. */
+    .moment {
+      margin: 0 0 20px; padding: 14px 16px; background: var(--surface);
+      border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius);
+    }
+    .moment-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+    .moment blockquote { margin: 6px 0 12px; font-size: 16px; color: var(--text); }
+
+    .toast {
+      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 10;
+      padding: 8px 14px; border-radius: 8px; font-size: 14px;
+      background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+      opacity: 0; pointer-events: none; transition: opacity 0.15s;
+    }
+    .toast.show { opacity: 1; }
     .ts-btn {
       display: inline-block; padding: 2px 8px; border-radius: 6px;
       background: var(--surface2); border: 1px solid var(--border); color: var(--ts);
@@ -349,7 +439,8 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
     }
 
     @media (max-width: 600px) {
-      .quote-row { grid-template-columns: 60px 1fr; gap: 10px; }
+      .quote-row { grid-template-columns: 60px 1fr 28px; gap: 10px; scroll-margin-top: 240px; }
+      .link-btn { opacity: 0.7; }
       .player.playing { max-width: 100%; top: 0; }
     }
   </style>
@@ -368,12 +459,13 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
 
     ${crumbs.html}
 
-    <div class="player" id="player" data-id="${safeId}" data-title="${safeTitle}">
+    <div class="player" id="player" data-id="${safeId}" data-title="${safeTitle}" data-start="${moment ? moment.t : 0}">
       <button type="button" class="player-facade" aria-label="Play ${safeTitle}">
         <img src="${thumbnail}" alt="${safeTitle}" width="480" height="360" fetchpriority="high" />
         <span class="play-icon" aria-hidden="true"></span>
       </button>
     </div>
+${momentHtml}
 
     <div class="hero">
       <h1>${safeTitle}</h1>
@@ -398,6 +490,8 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
     </footer>
 
   </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
   // Plays the video on this page, from the top or from a transcript timestamp.
@@ -435,15 +529,49 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
       frame.src = origin + '/embed/' + id + '?autoplay=1&rel=0&enablejsapi=1&start=' + t;
     }
 
+    // On a shared link the big play button starts at the shared moment.
     box.addEventListener('click', function (e) {
-      if (e.target.closest && e.target.closest('.player-facade')) play(0);
+      if (e.target.closest && e.target.closest('.player-facade')) {
+        play(parseInt(box.getAttribute('data-start'), 10) || 0);
+      }
     });
     document.addEventListener('click', function (e) {
-      var a = e.target.closest && e.target.closest('a.ts-btn');
+      var a = e.target.closest && e.target.closest('a[data-t]');
       // Leave modified clicks alone so "open in new tab" still goes to YouTube.
       if (!a || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       e.preventDefault();
       play(parseInt(a.getAttribute('data-t'), 10) || 0);
+    });
+
+    // Copy a link to one line: /video/<id>?t=<seconds>.
+    var toast = document.getElementById('toast'), toastTimer;
+    function say(text) {
+      if (!toast) return;
+      toast.textContent = text;
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { toast.classList.remove('show'); }, 1800);
+    }
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('button.link-btn');
+      if (!b) return;
+      var url = location.origin + location.pathname + '?t=' + b.getAttribute('data-link');
+      var row = b.closest('.quote-row');
+      var old = document.querySelector('.quote-row.hl');
+      if (old) old.classList.remove('hl');
+      if (row) row.classList.add('hl');
+      // The address bar then holds the same link, for anyone who copies from there.
+      try { history.replaceState(null, '', url); } catch (err) { /* file:// and the like */ }
+      var done = function () {
+        b.classList.add('copied');
+        setTimeout(function () { b.classList.remove('copied'); }, 1800);
+        say('Link to this moment copied');
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done, function () { window.prompt('Copy this link', url); });
+      } else {
+        window.prompt('Copy this link', url);
+      }
     });
   })();
   </script>

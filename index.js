@@ -1271,6 +1271,13 @@ app.get('/video/:videoId', async (req, res, next) => {
     const batch = await getIndexableVideos(req.tenant);
     const indexable = batch ? batch.ids.has(video.video_id) : true;
 
+    // ?t=<seconds> is a shared link to one line of the transcript. Anything
+    // that isn't a plain number of seconds is ignored and the page renders
+    // as usual.
+    const sharedAt = typeof req.query.t === 'string' && /^\d{1,6}$/.test(req.query.t)
+      ? parseInt(req.query.t, 10)
+      : null;
+
     const html = renderVideoHtml({
       videoId: video.video_id,
       title: video.title,
@@ -1279,6 +1286,7 @@ app.get('/video/:videoId', async (req, res, next) => {
       gameName: video.game_name,
       totalQuotes: video.total_quotes,
       durationSeconds: video.duration_seconds,
+      sharedAt,
       quotes: video.quotes || [],
       siteBaseUrl: sitemapBase(req),
       indexable,
@@ -1289,6 +1297,9 @@ app.get('/video/:videoId', async (req, res, next) => {
 
     logServerEvent(req, {
       event_type: 'ssr_page_view', path: req.path, video_id: video.video_id,
+      // Set only for visits that arrive on a shared ?t= link, so the dashboard
+      // can tell how many views sharing brings in.
+      ...(sharedAt !== null ? { quote_timestamp: sharedAt } : {}),
       props: { kind: 'video', indexable },
     });
     res.set('Cache-Control', 'public, max-age=3600').type('html').send(html);
