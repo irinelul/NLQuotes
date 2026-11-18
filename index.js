@@ -22,6 +22,7 @@ import { isAllowlistedTopic, allowlistedTopics } from './utils/topicAllowlist.js
 import { normalizeTopicTerm, topicPath } from './utils/topicUrl.js';
 import { buildUrlset, buildSitemapIndex, chunk } from './utils/sitemap.js';
 import { renderHomeFallbackHtml, renderLlmsTxt } from './utils/renderHomeFallback.js';
+import { getSpaMetadata } from './utils/spaMetadata.js';
 import { inlineJson } from './utils/inlineJson.js';
 import { buildVideoIndex, relatedVideos, archiveLinksFor, monthPath, gamePath } from './utils/videoIndex.js';
 import { renderVideoMonthHtml, renderVideoGameHtml, renderVideoGamesHtml } from './utils/renderVideoArchiveHtml.js';
@@ -455,6 +456,8 @@ app.get('/llms.txt', (req, res) => {
 });
 
 // ======= STREAMLINED STATIC FILE SERVING =======
+app.get('/index.html', (req, res) => res.redirect(301, '/' + req.url.slice(req.path.length)));
+
 // Serve static assets from dist/, but skip index.html so the SPA fallback
 // handles it (with tenant injection + proper no-cache headers)
 app.use(express.static(path.resolve(__dirname, 'dist'), {
@@ -1166,10 +1169,12 @@ async function renderVideosHub(req, res, next, page) {
 app.get('/videos', (req, res, next) => renderVideosHub(req, res, next, 1));
 
 app.get('/videos/page/:n', (req, res, next) => {
-  const n = parseInt(req.params.n, 10);
-  if (!Number.isInteger(n) || n < 1) return next();
+  const raw = req.params.n;
+  const n = Number(raw);
+  if (!/^\d+$/.test(raw) || !Number.isSafeInteger(n) || n < 1) return next();
   // Page 1 already lives at /videos; don't let a second URL serve it.
   if (n === 1) return res.redirect(301, '/videos');
+  if (req.path !== '/videos/page/' + n) return res.redirect(301, '/videos/page/' + n);
   return renderVideosHub(req, res, next, n);
 });
 
@@ -1291,6 +1296,7 @@ app.get('/video/:videoId', async (req, res, next) => {
       siteBaseUrl: sitemapBase(req),
       indexable,
       creator: req.tenant?.name || null,
+      titleQualifier: batch?.titleQualifiers.get(video.video_id),
       related: relatedVideos(batch, video.video_id),
       archive: archiveLinksFor(batch, video.video_id),
     });
@@ -1335,31 +1341,19 @@ app.use((req, res, next) => {
     .send(renderRemovedTopicHtml({ term: '', siteBaseUrl: `https://${hostname}` }));
 });
 
-// The built index.html ships placeholder https://example.com URLs — canonical,
-// og:url/og:image, twitter:url/twitter:image, and the JSON-LD url/target. Nothing
-// ever rewrote them, so every SPA-served URL declared a canonical pointing at a
-// domain we don't own. Search Console logged ~1k pages under "Alternate page with
-// proper canonical tag" and "Duplicate, Google chose different canonical than
-// user" as a result. Rewrite them from the real host on every response.
-function applySeoUrls(html, { base, pathname }) {
-  // Canonical deliberately drops the query string: /?q=foo renders the same
-  // document as /, and keeping the query would mint a distinct canonical for
-  // every search term anyone has ever typed.
-  const cleanPath = pathname === '/' ? '/' : pathname.replace(/\/+$/, '');
-  const canonical = `${base}${cleanPath}`;
+function applySpaMetadata(html, metadata, base) {
+  const escapeHtml = (value) => value.replaceAll('&', '&amp;').replaceAll('"', '&quot;')
+    .replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+  const { canonical, title, robots } = metadata;
 
   return html
-    .replace(/(<link rel="canonical" href=")[^"]*(")/i, `$1${canonical}$2`)
-    .replace(/(<meta property="og:url" content=")[^"]*(")/i, `$1${canonical}$2`)
-    .replace(/(<meta name="twitter:url" content=")[^"]*(")/i, `$1${canonical}$2`)
-    // Sweeps up what's left: og:image, twitter:image, and the JSON-LD WebSite
-    // url + SearchAction target. Runs last so it can't clobber the three
-    // canonical URLs set above (they no longer contain the placeholder).
-    .replaceAll('https://example.com', base);
+    .replaceAll('https://example.com', base)
+    .replace(/(<title>).*?(<\/title>)/i, (_, open, close) => open + escapeHtml(title) + close)
+    .replace(/(<link rel="canonical" href=")[^"]*/i, (_, open) => open + escapeHtml(canonical))
+    .replace(/(<meta name="robots" content=")[^"]*/i, (_, open) => open + robots)
+    .replace(/(<meta (?:property="og:|name="(?:twitter:)?)(url|title|description)" content=")[^"]*/gi,
+      (_, open, key) => open + escapeHtml(metadata[key.toLowerCase()] ?? canonical));
 }
-
-// Keep in sync with the <Routes> in src/App.jsx.
-const SPA_ROUTES = new Set(['/', '/search', '/privacy', '/changelog', '/stats']);
 
 // SPA fallback for React Router with CSP header
 // This must be LAST so it doesn't catch API routes
@@ -1369,17 +1363,14 @@ app.use((req, res) => {
   if (staticExtensions.test(req.path)) {
     return res.status(404).end();
   }
-  // Anything the React router has no route for used to answer 200 with the
-  // app shell and an index,follow tag — a soft 404 for every mistyped or
-  // retired URL, each one declaring itself canonical. Still serve the shell
-  // (the app shows its own not-found state) but with a real 404 and noindex.
-  // /topic/* only reaches here when the topic handler above bailed out.
-  const spaPath = req.path.replace(/\/+$/, '') || '/';
-  const isSpaRoute = SPA_ROUTES.has(spaPath) || spaPath.startsWith('/topic/');
-  if (!isSpaRoute) res.status(404);
+  const tenant = req.tenant || detectTenant(req.get('host') || 'localhost');
+  const metadata = getSpaMetadata(req.path, new URLSearchParams(req.query), tenant);
+  res.status(metadata.status);
+  // The topic handler falls back to the app while a curated page is unavailable.
+  if (metadata.status === 503) res.set('Retry-After', '600');
 
   // Get tenant hostname for CSP
-  const tenantHostname = req.tenant?.hostnames?.[0] || 'nlquotes.com';
+  const tenantHostname = tenant?.hostnames?.[0] || 'nlquotes.com';
   const tenantDomain = `https://${tenantHostname}`;
   
   // CSP with explicit YouTube domains (wildcards might not work in Coolify)
@@ -1397,30 +1388,16 @@ app.use((req, res) => {
 
   // Inject tenant config into HTML before serving
   try {
-    const tenant = req.tenant || detectTenant(req.get('host') || 'localhost');
     console.log(`[HTML Injection] Tenant detected: ${tenant?.id}`);
     const indexPath = path.resolve(__dirname, 'dist', 'index.html');
     
     if (fs.existsSync(indexPath)) {
-      let html = fs.readFileSync(indexPath, 'utf8');
-
-      // Rewrite the placeholder SEO URLs first, before any other injection.
-      // tenantDomain comes from tenant config, never the raw Host header, so a
-      // spoofed Host can't inject a canonical pointing somewhere else.
-      html = applySeoUrls(html, { base: tenantDomain, pathname: req.path });
-
-      // Search result pages are internal search results: keep them out of
-      // the index (Google's guidance, and every ?q= would otherwise compete
-      // with the video pages for the same queries), but let crawlers follow
-      // their links through to the video pages.
-      if (spaPath === '/search' || !isSpaRoute) {
-        html = html.replace(/<meta name="robots" content="[^"]*"\s*\/?>/i, '<meta name="robots" content="noindex,follow" />');
-      }
+      let html = applySpaMetadata(fs.readFileSync(indexPath, 'utf8'), metadata, tenantDomain);
 
       // The home page is a client-rendered search box: crawlers that don't run
       // JavaScript got an empty #root and no links. Give them a description and
       // links into the server-rendered pages; createRoot() replaces it on mount.
-      if (spaPath === '/') {
+      if (metadata.isHome) {
         // Read straight from the cache: the home page must never wait on the
         // video list, and simply omits these links until it has loaded.
         const batch = videoIndexCache.get(tenant?.id || 'default')?.value;
@@ -1477,27 +1454,11 @@ app.use((req, res) => {
         );
       }
       
-      // Also update meta tags in HTML if tenant is not northernlion
-      if (tenant.id !== 'northernlion' && tenant.metadata) {
-        // Update title
+      if (tenant.id !== 'northernlion' && tenant.branding?.favicon) {
         html = html.replace(
-          /<title>.*?<\/title>/,
-          `<title>${tenant.metadata.title || 'HiveQuotes'}</title>`
+          /<link rel="icon"[^>]*>/g,
+          `<link rel="icon" href="${tenant.branding.favicon}" type="image/png" />`
         );
-        
-        // Update description
-        html = html.replace(
-          /<meta name="description" content="[^"]*"\/>/,
-          `<meta name="description" content="${(tenant.metadata.description || '').replace(/"/g, '&quot;')}" />`
-        );
-        
-        // Update favicon if different
-        if (tenant.branding?.favicon) {
-          html = html.replace(
-            /<link rel="icon"[^>]*>/g,
-            `<link rel="icon" href="${tenant.branding.favicon}" type="image/png" />`
-          );
-        }
       }
       
       // Never cache index.html — stale HTML causes MIME type errors after redeployment

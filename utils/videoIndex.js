@@ -3,6 +3,32 @@
 
 import { toDateOnly } from './dateOnly.js';
 
+function videoTitleQualifiers(list) {
+  const byTitle = new Map();
+  for (const video of list) {
+    const title = (video.title || '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase() || 'untitled video';
+    if (!byTitle.has(title)) byTitle.set(title, []);
+    byTitle.get(title).push(video);
+  }
+
+  // Distinguish repeated titles by upload date. Use the video ID when a date
+  // is missing or more than one video with the title was uploaded that day.
+  const qualifiers = new Map();
+  for (const videos of byTitle.values()) {
+    if (videos.length < 2) continue;
+    const dates = videos.map((video) => toDateOnly(video.uploadDate));
+    const dateCounts = new Map();
+    for (const date of dates) dateCounts.set(date, (dateCounts.get(date) || 0) + 1);
+    videos.forEach(({ videoId }, i) => {
+      const date = dates[i];
+      qualifiers.set(videoId, date && dateCounts.get(date) === 1
+        ? date
+        : [date, videoId].filter(Boolean).join(', '));
+    });
+  }
+  return qualifiers;
+}
+
 export function buildVideoIndex(list) {
   const position = new Map(); // videoId -> index in list (newest first)
   const byGame = new Map();   // gameName -> [index, ...] newest first
@@ -13,7 +39,8 @@ export function buildVideoIndex(list) {
       byGame.get(v.gameName).push(i);
     }
   });
-  return { list, ids: new Set(position.keys()), position, byGame, ...buildArchives(list, byGame) };
+  const titleQualifiers = videoTitleQualifiers(list);
+  return { list, ids: new Set(position.keys()), position, byGame, titleQualifiers, ...buildArchives(list, byGame) };
 }
 
 // Other video pages to link from a video page, so crawlers can walk from one

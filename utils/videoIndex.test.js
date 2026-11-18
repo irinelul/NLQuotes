@@ -46,6 +46,33 @@ test('video page links to related transcripts and names the creator', () => {
     expect(html).toContain('rel="prev"');
 });
 
+test('matching video titles get distinct metadata even for same-day and undated uploads', () => {
+    const uploads = [
+        { videoId: 'AAAAAAAAAAA', title: 'Stream archive', uploadDate: '2026-11-15' },
+        { videoId: 'BBBBBBBBBBB', title: 'Stream archive', uploadDate: '2026-11-14' },
+        { videoId: 'CCCCCCCCCCC', title: 'Stream archive', uploadDate: '2026-11-14' },
+        { videoId: 'DDDDDDDDDDD', title: 'STREAM  ARCHIVE' },
+        { videoId: 'EEEEEEEEEEE', title: 'Different title' },
+    ];
+    const { titleQualifiers } = buildVideoIndex(uploads);
+    expect([...titleQualifiers.values()]).toEqual([
+        '2026-11-15',
+        '2026-11-14, BBBBBBBBBBB',
+        '2026-11-14, CCCCCCCCCCC',
+        'DDDDDDDDDDD',
+    ]);
+    const pages = uploads.map((video) => renderVideoHtml({
+        ...video,
+        titleQualifier: titleQualifiers.get(video.videoId),
+        siteBaseUrl: 'https://nlquotes.com',
+        creator: 'Northernlion',
+    }));
+    for (const tag of [/<title>([^<]+)/, /<meta name="description" content="([^"]+)/]) {
+        expect(new Set(pages.map((html) => html.match(tag)[1])).size).toBe(uploads.length);
+    }
+    expect(pages[1]).toContain('<link rel="canonical" href="https://nlquotes.com/video/BBBBBBBBBBB" />');
+});
+
 // ---- archives ----
 import { archiveLinksFor, slugifyGame } from './videoIndex';
 import { renderVideoMonthHtml, renderVideoGameHtml, renderVideoGamesHtml } from './renderVideoArchiveHtml';

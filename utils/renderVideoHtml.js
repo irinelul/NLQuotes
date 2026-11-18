@@ -164,13 +164,14 @@ function renderCrumbs(archive, siteBaseUrl, canonical, displayTitle) {
   return { html, jsonLd };
 }
 
-export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName, totalQuotes, quotes, siteBaseUrl, indexable = true, creator = null, related = null, archive = null, durationSeconds = null, sharedAt = null }) {
+export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName, totalQuotes, quotes, siteBaseUrl, indexable = true, creator = null, related = null, archive = null, durationSeconds = null, sharedAt = null, titleQualifier = '' }) {
   const safeId = encodeURIComponent(videoId);
   const canonical = `${siteBaseUrl}/video/${safeId}`;
   const ytUrl = `https://www.youtube.com/watch?v=${safeId}`;
   const thumbnail = `https://i.ytimg.com/vi/${safeId}/hqdefault.jpg`;
   const displayTitle = title || 'Untitled video';
   const safeTitle = escapeHtml(displayTitle);
+  const safeQualifiedTitle = titleQualifier ? escapeHtml(`${displayTitle} (${titleQualifier})`) : safeTitle;
   const published = isoDate(uploadDate);
   // Structured data needs the timestamp form; the visible meta line stays date-only.
   const publishedDateTime = toIsoDateTime(uploadDate);
@@ -188,7 +189,8 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
   const runtime = spokenDuration(durationSeconds);
   const uploadedOn = longDate(published);
 
-  const facts = [gameName, uploadedOn, shortDuration(durationSeconds)].filter(Boolean).join(', ');
+  const videoReference = titleQualifier && titleQualifier !== published ? `video ID ${videoId}` : null;
+  const facts = [gameName, uploadedOn, shortDuration(durationSeconds), videoReference].filter(Boolean).join(', ');
   const description =
     `Transcript of ${who ? `${who}'s ` : ''}"${displayTitle}"` +
     (facts ? ` (${facts})` : '') +
@@ -247,7 +249,7 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
   const shareUrl = moment ? `${canonical}?t=${moment.t}` : canonical;
   const shareTitle = moment
     ? `${safeTitle} — at ${momentLabel}`
-    : `${safeTitle} — ${titleSuffix}`;
+    : `${safeQualifiedTitle} — ${titleSuffix}`;
   const shareDescription = moment
     ? escapeHtml(`“${excerpt(momentText, 280)}”${who ? ` — ${who}` : ''}`)
     : safeDescription;
@@ -286,7 +288,7 @@ export function renderVideoHtml({ videoId, title, channel, uploadDate, gameName,
     ? 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1'
     : 'noindex,follow'}" />
   <link rel="canonical" href="${canonical}" />
-  <title>${safeTitle} — ${titleSuffix} | NLQuotes</title>
+  <title>${safeQualifiedTitle} — ${titleSuffix} | NLQuotes</title>
   <meta name="description" content="${safeDescription}" />
   <meta property="og:type" content="video.other" />
   <meta property="og:site_name" content="NLQuotes" />

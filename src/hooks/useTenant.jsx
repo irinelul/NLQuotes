@@ -1,5 +1,7 @@
 import { useState, useEffect, createContext, useContext } from 'react';
+import { useLocation } from 'react-router-dom';
 import axios from 'axios';
+import { getSpaMetadata } from '../../utils/spaMetadata.js';
 
 const TenantContext = createContext(null);
 
@@ -41,50 +43,51 @@ const getInitialTenantConfig = () => {
 // Read tenant config synchronously at module load
 const initialTenantConfig = getInitialTenantConfig();
 
-// Helper function to update document metadata
-function updateDocumentMetadata(tenantData) {
-  if (tenantData?.metadata) {
-    document.title = tenantData.metadata.title || 'NLQuotes';
-    
-    // Update meta tags
-    const metaDescription = document.querySelector('meta[name="description"]');
-    if (metaDescription) {
-      metaDescription.setAttribute('content', tenantData.metadata.description || '');
-    } else {
-      const meta = document.createElement('meta');
-      meta.name = 'description';
-      meta.content = tenantData.metadata.description || '';
-      document.head.appendChild(meta);
-    }
-    
-    // Update favicon
-    if (tenantData.branding?.favicon) {
-      const favicon = document.querySelector('link[rel="icon"]') || document.querySelector('link[rel="shortcut icon"]');
-      if (favicon) {
-        favicon.href = tenantData.branding.favicon;
-      } else {
-        const link = document.createElement('link');
-        link.rel = 'icon';
-        link.href = tenantData.branding.favicon;
-        document.head.appendChild(link);
-      }
-    }
-  }
-}
-
 export function TenantProvider({ children }) {
   // Use the synchronously detected tenant config as initial state
   // This ensures we have the correct tenant immediately, avoiding any flash of wrong content
   const [tenant, setTenant] = useState(initialTenantConfig);
   const [loading, setLoading] = useState(!initialTenantConfig);
   const [error, setError] = useState(null);
+  const { pathname, search } = useLocation();
 
   useEffect(() => {
-    // If we already have a tenant config (from injection or sync fetch), update metadata immediately
+    if (!tenant) return;
+    const { title, description, canonical, robots } = getSpaMetadata(pathname, new URLSearchParams(search), tenant);
+    document.title = title;
+    const tags = {
+      'name="description"': description,
+      'name="robots"': robots,
+      'property="og:title"': title,
+      'property="og:description"': description,
+      'property="og:url"': canonical,
+      'name="twitter:title"': title,
+      'name="twitter:description"': description,
+      'name="twitter:url"': canonical,
+    };
+    for (const [selector, content] of Object.entries(tags)) {
+      document.head.querySelector('meta[' + selector + ']')?.setAttribute('content', content);
+    }
+    document.head.querySelector('link[rel="canonical"]')?.setAttribute('href', canonical);
+  }, [pathname, search, tenant]);
+
+  useEffect(() => {
+    const href = tenant?.branding?.favicon;
+    if (!href) return;
+    const favicon = document.head.querySelector('link[rel="icon"], link[rel="shortcut icon"]');
+    if (favicon) {
+      favicon.href = href;
+    } else {
+      const link = document.createElement('link');
+      link.rel = 'icon';
+      link.href = href;
+      document.head.appendChild(link);
+    }
+  }, [tenant]);
+
+  useEffect(() => {
+    // An injected or synchronously fetched config is already in use.
     if (initialTenantConfig) {
-      updateDocumentMetadata(initialTenantConfig);
-      setLoading(false);
-      
       // Optionally refresh from API in background to ensure we have the latest config
       // This is non-blocking - we already have the correct tenant loaded
       async function refreshTenantInBackground() {
@@ -99,7 +102,6 @@ export function TenantProvider({ children }) {
           // Update if config changed (shouldn't happen, but ensures consistency)
           if (response.data) {
             setTenant(response.data);
-            updateDocumentMetadata(response.data);
           }
         } catch (err) {
           // Silently fail - we already have a working tenant config
@@ -121,7 +123,6 @@ export function TenantProvider({ children }) {
           }
         });
         setTenant(response.data);
-        updateDocumentMetadata(response.data);
       } catch (err) {
         console.error('[useTenant] Error fetching tenant config:', err);
         setError(err);

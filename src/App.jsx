@@ -356,8 +356,7 @@ const App = () => {
                 <Route path="/changelog" element={<Changelog />} />
                 <Route path="/stats" element={<Stats />} />
                 <Route path="/topic/:term" element={<TopicPage />} />
-                {/* The server answers these with a 404 status (SPA_ROUTES in
-                    index.js); this is the body that goes with it. */}
+                {/* The server answers unknown routes with a 404 status. */}
                 <Route path="*" element={
                     <main style={{ textAlign: 'center', padding: '80px 20px' }}>
                         <h1>Page not found</h1>
